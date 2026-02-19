@@ -1,0 +1,5 @@
+ALTER TABLE public.projects
+  ADD COLUMN IF NOT EXISTS creator TEXT,
+  ADD COLUMN IF NOT EXISTS client_name TEXT,
+  ADD COLUMN IF NOT EXISTS project_cost TEXT,
+  ADD COLUMN IF NOT EXISTS project_duration TEXT;

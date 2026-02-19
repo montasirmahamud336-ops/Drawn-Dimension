@@ -1,0 +1,99 @@
+{
+  "testimonials": {
+    "count": 7,
+    "sample": {
+      "id": "0b6b7814-fd22-481f-9fc2-d6c9df256cfa",
+      "name": "Sarah Mitchell",
+      "role": "CEO, TechVentures Inc",
+      "image_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
+      "content": "Drawn Dimension transformed our online presence completely. Their web development team created a stunning platform that increased our conversions by 200%. Their attention to detail and commitment to quality is unmatched.",
+      "rating": 5,
+      "service_tag": "Web Development",
+      "is_published": true,
+      "display_order": 1,
+      "created_at": "2026-02-11T07:24:59.083796+00:00",
+      "updated_at": "2026-02-11T07:24:59.083796+00:00"
+    }
+  },
+  "reviews": {
+    "error": "{'message': \"Could not find the table 'public.reviews' in the schema cache\", 'code': 'PGRST205', 'hint': \"Perhaps you meant the table 'public.profiles'\", 'details': None}"
+  },
+  "projects": {
+    "count": 7,
+    "sample": {
+      "id": "85c50eef-bb94-45c2-93c0-c63688a4e5f4",
+      "title": "Tech Startup Platform",
+      "description": "Modern SaaS platform with interactive features, dashboard analytics, and seamless user experience.",
+      "image_url": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop",
+      "category": "Web Design",
+      "tags": [
+        "react",
+        "dashboard",
+        "saas"
+      ],
+      "live_link": "#",
+      "github_link": null,
+      "status": "live",
+      "created_at": "2026-02-16T21:19:08.325223+00:00",
+      "updated_at": "2026-02-16T21:19:08.325223+00:00",
+      "client": "INNOVATETECH SOLUTIONS",
+      "media": [],
+      "creator": null,
+      "client_name": null,
+      "project_cost": null,
+      "project_duration": null
+    }
+  },
+  "products": {
+    "count": 1,
+    "sample": {
+      "id": "503a098d-5631-4ade-828c-933e2dff3c80",
+      "name": "Video downloader 1",
+      "description": "",
+      "price": 200.0,
+      "image_url": "https://hnqkfcvbaazlzflurvsl.supabase.co/storage/v1/object/public/cms-uploads/products/0.4087753455365113.png",
+      "status": "live",
+      "created_at": "2026-02-16T23:07:48.651414+00:00",
+      "updated_at": "2026-02-16T23:07:48.651414+00:00",
+      "category": "",
+      "media": [
+        {
+          "url": "https://hnqkfcvbaazlzflurvsl.supabase.co/storage/v1/object/public/cms-uploads/products/0.4087753455365113.png",
+          "type": "image"
+        }
+      ]
+    }
+  },
+  "team_members": {
+    "count": 1,
+    "sample": {
+      "id": "6e615b7d-6490-46ef-ae07-0f53a1750709",
+      "name": "Montasir Mahamud",
+      "role": "CEO",
+      "bio": "Muhamamad Muntasir mahamud A young CEO capble with many skills",
+      "image_url": "https://hnqkfcvbaazlzflurvsl.supabase.co/storage/v1/object/public/cms-uploads/team/0.4014382708187255.png",
+      "status": "live",
+      "created_at": "2026-02-17T10:24:53.027135+00:00",
+      "updated_at": "2026-02-17T10:24:53.027135+00:00",
+      "linkedin_url": null,
+      "twitter_url": null,
+      "facebook_url": null,
+      "media": []
+    }
+  },
+  "profiles": {
+    "count": 2,
+    "sample": {
+      "id": "e70476af-fbf0-4ca5-992b-8e995d76732d",
+      "user_id": "34b18dac-28b4-4d33-9a1d-9ab727f48618",
+      "full_name": "Shohag Ahmed",
+      "email": "mdshohagahmed6655@gmail.com",
+      "phone": null,
+      "company": null,
+      "avatar_url": null,
+      "theme_preference": "dark",
+      "created_at": "2026-02-10T18:46:45.092433+00:00",
+      "updated_at": "2026-02-10T18:46:45.092433+00:00"
+    }
+  }
+}
