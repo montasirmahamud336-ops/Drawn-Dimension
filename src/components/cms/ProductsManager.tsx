@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Edit, Trash2, RotateCcw, ShoppingBag, Archive } from "lucide-react";
+import { Plus, Search, Edit, Trash2, RotateCcw, ShoppingBag, Archive, GripVertical } from "lucide-react";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import ProductForm from "./ProductForm";
+import { moveItemById } from "./reorderUtils";
 
 const ProductsManager = () => {
     const [products, setProducts] = useState<any[]>([]);
@@ -15,9 +16,18 @@ const ProductsManager = () => {
     const [search, setSearch] = useState("");
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any | null>(null);
+    const [draggingProductId, setDraggingProductId] = useState<string | null>(null);
+    const [hasOrderChange, setHasOrderChange] = useState(false);
+    const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const productsRef = useRef<any[]>([]);
 
     const apiBase = getApiBaseUrl();
     const token = getAdminToken();
+    const isReorderEnabled = search.trim().length === 0 && !isSavingOrder;
+
+    useEffect(() => {
+        productsRef.current = products;
+    }, [products]);
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -37,6 +47,62 @@ const ProductsManager = () => {
     useEffect(() => {
         fetchProducts();
     }, [activeTab]);
+
+    const saveProductOrder = async (orderedProducts: any[]) => {
+        try {
+            setIsSavingOrder(true);
+            const res = await fetch(`${apiBase}/products/reorder`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    orderedIds: orderedProducts.map((product) => product.id)
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to save order");
+            }
+
+            toast.success("Product order updated");
+        } catch (error) {
+            toast.error("Could not save product order");
+            fetchProducts();
+        } finally {
+            setIsSavingOrder(false);
+        }
+    };
+
+    const handleDragStart = (productId: string) => {
+        if (!isReorderEnabled) return;
+        setDraggingProductId(productId);
+        setHasOrderChange(false);
+    };
+
+    const handleDragEnter = (targetProductId: string) => {
+        if (!isReorderEnabled || !draggingProductId || draggingProductId === targetProductId) return;
+
+        setProducts((prev) => {
+            const next = moveItemById(prev, draggingProductId, targetProductId);
+            if (next !== prev) productsRef.current = next;
+            return next;
+        });
+        setHasOrderChange(true);
+        setDraggingProductId(targetProductId);
+    };
+
+    const handleDragEnd = () => {
+        const shouldSave = hasOrderChange;
+        const orderedProducts = productsRef.current;
+        setDraggingProductId(null);
+        setHasOrderChange(false);
+
+        if (shouldSave && orderedProducts.length > 0) {
+            void saveProductOrder(orderedProducts);
+        }
+    };
 
     const handleDelete = async (id: string, isHardDelete: boolean) => {
         if (!confirm(isHardDelete ? "Permanently delete this product?" : "Move product to Drafts?")) return;
@@ -124,6 +190,12 @@ const ProductsManager = () => {
                 </div>
             </div>
 
+            <p className="text-xs text-muted-foreground">
+                {isReorderEnabled
+                    ? "Drag and drop cards to control website display order."
+                    : "Clear search text before dragging cards to reorder."}
+            </p>
+
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[1, 2, 3].map(i => <div key={i} className="h-64 bg-muted/20 animate-pulse rounded-xl" />)}
@@ -131,7 +203,18 @@ const ProductsManager = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredProducts.map((product) => (
-                        <Card key={product.id} className="overflow-hidden group border-border/40 bg-card/50 hover:shadow-lg transition-all duration-300">
+                        <Card
+                            key={product.id}
+                            className={`overflow-hidden group border-border/40 bg-card/50 hover:shadow-lg transition-all duration-300 ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${draggingProductId === product.id ? "opacity-70" : ""}`}
+                            draggable={isReorderEnabled}
+                            onDragStart={() => handleDragStart(product.id)}
+                            onDragEnter={() => handleDragEnter(product.id)}
+                            onDragOver={(event) => {
+                                if (isReorderEnabled) event.preventDefault();
+                            }}
+                            onDrop={(event) => event.preventDefault()}
+                            onDragEnd={handleDragEnd}
+                        >
                             <div className="aspect-square relative overflow-hidden bg-muted">
                                 {product.image_url ? (
                                     <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -159,6 +242,14 @@ const ProductsManager = () => {
                                 </div>
                             </div>
                             <CardContent className="p-4">
+                                {isReorderEnabled && (
+                                    <div className="flex justify-end mb-2">
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
+                                            <GripVertical className="w-3.5 h-3.5" />
+                                            Drag
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-start gap-2">
                                     <h3 className="font-semibold truncate flex-1">{product.name}</h3>
                                     <span className="font-bold text-primary">${product.price}</span>

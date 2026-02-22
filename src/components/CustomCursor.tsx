@@ -3,6 +3,7 @@ import { motion, useMotionValue, useSpring } from "framer-motion";
 
 const CustomCursor = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const [hasMouseMoved, setHasMouseMoved] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 
   // Use MotionValues instead of State for high-performance updates
@@ -25,6 +26,9 @@ const CustomCursor = () => {
     setIsVisible(true);
 
     const updatePosition = (e: MouseEvent) => {
+      if (!hasMouseMoved) {
+        setHasMouseMoved(true);
+      }
       mouseX.set(e.clientX);
       mouseY.set(e.clientY);
     };
@@ -52,9 +56,9 @@ const CustomCursor = () => {
       document.removeEventListener("mouseover", handleMouseOver);
       document.removeEventListener("mouseout", handleMouseOut);
     };
-  }, [mouseX, mouseY]);
+  }, [hasMouseMoved, mouseX, mouseY]);
 
-  if (!isVisible) return null;
+  if (!isVisible || !hasMouseMoved) return null;
 
   return (
     <>
@@ -88,7 +92,20 @@ const CustomCursor = () => {
         transition={{ type: "spring", stiffness: 250, damping: 20 }}
       />
       <style>{`
-        * { cursor: none !important; }
+        body,
+        a,
+        button,
+        [role='button'],
+        .cursor-pointer {
+          cursor: none !important;
+        }
+
+        input,
+        textarea,
+        select,
+        [contenteditable='true'] {
+          cursor: text !important;
+        }
       `}</style>
     </>
   );

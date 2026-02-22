@@ -6,8 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ChatWidget from "@/components/ChatWidget";
-import ScrollToTop from "@/components/shared/ScrollToTop";
 import CustomCursor from "@/components/CustomCursor";
+import ScrollToTop from "@/components/shared/ScrollToTop";
 import SmoothScroll from "@/components/shared/SmoothScroll";
 import AdminLogin from "@/components/admin/AdminLogin";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
@@ -52,12 +52,12 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <CustomCursor />
-        <SmoothScroll />
-        <BrowserRouter>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <SmoothScroll />
+          <CustomCursor />
+          <BrowserRouter>
           <AnimatePresence mode="wait">
             <ScrollToTop />
             <Routes>

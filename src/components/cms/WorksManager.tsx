@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Edit, Trash2, RotateCcw, MonitorPlay } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Edit, Trash2, RotateCcw, MonitorPlay, GripVertical } from "lucide-react";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import WorkForm from "./WorkForm";
+import { moveItemById } from "./reorderUtils";
 
 const WorksManager = () => {
     const [projects, setProjects] = useState<any[]>([]);
@@ -15,9 +15,18 @@ const WorksManager = () => {
     const [search, setSearch] = useState("");
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProject, setEditingProject] = useState<any | null>(null);
+    const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
+    const [hasOrderChange, setHasOrderChange] = useState(false);
+    const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const projectsRef = useRef<any[]>([]);
 
     const apiBase = getApiBaseUrl();
     const token = getAdminToken();
+    const isReorderEnabled = search.trim().length === 0 && !isSavingOrder;
+
+    useEffect(() => {
+        projectsRef.current = projects;
+    }, [projects]);
 
     const fetchProjects = async () => {
         setLoading(true);
@@ -39,6 +48,62 @@ const WorksManager = () => {
     useEffect(() => {
         fetchProjects();
     }, [activeTab]);
+
+    const saveProjectOrder = async (orderedProjects: any[]) => {
+        try {
+            setIsSavingOrder(true);
+            const res = await fetch(`${apiBase}/projects/reorder`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    orderedIds: orderedProjects.map((project) => project.id)
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to save order");
+            }
+
+            toast.success("Work order updated");
+        } catch (error) {
+            toast.error("Could not save work order");
+            fetchProjects();
+        } finally {
+            setIsSavingOrder(false);
+        }
+    };
+
+    const handleDragStart = (projectId: string) => {
+        if (!isReorderEnabled) return;
+        setDraggingProjectId(projectId);
+        setHasOrderChange(false);
+    };
+
+    const handleDragEnter = (targetProjectId: string) => {
+        if (!isReorderEnabled || !draggingProjectId || draggingProjectId === targetProjectId) return;
+
+        setProjects((prev) => {
+            const next = moveItemById(prev, draggingProjectId, targetProjectId);
+            if (next !== prev) projectsRef.current = next;
+            return next;
+        });
+        setHasOrderChange(true);
+        setDraggingProjectId(targetProjectId);
+    };
+
+    const handleDragEnd = () => {
+        const shouldSave = hasOrderChange;
+        const orderedProjects = projectsRef.current;
+        setDraggingProjectId(null);
+        setHasOrderChange(false);
+
+        if (shouldSave && orderedProjects.length > 0) {
+            void saveProjectOrder(orderedProjects);
+        }
+    };
 
     const handleDelete = async (id: string, isHardDelete: boolean) => {
         if (!confirm(isHardDelete ? "Are you sure you want to PERMANENTLY delete this?" : "Move this work to Drafts?")) return;
@@ -129,6 +194,12 @@ const WorksManager = () => {
                 </div>
             </div>
 
+            <p className="text-xs text-muted-foreground">
+                {isReorderEnabled
+                    ? "Drag and drop cards to control website display order."
+                    : "Clear search text before dragging cards to reorder."}
+            </p>
+
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-96 bg-muted/20 animate-pulse rounded-2xl" />)}
@@ -138,7 +209,15 @@ const WorksManager = () => {
                     {filteredProjects.map((project) => (
                         <div
                             key={project.id}
-                            className="group relative"
+                            className={`group relative ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${draggingProjectId === project.id ? "opacity-70" : ""}`}
+                            draggable={isReorderEnabled}
+                            onDragStart={() => handleDragStart(project.id)}
+                            onDragEnter={() => handleDragEnter(project.id)}
+                            onDragOver={(event) => {
+                                if (isReorderEnabled) event.preventDefault();
+                            }}
+                            onDrop={(event) => event.preventDefault()}
+                            onDragEnd={handleDragEnd}
                         >
                             <div className="glass-card overflow-hidden h-full flex flex-col transition-all duration-300 hover:shadow-glow/50 border-border/50 bg-secondary/20">
                                 <div className="relative overflow-hidden aspect-video">
@@ -196,6 +275,14 @@ const WorksManager = () => {
 
                                 <div className="p-6 flex-grow flex flex-col justify-between relative z-10">
                                     <div>
+                                        {isReorderEnabled && (
+                                            <div className="flex justify-end mb-2">
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
+                                                    <GripVertical className="w-3.5 h-3.5" />
+                                                    Drag
+                                                </span>
+                                            </div>
+                                        )}
                                         <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
                                             {project.title}
                                         </h3>

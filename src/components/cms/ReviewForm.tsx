@@ -5,11 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, X, Upload, Image as ImageIcon } from "lucide-react";
+import { Loader2, Save, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminToken } from "@/components/admin/adminAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { CMS_BUCKET, ensureCmsBucket } from "@/integrations/supabase/storage";
+import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
 
 interface Review {
     id?: string;
@@ -73,14 +72,8 @@ const ReviewForm = ({ initialData, onSave, onCancel }: ReviewFormProps) => {
             await ensureCmsBucket();
             const fileExt = file.name.split(".").pop() || "bin";
             const fileName = `reviews/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-
-            const { error } = await supabase.storage.from(CMS_BUCKET).upload(fileName, file);
-            if (error) {
-                throw error;
-            }
-
-            const { data } = supabase.storage.from(CMS_BUCKET).getPublicUrl(fileName);
-            setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+            const publicUrl = await uploadCmsFile(file, fileName);
+            setFormData(prev => ({ ...prev, image_url: publicUrl }));
             toast.success("Image uploaded successfully");
         } catch (error) {
             console.error("Upload error:", error);

@@ -1,15 +1,15 @@
-
-import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, CheckCircle, XCircle, Star, MessageSquare, MonitorPlay, RotateCcw, Search } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Edit, Trash2, Star, MessageSquare, MonitorPlay, RotateCcw, Search, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getAdminToken } from "@/components/admin/adminAuth";
 import ReviewForm from "./ReviewForm";
 import { getReviewsApiBase } from "@/components/shared/reviewsApi";
+import { moveItemById } from "./reorderUtils";
 
 interface Review {
     id: string;
@@ -20,6 +20,7 @@ interface Review {
     rating: number;
     image_url?: string;
     status: "draft" | "live";
+    display_order?: number;
     created_at?: string;
 }
 
@@ -30,7 +31,16 @@ const ReviewsManager = () => {
     const [currentReview, setCurrentReview] = useState<Review | null>(null);
     const [activeTab, setActiveTab] = useState("live");
     const [search, setSearch] = useState("");
+    const [draggingReviewId, setDraggingReviewId] = useState<string | null>(null);
+    const [hasOrderChange, setHasOrderChange] = useState(false);
+    const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const reviewsRef = useRef<Review[]>([]);
     const apiBase = getReviewsApiBase();
+    const isReorderEnabled = search.trim().length === 0 && !isSavingOrder;
+
+    useEffect(() => {
+        reviewsRef.current = reviews;
+    }, [reviews]);
 
     const fetchReviews = async () => {
         setLoading(true);
@@ -56,6 +66,64 @@ const ReviewsManager = () => {
     useEffect(() => {
         fetchReviews();
     }, [activeTab]);
+
+    const saveReviewOrder = async (orderedReviews: Review[]) => {
+        try {
+            setIsSavingOrder(true);
+            const token = getAdminToken();
+            const response = await fetch(`${apiBase}/reviews/reorder`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    orderedIds: orderedReviews.map((review) => review.id)
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to save order");
+            }
+
+            toast.success("Review order updated");
+        } catch (error) {
+            console.error("Error saving review order:", error);
+            toast.error("Could not save review order");
+            fetchReviews();
+        } finally {
+            setIsSavingOrder(false);
+        }
+    };
+
+    const handleDragStart = (reviewId: string) => {
+        if (!isReorderEnabled) return;
+        setDraggingReviewId(reviewId);
+        setHasOrderChange(false);
+    };
+
+    const handleDragEnter = (targetReviewId: string) => {
+        if (!isReorderEnabled || !draggingReviewId || draggingReviewId === targetReviewId) return;
+
+        setReviews((prev) => {
+            const next = moveItemById(prev, draggingReviewId, targetReviewId);
+            if (next !== prev) reviewsRef.current = next;
+            return next;
+        });
+        setHasOrderChange(true);
+        setDraggingReviewId(targetReviewId);
+    };
+
+    const handleDragEnd = () => {
+        const shouldSave = hasOrderChange;
+        const orderedReviews = reviewsRef.current;
+        setDraggingReviewId(null);
+        setHasOrderChange(false);
+
+        if (shouldSave && orderedReviews.length > 0) {
+            void saveReviewOrder(orderedReviews);
+        }
+    };
 
     const handleSave = async (data: any) => {
         try {
@@ -212,6 +280,12 @@ const ReviewsManager = () => {
                 </div>
             </div>
 
+            <p className="text-xs text-muted-foreground">
+                {isReorderEnabled
+                    ? "Drag and drop cards to control website display order."
+                    : "Clear search text before dragging cards to reorder."}
+            </p>
+
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3].map(i => <div key={i} className="h-64 bg-muted/20 animate-pulse rounded-2xl" />)}
@@ -231,7 +305,18 @@ const ReviewsManager = () => {
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {filteredReviews.map((review) => (
-                        <div key={review.id} className="group relative">
+                        <div
+                            key={review.id}
+                            className={`group relative ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${draggingReviewId === review.id ? "opacity-70" : ""}`}
+                            draggable={isReorderEnabled}
+                            onDragStart={() => handleDragStart(review.id)}
+                            onDragEnter={() => handleDragEnter(review.id)}
+                            onDragOver={(event) => {
+                                if (isReorderEnabled) event.preventDefault();
+                            }}
+                            onDrop={(event) => event.preventDefault()}
+                            onDragEnd={handleDragEnd}
+                        >
                             <div className="glass-card overflow-hidden h-full flex flex-col transition-all duration-300 hover:shadow-glow/50 border-border/50 bg-secondary/20">
                                 <CardContent className="p-6 flex flex-col h-full">
                                     <div className="flex justify-between items-start mb-4">
@@ -252,6 +337,15 @@ const ReviewsManager = () => {
                                             {review.status === "live" ? "Live" : "Draft"}
                                         </Badge>
                                     </div>
+
+                                    {isReorderEnabled && (
+                                        <div className="flex justify-end mb-3">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
+                                                <GripVertical className="w-3.5 h-3.5" />
+                                                Drag
+                                            </span>
+                                        </div>
+                                    )}
 
                                     <div className="flex items-center mb-3">
                                         {Array.from({ length: 5 }).map((_, i) => (

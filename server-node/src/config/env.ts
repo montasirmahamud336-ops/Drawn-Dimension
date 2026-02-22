@@ -1,5 +1,7 @@
 import "dotenv/config";
 
+const defaultCorsOrigins = "http://localhost:8080,http://127.0.0.1:8080";
+
 const required = [
   "ADMIN_USERNAME",
   "ADMIN_PASSWORD",
@@ -23,7 +25,7 @@ export const env = {
   supabaseUrl: process.env.SUPABASE_URL!,
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY!,
   storageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "cms-uploads",
-  corsOrigin: (process.env.CORS_ORIGIN ?? "")
+  corsOrigin: (process.env.CORS_ORIGIN ?? defaultCorsOrigins)
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean)

@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLiveData } from "@/hooks/useLiveData";
+import { Link } from "react-router-dom";
 
 const PortfolioSection = () => {
   const ref = useRef(null);
@@ -30,6 +30,7 @@ const PortfolioSection = () => {
   const filteredProjects = activeCategory === "All"
     ? (projects as Project[])
     : (projects as Project[]).filter(p => (p.category || "Uncategorized") === activeCategory);
+  const visibleProjects = filteredProjects.slice(0, 6);
 
   return (
     <section id="portfolio" className="section-padding relative overflow-hidden bg-secondary/30">
@@ -83,7 +84,7 @@ const PortfolioSection = () => {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((project, index) => {
+            {visibleProjects.map((project, index) => {
               return (
                 <motion.div
                   key={project.id || index}
@@ -128,7 +129,7 @@ const PortfolioSection = () => {
               );
             })}
 
-            {filteredProjects.length === 0 && (
+            {visibleProjects.length === 0 && (
               <div className="col-span-full text-center py-20 text-muted-foreground">
                 <p>No projects found in this category.</p>
               </div>
@@ -136,19 +137,18 @@ const PortfolioSection = () => {
           </div>
         )}
 
-        {/* Navigation Arrows (Optional) */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="flex justify-center gap-4 mt-12"
+          className="flex justify-center mt-12"
         >
-          <button className="w-12 h-12 rounded-full border border-border hover:border-primary hover:bg-primary/10 flex items-center justify-center transition-all">
-            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <button className="w-12 h-12 rounded-full border border-border hover:border-primary hover:bg-primary/10 flex items-center justify-center transition-all">
-            <ArrowRight className="w-5 h-5 text-muted-foreground" />
-          </button>
+          <Link
+            to="/portfolio"
+            className="inline-flex min-w-40 items-center justify-center rounded-full border border-primary/55 bg-primary/10 px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-primary transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_24px_rgba(239,68,68,0.35)]"
+          >
+            View More
+          </Link>
         </motion.div>
       </div>
     </section>

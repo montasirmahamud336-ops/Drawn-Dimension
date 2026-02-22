@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Edit, Trash2, RotateCcw, Users, UserMinus } from "lucide-react";
+import { Plus, Search, Edit, Trash2, RotateCcw, Users, UserMinus, GripVertical } from "lucide-react";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import TeamForm from "./TeamForm";
+import { moveItemById } from "./reorderUtils";
 
 const TeamManager = () => {
     const [members, setMembers] = useState<any[]>([]);
@@ -15,9 +16,18 @@ const TeamManager = () => {
     const [search, setSearch] = useState("");
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<any | null>(null);
+    const [draggingMemberId, setDraggingMemberId] = useState<string | null>(null);
+    const [hasOrderChange, setHasOrderChange] = useState(false);
+    const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const membersRef = useRef<any[]>([]);
 
     const apiBase = getApiBaseUrl();
     const token = getAdminToken();
+    const isReorderEnabled = search.trim().length === 0 && !isSavingOrder;
+
+    useEffect(() => {
+        membersRef.current = members;
+    }, [members]);
 
     const fetchMembers = async () => {
         setLoading(true);
@@ -37,6 +47,62 @@ const TeamManager = () => {
     useEffect(() => {
         fetchMembers();
     }, [activeTab]);
+
+    const saveMemberOrder = async (orderedMembers: any[]) => {
+        try {
+            setIsSavingOrder(true);
+            const res = await fetch(`${apiBase}/team/reorder`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    orderedIds: orderedMembers.map((member) => member.id)
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to save order");
+            }
+
+            toast.success("Team order updated");
+        } catch (error) {
+            toast.error("Could not save team order");
+            fetchMembers();
+        } finally {
+            setIsSavingOrder(false);
+        }
+    };
+
+    const handleDragStart = (memberId: string) => {
+        if (!isReorderEnabled) return;
+        setDraggingMemberId(memberId);
+        setHasOrderChange(false);
+    };
+
+    const handleDragEnter = (targetMemberId: string) => {
+        if (!isReorderEnabled || !draggingMemberId || draggingMemberId === targetMemberId) return;
+
+        setMembers((prev) => {
+            const next = moveItemById(prev, draggingMemberId, targetMemberId);
+            if (next !== prev) membersRef.current = next;
+            return next;
+        });
+        setHasOrderChange(true);
+        setDraggingMemberId(targetMemberId);
+    };
+
+    const handleDragEnd = () => {
+        const shouldSave = hasOrderChange;
+        const orderedMembers = membersRef.current;
+        setDraggingMemberId(null);
+        setHasOrderChange(false);
+
+        if (shouldSave && orderedMembers.length > 0) {
+            void saveMemberOrder(orderedMembers);
+        }
+    };
 
     const handleDelete = async (id: string, isHardDelete: boolean) => {
         if (!confirm(isHardDelete ? "Permanently remove this member?" : "Move to Drafts?")) return;
@@ -125,6 +191,12 @@ const TeamManager = () => {
                 </div>
             </div>
 
+            <p className="text-xs text-muted-foreground">
+                {isReorderEnabled
+                    ? "Drag and drop cards to control website display order."
+                    : "Clear search text before dragging cards to reorder."}
+            </p>
+
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[1, 2, 3].map(i => <div key={i} className="h-64 bg-muted/20 animate-pulse rounded-xl" />)}
@@ -132,7 +204,18 @@ const TeamManager = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredMembers.map((member) => (
-                        <Card key={member.id} className="overflow-hidden group border-border/40 bg-card/50 hover:shadow-lg transition-all duration-300">
+                        <Card
+                            key={member.id}
+                            className={`overflow-hidden group border-border/40 bg-card/50 hover:shadow-lg transition-all duration-300 ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${draggingMemberId === member.id ? "opacity-70" : ""}`}
+                            draggable={isReorderEnabled}
+                            onDragStart={() => handleDragStart(member.id)}
+                            onDragEnter={() => handleDragEnter(member.id)}
+                            onDragOver={(event) => {
+                                if (isReorderEnabled) event.preventDefault();
+                            }}
+                            onDrop={(event) => event.preventDefault()}
+                            onDragEnd={handleDragEnd}
+                        >
                             <div className="aspect-[4/3] relative overflow-hidden bg-muted">
                                 {member.image_url ? (
                                     <img src={member.image_url} alt={member.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -162,6 +245,14 @@ const TeamManager = () => {
                                 </div>
                             </div>
                             <CardContent className="p-4 text-center">
+                                {isReorderEnabled && (
+                                    <div className="flex justify-end mb-2">
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
+                                            <GripVertical className="w-3.5 h-3.5" />
+                                            Drag
+                                        </span>
+                                    </div>
+                                )}
                                 <h3 className="font-semibold truncate text-lg">{member.name}</h3>
                                 <p className="text-sm font-medium text-primary mb-1">{member.role}</p>
                                 <p className="text-xs text-muted-foreground line-clamp-2">{member.bio}</p>

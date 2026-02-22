@@ -6,12 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import { Loader2, Upload, X } from "lucide-react";
 import { SERVICES } from "@/data/servicesData";
-import { CMS_BUCKET, ensureCmsBucket } from "@/integrations/supabase/storage";
+import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
 
 interface WorkFormProps {
     open: boolean;
@@ -138,14 +137,7 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
                     pendingMedia.map(async (item) => {
                         const fileExt = item.file.name.split(".").pop() || "bin";
                         const fileName = `works/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-
-                        const { error: uploadError } = await supabase.storage
-                            .from(CMS_BUCKET)
-                            .upload(fileName, item.file);
-
-                        if (uploadError) throw uploadError;
-
-                        const { data: { publicUrl } } = supabase.storage.from(CMS_BUCKET).getPublicUrl(fileName);
+                        const publicUrl = await uploadCmsFile(item.file, fileName);
                         return { url: publicUrl, type: item.type };
                     })
                 );
@@ -212,7 +204,7 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[700px] max-h-[85dvh] overflow-y-auto overscroll-contain">
                 <DialogHeader>
                     <DialogTitle>{project ? "Edit Work" : "Upload New Work"}</DialogTitle>
                 </DialogHeader>

@@ -6,5 +6,5 @@ export const getReviewsApiBase = () => {
     return envBase.replace(/\/$/, "");
   }
 
-  return `${getApiBaseUrl().replace(/\/$/, "")}/api`;
+  return getApiBaseUrl().replace(/\/$/, "");
 };

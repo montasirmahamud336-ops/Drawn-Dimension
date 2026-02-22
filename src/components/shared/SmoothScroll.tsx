@@ -12,9 +12,37 @@ const SmoothScroll = () => {
             gestureOrientation: "vertical",
             smoothWheel: true,
             touchMultiplier: 2,
+            // Keep native scrolling inside overlays/modals.
+            prevent: (node) => {
+                return !!node?.closest?.("[data-lenis-prevent]");
+            },
         });
 
         lenisRef.current = lenis;
+
+        const syncLenisState = () => {
+            const hasOpenDialog = !!document.querySelector('[role="dialog"][data-state="open"]');
+            const isScrollLocked = document.body.hasAttribute("data-scroll-locked");
+
+            if (hasOpenDialog || isScrollLocked) {
+                lenis.stop();
+            } else {
+                lenis.start();
+            }
+        };
+
+        syncLenisState();
+
+        const observer = new MutationObserver(() => {
+            syncLenisState();
+        });
+
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ["data-scroll-locked", "style", "class"],
+            childList: true,
+            subtree: true,
+        });
 
         const raf = (time: number) => {
             lenis.raf(time);
@@ -24,6 +52,7 @@ const SmoothScroll = () => {
         requestAnimationFrame(raf);
 
         return () => {
+            observer.disconnect();
             lenis.destroy();
         };
     }, []);

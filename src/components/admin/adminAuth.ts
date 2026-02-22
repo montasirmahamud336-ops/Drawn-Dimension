@@ -24,8 +24,13 @@ export function getAdminBaseUrl() {
 export function getApiBaseUrl() {
   const envBase = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
   if (envBase && envBase.trim().length > 0) {
-    return envBase;
+    return envBase.replace(/\/$/, "");
   }
-  // Same-origin for both localhost and domain
-  return window.location.origin;
+
+  const { protocol, hostname } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${protocol}//${hostname}:4000`;
+  }
+
+  return window.location.origin.replace(/\/$/, "");
 }

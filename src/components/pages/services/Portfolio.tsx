@@ -33,6 +33,22 @@ const getMediaList = (item: any): MediaItem[] => {
   return [{ url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&h=600&fit=crop", type: "image" }];
 };
 
+const DESCRIPTION_PREVIEW_LIMIT = 135;
+
+const getDescriptionPreview = (value: unknown) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) {
+    return { text: "No description available.", truncated: false };
+  }
+
+  if (text.length <= DESCRIPTION_PREVIEW_LIMIT) {
+    return { text, truncated: false };
+  }
+
+  const shortened = text.slice(0, DESCRIPTION_PREVIEW_LIMIT).trimEnd().replace(/[.,;:!?-]+$/, "");
+  return { text: shortened, truncated: true };
+};
+
 const PortfolioMedia = ({ project }: { project: any }) => {
   const media = getMediaList(project);
   const [index, setIndex] = useState(0);
@@ -121,7 +137,7 @@ const Portfolio = () => {
   const { data: projects, loading } = useLiveData("projects");
   const openDetails = (project: any) => {
     if (!project?.id) return;
-    navigate(`/portfolio/${encodeURIComponent(project.id)}`);
+    navigate(`/portfolio/${encodeURIComponent(project.id)}`, { viewTransition: true });
   };
 
   const normalizeCategory = (raw?: string | null) => {
@@ -203,32 +219,54 @@ const Portfolio = () => {
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <AnimatePresence mode="wait">
-                    {filteredProjects.map((project: any, index: number) => (
-                      <motion.div
-                        key={project.id || project.title}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.4, delay: index * 0.05 }}
-                        className="group cursor-pointer"
-                        onClick={() => openDetails(project)}
-                      >
-                        <div className="glass-card overflow-hidden h-full flex flex-col bg-[linear-gradient(158deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] border-border/60 group-hover:border-primary/40 transition-all duration-500 group-hover:-translate-y-1">
-                          <PortfolioMedia project={project} />
-                          <div className="p-6 flex-grow flex flex-col">
-                            <h3 className="text-lg font-semibold tracking-tight text-foreground mb-2 group-hover:text-primary transition-colors">
-                              {project.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground/95 leading-relaxed mb-4 flex-grow">{project.description}</p>
-                            <div className="mt-auto flex items-center justify-between">
-                              <p className="text-xs uppercase tracking-[0.12em] text-primary/90">Client: {project.client || "Confidential"}</p>
-                              <span className="text-xs uppercase tracking-[0.12em] text-primary">Contact Us</span>
+                    {filteredProjects.map((project: any, index: number) => {
+                      const description = getDescriptionPreview(project.description);
+
+                      return (
+                        <motion.div
+                          key={project.id || project.title}
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ duration: 0.4, delay: index * 0.05 }}
+                          className="group cursor-pointer"
+                          onClick={() => openDetails(project)}
+                        >
+                          <div className="glass-card overflow-hidden h-full flex flex-col bg-[linear-gradient(158deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] border-border/60 group-hover:border-primary/40 transition-all duration-500 group-hover:-translate-y-1">
+                            <PortfolioMedia project={project} />
+                            <div className="p-6 flex-grow flex flex-col">
+                              <h3
+                                className="text-lg font-semibold tracking-tight text-foreground mb-2 min-h-14 overflow-hidden group-hover:text-primary transition-colors"
+                                style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+                              >
+                                {project.title}
+                              </h3>
+                              <p
+                                className="text-sm text-muted-foreground/95 leading-relaxed mb-6 min-h-[6.5rem] overflow-hidden"
+                                style={{ display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}
+                              >
+                                {description.text}
+                                {description.truncated && <span className="ml-1 font-medium text-foreground/90">Read more....</span>}
+                              </p>
+                              <div className="mt-auto flex justify-center">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    openDetails(project);
+                                  }}
+                                  className="inline-flex min-w-32 items-center justify-center rounded-full border border-primary/55 bg-primary/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_24px_rgba(239,68,68,0.35)]"
+                                >
+                                  View Work
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
                   </AnimatePresence>
                 </div>
               )}

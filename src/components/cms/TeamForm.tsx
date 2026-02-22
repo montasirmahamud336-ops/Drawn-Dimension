@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
-import { CMS_BUCKET, ensureCmsBucket } from "@/integrations/supabase/storage";
+import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
 import { Loader2, Upload, Users, X } from "lucide-react";
 
 interface TeamFormProps {
@@ -131,14 +130,7 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
                     pendingMedia.map(async (item) => {
                         const fileExt = item.file.name.split(".").pop() || "bin";
                         const fileName = `team/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-
-                        const { error: uploadError } = await supabase.storage
-                            .from(CMS_BUCKET)
-                            .upload(fileName, item.file);
-
-                        if (uploadError) throw uploadError;
-
-                        const { data: { publicUrl } } = supabase.storage.from(CMS_BUCKET).getPublicUrl(fileName);
+                        const publicUrl = await uploadCmsFile(item.file, fileName);
                         return { url: publicUrl, type: item.type };
                     })
                 );
