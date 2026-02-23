@@ -54,7 +54,12 @@ const ChatWidget = () => {
     setMessages((prev) => [...prev, newUserMsg]);
 
     try {
-      const response = await fetch("/api/chat", {
+      const chatBase = ((import.meta as any).env?.VITE_CHAT_API_BASE_URL as string | undefined)
+        ?.trim()
+        .replace(/\/$/, "");
+      const chatUrl = chatBase ? `${chatBase}/api/chat` : "/api/chat";
+
+      const response = await fetch(chatUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
