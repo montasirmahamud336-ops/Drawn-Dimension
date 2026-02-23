@@ -233,7 +233,7 @@ const Portfolio = () => {
                           className="group cursor-pointer"
                           onClick={() => openDetails(project)}
                         >
-                          <div className="glass-card overflow-hidden h-full flex flex-col bg-[linear-gradient(158deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] border-border/60 group-hover:border-primary/40 transition-all duration-500 group-hover:-translate-y-1">
+                          <div className="glass-card overflow-hidden h-full flex flex-col bg-[linear-gradient(158deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] border-border/60">
                             <PortfolioMedia project={project} />
                             <div className="p-6 flex-grow flex flex-col">
                               <h3

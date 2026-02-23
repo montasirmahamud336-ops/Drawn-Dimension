@@ -6,12 +6,12 @@ const SmoothScroll = () => {
 
     useEffect(() => {
         const lenis = new Lenis({
-            duration: 1.2,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            duration: 0.85,
+            easing: (t) => 1 - Math.pow(1 - t, 3),
             orientation: "vertical",
             gestureOrientation: "vertical",
             smoothWheel: true,
-            touchMultiplier: 2,
+            touchMultiplier: 1.2,
             // Keep native scrolling inside overlays/modals.
             prevent: (node) => {
                 return !!node?.closest?.("[data-lenis-prevent]");
@@ -39,9 +39,9 @@ const SmoothScroll = () => {
 
         observer.observe(document.body, {
             attributes: true,
-            attributeFilter: ["data-scroll-locked", "style", "class"],
+            attributeFilter: ["data-scroll-locked"],
             childList: true,
-            subtree: true,
+            subtree: false,
         });
 
         const raf = (time: number) => {
