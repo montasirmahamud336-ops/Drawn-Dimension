@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { env } from "../config/env";
-import { isNonEmptyString } from "../utils/validation";
+import { env } from "../config/env.js";
+import { isNonEmptyString } from "../utils/validation.js";
 
 const router = Router();
 

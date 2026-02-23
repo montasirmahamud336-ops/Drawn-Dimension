@@ -25,6 +25,8 @@ export const env = {
   supabaseUrl: process.env.SUPABASE_URL!,
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY!,
   storageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "cms-uploads",
+  databaseUrl: process.env.DATABASE_URL ?? "",
+  databaseSsl: (process.env.DATABASE_SSL ?? "false").toLowerCase() === "true",
   corsOrigin: (process.env.CORS_ORIGIN ?? defaultCorsOrigins)
     .split(",")
     .map((v) => v.trim())

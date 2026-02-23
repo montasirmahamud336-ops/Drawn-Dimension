@@ -4,13 +4,13 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import path from "path";
 import fs from "fs";
-import { env } from "./config/env";
-import authRoutes from "./routes/auth";
-import projectRoutes from "./routes/projects";
-import teamRoutes from "./routes/team";
-import productRoutes from "./routes/products";
-import storageRoutes from "./routes/storage";
-import reviewRoutes from "./routes/reviews";
+import { env } from "./config/env.js";
+import authRoutes from "./routes/auth.js";
+import projectRoutes from "./routes/projects.js";
+import teamRoutes from "./routes/team.js";
+import productRoutes from "./routes/products.js";
+import storageRoutes from "./routes/storage.js";
+import reviewRoutes from "./routes/reviews.js";
 
 const app = express();
 

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
-import { env } from "../config/env";
-import { requireAuth } from "../middleware/auth";
+import { env } from "../config/env.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 const upload = multer({
