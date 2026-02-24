@@ -2,12 +2,13 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef, useState } from "react";
 import { useLiveData } from "@/hooks/useLiveData";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const PortfolioSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [activeCategory, setActiveCategory] = useState("All");
+  const navigate = useNavigate();
 
   interface Project {
     id: string;
@@ -31,6 +32,10 @@ const PortfolioSection = () => {
     ? (projects as Project[])
     : (projects as Project[]).filter(p => (p.category || "Uncategorized") === activeCategory);
   const visibleProjects = filteredProjects.slice(0, 6);
+  const openDetails = (project: Project) => {
+    if (!project?.id) return;
+    navigate(`/portfolio/${encodeURIComponent(project.id)}`, { viewTransition: true });
+  };
 
   return (
     <section id="portfolio" className="section-padding relative overflow-hidden bg-secondary/30">
@@ -94,6 +99,7 @@ const PortfolioSection = () => {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.5, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
                   className="group cursor-pointer"
+                  onClick={() => openDetails(project)}
                 >
                   <div className="glass-card overflow-hidden h-full flex flex-col">
                     <div className="relative overflow-hidden aspect-video">
