@@ -14,6 +14,7 @@ import reviewRoutes from "./routes/reviews.js";
 import employeesRoutes from "./routes/employees.js";
 import workAssignmentsRoutes from "./routes/workAssignments.js";
 import employeeDashboardRoutes from "./routes/employeeDashboard.js";
+import chatRoutes from "./routes/chat.js";
 
 const app = express();
 
@@ -87,6 +88,7 @@ app.use(reviewRoutes);
 app.use(employeesRoutes);
 app.use(workAssignmentsRoutes);
 app.use(employeeDashboardRoutes);
+app.use(chatRoutes);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

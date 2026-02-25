@@ -23,6 +23,10 @@ export interface WorkAssignmentItem {
   payment_amount: number | string | null;
   payment_status: "unpaid" | "paid";
   status: "assigned" | "done" | "draft";
+  employee_submission_status?: "pending" | "submitted";
+  employee_submission_note?: string | null;
+  employee_submission_file_url?: string | null;
+  employee_submission_at?: string | null;
   created_at?: string;
 }
 

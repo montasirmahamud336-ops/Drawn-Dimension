@@ -303,7 +303,7 @@ const WorkAssignManager = () => {
 
   const filteredAssignments = assignments.filter((assignment) => {
     const target =
-      `${assignment.employee_name} ${assignment.employee_email} ${assignment.work_title} ${assignment.work_duration} ${assignment.payment_status} ${assignment.payment_amount ?? ""} ${assignment.countdown_end_at ?? ""}`.toLowerCase();
+      `${assignment.employee_name} ${assignment.employee_email} ${assignment.work_title} ${assignment.work_duration} ${assignment.payment_status} ${assignment.payment_amount ?? ""} ${assignment.countdown_end_at ?? ""} ${assignment.employee_submission_status ?? ""} ${assignment.employee_submission_note ?? ""} ${assignment.employee_submission_file_url ?? ""}`.toLowerCase();
     return target.includes(search.toLowerCase());
   });
 
@@ -405,11 +405,24 @@ const WorkAssignManager = () => {
                         ? "bg-green-500/15 text-green-600 border-green-500/30"
                         : assignment.status === "draft"
                           ? "bg-yellow-500/15 text-yellow-600 border-yellow-500/30"
-                          : "bg-blue-500/15 text-blue-600 border-blue-500/30"
+                          : assignment.employee_submission_status === "submitted"
+                            ? "bg-violet-500/15 text-violet-600 border-violet-500/30"
+                            : "bg-blue-500/15 text-blue-600 border-blue-500/30"
                       }
                     >
-                      {assignment.status}
+                      {assignment.status === "done"
+                        ? "done"
+                        : assignment.status === "draft"
+                          ? "draft"
+                          : assignment.employee_submission_status === "submitted"
+                            ? "submitted"
+                            : "assigned"}
                     </Badge>
+                    {assignment.employee_submission_at && assignment.status !== "done" && (
+                      <p className="text-[11px] text-muted-foreground mt-1 whitespace-nowrap">
+                        {new Date(assignment.employee_submission_at).toLocaleString()}
+                      </p>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-2">

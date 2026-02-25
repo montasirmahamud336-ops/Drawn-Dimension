@@ -20,6 +20,7 @@ import TeamManager from "@/components/cms/TeamManager";
 import ReviewsManager from "@/components/cms/ReviewsManager";
 import EmployeesManager from "@/components/cms/EmployeesManager";
 import WorkAssignManager from "@/components/cms/WorkAssignManager";
+import EmployeeChatManager from "@/components/cms/EmployeeChatManager";
 import WorkForm from "@/components/cms/WorkForm"; // Importing specifically for route wrapper if needed, but managing differently
 
 // Pages
@@ -105,8 +106,10 @@ const App = () => (
                 <Route path="upload" element={<WorksManager />} /> {/* Map /upload to WorksManager which has the form, or specialized page */}
                 <Route path="products" element={<ProductsManager />} />
                 <Route path="team" element={<TeamManager />} />
+                <Route path="reviews" element={<ReviewsManager />} />
                 <Route path="employees" element={<EmployeesManager />} />
                 <Route path="work-assign" element={<WorkAssignManager />} />
+                <Route path="chat" element={<EmployeeChatManager />} />
               </Route>
               {/* CMS Routes Alias */}
               <Route
@@ -124,6 +127,7 @@ const App = () => (
                 <Route path="reviews" element={<ReviewsManager />} />
                 <Route path="employees" element={<EmployeesManager />} />
                 <Route path="work-assign" element={<WorkAssignManager />} />
+                <Route path="chat" element={<EmployeeChatManager />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

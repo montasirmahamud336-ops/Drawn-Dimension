@@ -1,6 +1,16 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Briefcase, ShoppingBag, Users, LogOut, MessageSquare, UserSquare2, ClipboardCheck } from "lucide-react";
+import {
+    LayoutDashboard,
+    Briefcase,
+    ShoppingBag,
+    Users,
+    LogOut,
+    MessageSquare,
+    UserSquare2,
+    ClipboardCheck,
+    MessageCircleMore,
+} from "lucide-react";
 
 // Helper to clear token (should be imported from shared auth util)
 const clearAdminToken = () => {
@@ -15,6 +25,7 @@ const menuItems = [
     { label: "Reviews", to: "/cms/reviews", icon: MessageSquare },
     { label: "Employee", to: "/cms/employees", icon: UserSquare2 },
     { label: "Work Assign To", to: "/cms/work-assign", icon: ClipboardCheck },
+    { label: "Chat", to: "/cms/chat", icon: MessageCircleMore },
 ];
 
 const CMSLayout = () => {

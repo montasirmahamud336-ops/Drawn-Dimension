@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, Clock3, Loader2, LogOut } from "lucide-react";
+import { Camera, CheckCircle2, Clock3, Loader2, LogOut, Paperclip, Save, Send } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -10,7 +10,11 @@ import PremiumBackground from "@/components/shared/PremiumBackground";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface EmployeeProfile {
   id: string;
@@ -18,6 +22,7 @@ interface EmployeeProfile {
   profession: string;
   email: string;
   mobile: string | null;
+  profile_image_url: string | null;
 }
 
 interface EmployeeAssignment {
@@ -33,8 +38,47 @@ interface EmployeeAssignment {
   payment_amount: number | string | null;
   payment_status: "unpaid" | "paid";
   status: "assigned" | "done" | "draft";
+  employee_submission_status: "pending" | "submitted";
+  employee_submission_note: string | null;
+  employee_submission_file_url: string | null;
+  employee_submission_at: string | null;
   created_at?: string;
 }
+
+interface EmployeeChatMessage {
+  id: string;
+  employee_id: string;
+  sender_type: "admin" | "employee";
+  sender_label: string | null;
+  message_text: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  attachment_mime: string | null;
+  created_at: string;
+}
+
+type SubmissionDraft = {
+  note: string;
+  fileUrl: string;
+};
+
+const defaultSubmissionDraft: SubmissionDraft = {
+  note: "",
+  fileUrl: "",
+};
+
+const parseApiError = async (response: Response, fallback: string) => {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const body = await response.json().catch(() => null);
+    const message = body?.message || body?.detail || body?.error;
+    if (message) return String(message);
+  }
+
+  const text = await response.text().catch(() => "");
+  if (text) return text;
+  return fallback;
+};
 
 const formatTimeRemaining = (endAt: string | null | undefined, status: EmployeeAssignment["status"], nowMs: number) => {
   if (status === "done") return "Done";
@@ -75,14 +119,45 @@ const formatPaymentAmount = (value: unknown) => {
   return `BDT ${formatted}`;
 };
 
+const buildSafeFileName = (value: string) =>
+  value
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9._-]/g, "")
+    .slice(0, 120) || "file";
+
 const EmployeeDashboard = () => {
   const { user, session, signOut, loading: authLoading } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const showInboxFullView = location.hash.toLowerCase() === "#inbox-full";
 
   const [employee, setEmployee] = useState<EmployeeProfile | null>(null);
   const [assignments, setAssignments] = useState<EmployeeAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [profileDraft, setProfileDraft] = useState<{ mobile: string; profile_image_url: string | null }>({
+    mobile: "",
+    profile_image_url: null,
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [submissionDrafts, setSubmissionDrafts] = useState<Record<string, SubmissionDraft>>({});
+  const [submittingAssignmentId, setSubmittingAssignmentId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<EmployeeChatMessage[]>([]);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatAttachment, setChatAttachment] = useState<{
+    url: string;
+    name: string;
+    mime: string;
+  } | null>(null);
+  const [uploadingChatAttachment, setUploadingChatAttachment] = useState(false);
+  const [sendingChat, setSendingChat] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const chatAttachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -95,50 +170,429 @@ const EmployeeDashboard = () => {
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const loadEmployeeDashboard = async () => {
-      if (!session?.access_token) {
-        setLoading(false);
-        return;
+  const loadEmployeeDashboard = useCallback(async () => {
+    if (!session?.access_token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/employee/dashboard`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Failed to load employee dashboard"));
       }
 
+      const data = await response.json();
+      const nextEmployee = (data?.employee ?? null) as EmployeeProfile | null;
+      const nextAssignments = Array.isArray(data?.assignments) ? (data.assignments as EmployeeAssignment[]) : [];
+
+      setEmployee(nextEmployee);
+      setAssignments(nextAssignments);
+      setProfileDraft({
+        mobile: nextEmployee?.mobile ?? "",
+        profile_image_url: nextEmployee?.profile_image_url ?? null,
+      });
+
+      const initialSubmissionDrafts: Record<string, SubmissionDraft> = {};
+      nextAssignments.forEach((assignment) => {
+        const id = String(assignment?.id ?? "").trim();
+        if (!id) return;
+        initialSubmissionDrafts[id] = {
+          note: assignment.employee_submission_note ?? "",
+          fileUrl: assignment.employee_submission_file_url ?? "",
+        };
+      });
+      setSubmissionDrafts(initialSubmissionDrafts);
+    } catch (error: any) {
+      console.error(error);
+      setEmployee(null);
+      setAssignments([]);
+      setSubmissionDrafts({});
+      toast({
+        title: "Employee dashboard error",
+        description: error?.message || "Failed to load employee dashboard",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.access_token, toast]);
+
+  useEffect(() => {
+    loadEmployeeDashboard();
+  }, [loadEmployeeDashboard]);
+
+  const loadEmployeeChat = useCallback(
+    async (silent = false) => {
+      if (!session?.access_token) return;
+
       try {
-        setLoading(true);
+        if (!silent) setLoadingChat(true);
         const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}/employee/dashboard`, {
+        const response = await fetch(`${apiBase}/employee/chat?limit=400`, {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
         });
 
         if (!response.ok) {
-          throw new Error("Failed to load employee dashboard");
+          throw new Error(await parseApiError(response, "Failed to load chat"));
         }
 
         const data = await response.json();
-        setEmployee(data?.employee ?? null);
-        setAssignments(Array.isArray(data?.assignments) ? data.assignments : []);
-      } catch (error) {
-        console.error(error);
-        setEmployee(null);
-        setAssignments([]);
+        const nextMessages = Array.isArray(data?.messages) ? (data.messages as EmployeeChatMessage[]) : [];
+        setChatMessages(nextMessages);
+      } catch (error: any) {
+        if (!silent) {
+          toast({
+            title: "Chat load failed",
+            description: error?.message || "Could not load chat messages",
+            variant: "destructive",
+          });
+        }
       } finally {
-        setLoading(false);
+        if (!silent) setLoadingChat(false);
       }
-    };
+    },
+    [session?.access_token, toast]
+  );
 
-    loadEmployeeDashboard();
-  }, [session?.access_token]);
+  useEffect(() => {
+    loadEmployeeChat();
+  }, [loadEmployeeChat]);
+
+  useEffect(() => {
+    if (!session?.access_token) return;
+    const timer = window.setInterval(() => {
+      loadEmployeeChat(true);
+    }, 7000);
+    return () => window.clearInterval(timer);
+  }, [loadEmployeeChat, session?.access_token]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [chatMessages]);
+
+  useEffect(() => {
+    if (!showInboxFullView) return;
+    const id = window.requestAnimationFrame(() => {
+      const section = document.getElementById("employee-inbox-section");
+      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [showInboxFullView]);
 
   const activeAssignments = useMemo(
-    () => assignments.filter((item) => item.status === "assigned"),
+    () => assignments.filter((item) => item.status !== "done" && item.status !== "draft"),
     [assignments]
+  );
+
+  const submittedAssignments = useMemo(
+    () =>
+      activeAssignments.filter((item) => item.employee_submission_status === "submitted"),
+    [activeAssignments]
   );
 
   const doneAssignments = useMemo(
     () => assignments.filter((item) => item.status === "done"),
     [assignments]
   );
+
+  const hasProfileChanges = useMemo(() => {
+    if (!employee) return false;
+    const currentMobile = profileDraft.mobile.trim();
+    const savedMobile = String(employee.mobile ?? "").trim();
+    const currentPhoto = profileDraft.profile_image_url ?? "";
+    const savedPhoto = employee.profile_image_url ?? "";
+    return currentMobile !== savedMobile || currentPhoto !== savedPhoto;
+  }, [employee, profileDraft.mobile, profileDraft.profile_image_url]);
+
+  const handleAvatarUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !employee) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload a valid image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const maxSize = 4 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "Image too large",
+        description: "Please upload an image under 4MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split(".").pop() || "jpg";
+      const filePath = `employees/${employee.id}/profile-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("cms-uploads")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("cms-uploads").getPublicUrl(filePath);
+
+      setProfileDraft((prev) => ({ ...prev, profile_image_url: publicUrl }));
+      toast({
+        title: "Photo ready",
+        description: "Click Save Profile to apply your new image.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error?.message || "Could not upload profile image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!session?.access_token || !employee) return;
+
+    setSavingProfile(true);
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/employee/profile`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          mobile: profileDraft.mobile.trim() || null,
+          profile_image_url: profileDraft.profile_image_url || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Failed to save profile"));
+      }
+
+      const updated = (await response.json()) as Partial<EmployeeProfile>;
+      setEmployee((prev) => {
+        if (!prev) return prev;
+        const mobileFromDraft = profileDraft.mobile.trim() || null;
+        const profileImageFromDraft = profileDraft.profile_image_url ?? null;
+        return {
+          ...prev,
+          ...updated,
+          mobile: (updated.mobile ?? mobileFromDraft) as string | null,
+          profile_image_url: (updated.profile_image_url ?? profileImageFromDraft) as string | null,
+        };
+      });
+      toast({ title: "Profile updated" });
+    } catch (error: any) {
+      toast({
+        title: "Save failed",
+        description: error?.message || "Could not update profile",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const setSubmissionDraftValue = (assignmentId: string, patch: Partial<SubmissionDraft>) => {
+    setSubmissionDrafts((prev) => ({
+      ...prev,
+      [assignmentId]: {
+        ...(prev[assignmentId] ?? defaultSubmissionDraft),
+        ...patch,
+      },
+    }));
+  };
+
+  const handleSubmitAssignment = async (assignmentId: string) => {
+    if (!session?.access_token) return;
+
+    const assignment = assignments.find((item) => item.id === assignmentId);
+    if (!assignment || assignment.status === "done" || assignment.status === "draft") return;
+
+    const draft = submissionDrafts[assignmentId] ?? defaultSubmissionDraft;
+    const note = draft.note.trim();
+    const fileUrl = draft.fileUrl.trim();
+
+    if (!note && !fileUrl) {
+      toast({
+        title: "Submission required",
+        description: "Please add a note or delivery link before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (fileUrl) {
+      try {
+        const parsed = new URL(fileUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          throw new Error("Invalid protocol");
+        }
+      } catch {
+        toast({
+          title: "Invalid link",
+          description: "Delivery link must be a valid http/https URL.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setSubmittingAssignmentId(assignmentId);
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/employee/work-assignments/${assignmentId}/submit`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          submission_note: note || null,
+          submission_file_url: fileUrl || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Failed to submit assignment"));
+      }
+
+      toast({ title: "Work submitted successfully" });
+      await loadEmployeeDashboard();
+    } catch (error: any) {
+      toast({
+        title: "Submission failed",
+        description: error?.message || "Could not submit assignment",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingAssignmentId(null);
+    }
+  };
+
+  const handleChatAttachmentUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !employee) return;
+
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file under 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingChatAttachment(true);
+    try {
+      const safeName = buildSafeFileName(file.name);
+      const filePath = `employees/${employee.id}/chat/${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from("cms-uploads")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("cms-uploads").getPublicUrl(filePath);
+
+      setChatAttachment({
+        url: publicUrl,
+        name: file.name,
+        mime: file.type || "application/octet-stream",
+      });
+      toast({ title: "Attachment ready" });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error?.message || "Could not upload file",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingChatAttachment(false);
+    }
+  };
+
+  const handleSendChat = async () => {
+    if (!session?.access_token || !employee) return;
+
+    const messageText = chatDraft.trim();
+    if (!messageText && !chatAttachment?.url) {
+      toast({
+        title: "Message required",
+        description: "Write a message or attach a file before sending.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingChat(true);
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/employee/chat/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          message_text: messageText || null,
+          attachment_url: chatAttachment?.url ?? null,
+          attachment_name: chatAttachment?.name ?? null,
+          attachment_mime: chatAttachment?.mime ?? null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Failed to send message"));
+      }
+
+      setChatDraft("");
+      setChatAttachment(null);
+      await loadEmployeeChat(true);
+    } catch (error: any) {
+      toast({
+        title: "Send failed",
+        description: error?.message || "Could not send message",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
+  const initials = (employee?.name || employee?.email || "E").trim().slice(0, 1).toUpperCase();
 
   const handleSignOut = async () => {
     await signOut();
@@ -180,26 +634,124 @@ const EmployeeDashboard = () => {
               </div>
             </motion.section>
 
-            <section className="grid md:grid-cols-2 gap-4">
-              <Card className="glass-card border-border/60">
-                <CardContent className="p-5">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center mb-4">
-                    <Clock3 className="w-5 h-5" />
-                  </div>
-                  <p className="text-2xl font-bold">{activeAssignments.length}</p>
-                  <p className="text-sm text-muted-foreground">Active Assignments</p>
+            <section className="grid lg:grid-cols-3 gap-4">
+              <Card className="glass-card border-border/60 lg:col-span-1">
+                <CardHeader>
+                  <CardTitle className="text-xl">My Profile</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!employee ? (
+                    <p className="text-sm text-muted-foreground">No profile linked yet.</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className="h-20 w-20 rounded-2xl border border-border/70 bg-secondary/50 overflow-hidden flex items-center justify-center text-xl font-semibold">
+                            {profileDraft.profile_image_url ? (
+                              <img
+                                src={profileDraft.profile_image_url}
+                                alt={employee.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              initials
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => avatarInputRef.current?.click()}
+                            className="absolute -bottom-2 -right-2 h-8 w-8 rounded-xl border border-primary/30 bg-primary/15 text-primary flex items-center justify-center hover:bg-primary/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            disabled={uploadingAvatar || savingProfile}
+                            aria-label="Upload profile image"
+                          >
+                            {uploadingAvatar ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                          </button>
+                          <input
+                            ref={avatarInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                          />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{employee.name}</p>
+                          <p className="text-sm text-muted-foreground">{employee.profession}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Mobile</label>
+                        <Input
+                          value={profileDraft.mobile}
+                          onChange={(event) =>
+                            setProfileDraft((prev) => ({ ...prev, mobile: event.target.value }))
+                          }
+                          placeholder="+880..."
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleSaveProfile}
+                          disabled={savingProfile || uploadingAvatar || !hasProfileChanges}
+                        >
+                          {savingProfile ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4 mr-2" />
+                          )}
+                          Save
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            setProfileDraft({
+                              mobile: employee.mobile ?? "",
+                              profile_image_url: employee.profile_image_url ?? null,
+                            })
+                          }
+                          disabled={savingProfile || uploadingAvatar || !hasProfileChanges}
+                        >
+                          Reset
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
-              <Card className="glass-card border-border/60">
-                <CardContent className="p-5">
-                  <div className="w-10 h-10 rounded-xl bg-green-500/20 text-green-500 flex items-center justify-center mb-4">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                  <p className="text-2xl font-bold">{doneAssignments.length}</p>
-                  <p className="text-sm text-muted-foreground">Completed</p>
-                </CardContent>
-              </Card>
+              <div className="lg:col-span-2 grid md:grid-cols-3 gap-4">
+                <Card className="glass-card border-border/60">
+                  <CardContent className="p-5">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center mb-4">
+                      <Clock3 className="w-5 h-5" />
+                    </div>
+                    <p className="text-2xl font-bold">{activeAssignments.length}</p>
+                    <p className="text-sm text-muted-foreground">Active</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="glass-card border-border/60">
+                  <CardContent className="p-5">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/20 text-violet-500 flex items-center justify-center mb-4">
+                      <Send className="w-5 h-5" />
+                    </div>
+                    <p className="text-2xl font-bold">{submittedAssignments.length}</p>
+                    <p className="text-sm text-muted-foreground">Submitted</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="glass-card border-border/60">
+                  <CardContent className="p-5">
+                    <div className="w-10 h-10 rounded-xl bg-green-500/20 text-green-500 flex items-center justify-center mb-4">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <p className="text-2xl font-bold">{doneAssignments.length}</p>
+                    <p className="text-sm text-muted-foreground">Completed</p>
+                  </CardContent>
+                </Card>
+              </div>
             </section>
 
             <Card className="glass-card border-border/60 overflow-hidden">
@@ -218,7 +770,15 @@ const EmployeeDashboard = () => {
                 ) : (
                   <div className="space-y-3">
                     {assignments.map((assignment) => (
-                      <div key={assignment.id} className={`rounded-xl border p-4 ${assignment.status === "done" ? "border-green-500/30 bg-green-500/10" : "border-border/70 bg-card/60"}`}>
+                      <div
+                        key={assignment.id}
+                        className={`rounded-xl border p-4 ${assignment.status === "done"
+                          ? "border-green-500/30 bg-green-500/10"
+                          : assignment.employee_submission_status === "submitted"
+                            ? "border-violet-500/30 bg-violet-500/10"
+                            : "border-border/70 bg-card/60"
+                          }`}
+                      >
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                           <div>
                             <h3 className="font-semibold text-lg">{assignment.work_title}</h3>
@@ -236,15 +796,212 @@ const EmployeeDashboard = () => {
                             )}
                           </div>
                           <div className="text-right">
-                            <Badge className={assignment.status === "done" ? "bg-green-500/15 text-green-500" : "bg-blue-500/15 text-blue-500"}>
-                              {assignment.status}
+                            <Badge
+                              className={assignment.status === "done"
+                                ? "bg-green-500/15 text-green-500"
+                                : assignment.employee_submission_status === "submitted"
+                                  ? "bg-violet-500/15 text-violet-500"
+                                  : "bg-blue-500/15 text-blue-500"
+                              }
+                            >
+                              {assignment.status === "done"
+                                ? "done"
+                                : assignment.employee_submission_status === "submitted"
+                                  ? "submitted"
+                                  : "assigned"}
                             </Badge>
                             <p className="text-sm mt-2 text-muted-foreground">Time Remaining</p>
                             <p className="font-semibold">{formatTimeRemaining(assignment.countdown_end_at, assignment.status, nowTick)}</p>
                           </div>
                         </div>
+
+                        {(assignment.employee_submission_note || assignment.employee_submission_file_url) && (
+                          <div className="mt-3 rounded-lg border border-border/50 bg-background/40 p-3 space-y-2">
+                            {assignment.employee_submission_note && (
+                              <p className="text-sm text-muted-foreground">{assignment.employee_submission_note}</p>
+                            )}
+                            {assignment.employee_submission_file_url && (
+                              <a
+                                href={assignment.employee_submission_file_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-primary hover:underline break-all"
+                              >
+                                {assignment.employee_submission_file_url}
+                              </a>
+                            )}
+                            {assignment.employee_submission_at && (
+                              <p className="text-[11px] text-muted-foreground">
+                                Submitted at {new Date(assignment.employee_submission_at).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {assignment.status !== "done" && (
+                          <div className="mt-4 space-y-3 border-t border-border/50 pt-3">
+                            <div className="grid gap-2">
+                              <label className="text-sm font-medium">Submission Note</label>
+                              <Textarea
+                                rows={3}
+                                value={submissionDrafts[assignment.id]?.note ?? ""}
+                                onChange={(event) =>
+                                  setSubmissionDraftValue(assignment.id, { note: event.target.value })
+                                }
+                                placeholder="Add what you completed, files included, and important notes..."
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <label className="text-sm font-medium">Delivery Link (optional)</label>
+                              <Input
+                                value={submissionDrafts[assignment.id]?.fileUrl ?? ""}
+                                onChange={(event) =>
+                                  setSubmissionDraftValue(assignment.id, { fileUrl: event.target.value })
+                                }
+                                placeholder="https://drive.google.com/..."
+                              />
+                            </div>
+
+                            <Button
+                              onClick={() => handleSubmitAssignment(assignment.id)}
+                              disabled={submittingAssignmentId === assignment.id}
+                            >
+                              {submittingAssignmentId === assignment.id ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <Send className="w-4 h-4 mr-2" />
+                              )}
+                              Submit Work
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card
+              id="employee-inbox-section"
+              className={`${showInboxFullView ? "block" : "hidden"} glass-card border-border/60 overflow-hidden scroll-mt-32`}
+            >
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+                <CardTitle>Inbox With Admin</CardTitle>
+                <Button type="button" variant="outline" size="sm" onClick={() => navigate("/employee/dashboard")}>
+                  Close Full View
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {!employee ? (
+                  <div className="py-6 text-sm text-muted-foreground">
+                    Chat will be available after your account is linked with an employee profile.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="h-[340px] overflow-y-auto rounded-xl border border-border/60 bg-background/35 p-3 space-y-3">
+                      {loadingChat ? (
+                        <div className="text-sm text-muted-foreground py-4">Loading chat...</div>
+                      ) : chatMessages.length === 0 ? (
+                        <div className="text-sm text-muted-foreground py-4">
+                          No messages yet. Start a conversation with admin.
+                        </div>
+                      ) : (
+                        chatMessages.map((message) => {
+                          const sentByEmployee = message.sender_type === "employee";
+                          return (
+                            <div
+                              key={message.id}
+                              className={`flex ${sentByEmployee ? "justify-end" : "justify-start"}`}
+                            >
+                              <div
+                                className={`max-w-[78%] rounded-xl border px-3 py-2 ${
+                                  sentByEmployee
+                                    ? "border-primary/35 bg-primary/15"
+                                    : "border-border/60 bg-card/70"
+                                }`}
+                              >
+                                {message.message_text && (
+                                  <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
+                                )}
+                                {message.attachment_url && (
+                                  <a
+                                    href={message.attachment_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-xs text-primary hover:underline inline-block mt-1 break-all"
+                                  >
+                                    {message.attachment_name || "Attachment"}
+                                  </a>
+                                )}
+                                <p className="text-[11px] text-muted-foreground mt-1">
+                                  {new Date(message.created_at).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Textarea
+                        id="employee-chat-composer"
+                        rows={3}
+                        value={chatDraft}
+                        onChange={(event) => setChatDraft(event.target.value)}
+                        placeholder="Write a message to admin..."
+                      />
+
+                      {chatAttachment && (
+                        <div className="text-xs text-muted-foreground">
+                          Attached: <span className="font-medium">{chatAttachment.name}</span>
+                          <button
+                            type="button"
+                            className="ml-2 text-primary hover:underline"
+                            onClick={() => setChatAttachment(null)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => chatAttachmentInputRef.current?.click()}
+                          disabled={uploadingChatAttachment || sendingChat}
+                        >
+                          {uploadingChatAttachment ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Paperclip className="w-4 h-4 mr-2" />
+                          )}
+                          Attach File
+                        </Button>
+                        <input
+                          ref={chatAttachmentInputRef}
+                          type="file"
+                          onChange={handleChatAttachmentUpload}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleSendChat}
+                          disabled={sendingChat || uploadingChatAttachment}
+                        >
+                          {sendingChat ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4 mr-2" />
+                          )}
+                          Send
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>

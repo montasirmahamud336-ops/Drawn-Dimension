@@ -42,7 +42,7 @@ const OurEmployeesSection = ({ showAll = false }: OurEmployeesSectionProps) => {
     return "lg:grid-cols-6";
   };
 
-  const employeeGridClass = `grid grid-cols-1 sm:grid-cols-2 ${getMdColsClass(employeeCount)} ${getLgColsClass(employeeCount)} gap-4`;
+  const employeeGridClass = `grid grid-cols-1 sm:grid-cols-2 ${getMdColsClass(employeeCount)} ${getLgColsClass(employeeCount)} gap-4 justify-items-center`;
   const employeeGridWidthClass = employeeCount <= 1 ? "max-w-[190px] mx-auto" : "";
 
   return (
@@ -81,7 +81,7 @@ const OurEmployeesSection = ({ showAll = false }: OurEmployeesSectionProps) => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.35, delay: index * 0.05 }}
-                  className="glass-card overflow-hidden border-border/55 bg-card/45"
+                  className="glass-card overflow-hidden border-border/55 bg-card/45 w-full max-w-[300px]"
                 >
                   <div className="aspect-square bg-muted/40">
                     {employee.image_url ? (
