@@ -2,11 +2,14 @@ import { motion } from "framer-motion";
 import { Linkedin, Twitter, Facebook, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { MouseEvent, useState } from "react";
 import { useLiveData } from "@/hooks/useLiveData";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type MediaItem = {
   url: string;
   type: "image" | "video";
 };
+
+const BIO_READ_MORE_THRESHOLD = 180;
 
 const detectMediaType = (value: string) => {
   const v = value.toLowerCase();
@@ -27,6 +30,14 @@ const getMediaList = (item: any): MediaItem[] => {
 
   return [];
 };
+
+const getSafeText = (value: unknown, fallback = "") => {
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : fallback;
+};
+
+const shouldShowReadMore = (bio: string) => bio.length > BIO_READ_MORE_THRESHOLD;
 
 const TeamMemberMedia = ({ leader }: { leader: any }) => {
   const media = getMediaList(leader);
@@ -50,7 +61,7 @@ const TeamMemberMedia = ({ leader }: { leader: any }) => {
   };
 
   return (
-    <div className="relative mb-7">
+    <div className="relative mb-5">
       <div className="absolute -inset-2 rounded-full bg-[radial-gradient(circle,rgba(239,68,68,0.18)_0%,rgba(239,68,68,0.08)_45%,transparent_72%)] opacity-55 blur-md" />
       <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-full border-2 border-white/20 group-hover:border-primary/45 transition-colors duration-300 overflow-hidden">
         {current ? (
@@ -91,6 +102,19 @@ const LeadershipTeam = () => {
   const { data: teamMembers, loading } = useLiveData("team", {
     params: { memberType: "leadership" },
   });
+  const [selectedLeader, setSelectedLeader] = useState<any | null>(null);
+
+  const getLeadershipGridClass = (count: number) => {
+    if (count <= 1) {
+      return "grid grid-cols-1 gap-6 max-w-md mx-auto";
+    }
+    if (count === 2) {
+      return "grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto";
+    }
+    return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto";
+  };
+
+  const leadershipGridClass = getLeadershipGridClass(teamMembers.length);
   const normalizeUrl = (url?: string | null) => {
     if (!url) return null;
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -120,60 +144,99 @@ const LeadershipTeam = () => {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {teamMembers.map((leader: any, index: number) => (
-              <motion.div
-                key={leader.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.15 }}
-                className="glass-card relative overflow-hidden p-8 group border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_42%,rgba(255,255,255,0.01)_100%)] backdrop-blur-xl transition-all duration-500 hover:border-border/70 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)]"
-              >
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%)]" />
-                <div className="flex flex-col items-center text-center relative z-10">
-                  <TeamMemberMedia leader={leader} />
+          <>
+            <div className={leadershipGridClass}>
+              {teamMembers.map((leader: any, index: number) => {
+                const name = getSafeText(leader?.name, "Team Member");
+                const role = getSafeText(leader?.role, "Leadership");
+                const bio = getSafeText(leader?.bio, "Profile details will be added soon.");
+                const showReadMore = shouldShowReadMore(bio);
 
-                  <h3 className="text-xl font-bold text-foreground mb-1">
-                    {leader.name}
-                  </h3>
-                  <p className="text-primary font-semibold text-sm mb-4">
-                    {leader.role}
-                  </p>
-                  <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                    {leader.bio}
-                  </p>
+                return (
+                  <motion.div
+                    key={leader.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: index * 0.15 }}
+                    className="glass-card relative overflow-hidden p-7 group border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_42%,rgba(255,255,255,0.01)_100%)] backdrop-blur-xl transition-all duration-500 hover:border-border/70 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] w-full min-h-[500px] h-full"
+                  >
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%)]" />
+                    <div className="flex flex-col items-center text-center relative z-10 h-full">
+                      <TeamMemberMedia leader={leader} />
 
-                  <div className="flex gap-3">
-                    {[
-                      { href: normalizeUrl(leader.linkedin_url), icon: Linkedin, label: "LinkedIn" },
-                      { href: normalizeUrl(leader.twitter_url), icon: Twitter, label: "Twitter" },
-                      { href: normalizeUrl(leader.facebook_url), icon: Facebook, label: "Facebook" },
-                    ].map((social) => (
-                      <a
-                        key={social.label}
-                        href={social.href || "#"}
-                        target={social.href ? "_blank" : undefined}
-                        rel={social.href ? "noopener noreferrer" : undefined}
-                        aria-label={social.label}
-                        className={`w-10 h-10 rounded-full border border-border/50 bg-background/35 backdrop-blur-sm flex items-center justify-center transition-all duration-300 ${social.href
-                          ? "text-muted-foreground hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
-                          : "text-muted-foreground/40 pointer-events-none"
-                          }`}
-                      >
-                        <social.icon className="w-4 h-4" />
-                      </a>
-                    ))}
-                  </div>
+                      <h3 className="text-xl font-bold text-foreground leading-tight line-clamp-2 min-h-[3.2rem] w-full flex items-end justify-center mb-1">
+                        {name}
+                      </h3>
+                      <p className="text-primary font-semibold text-sm line-clamp-2 min-h-[2.25rem] w-full flex items-start justify-center mb-3">
+                        {role}
+                      </p>
+
+                      <div className="w-full min-h-[6rem] flex flex-col items-center">
+                        <p className="text-muted-foreground text-sm leading-relaxed line-clamp-4 w-full">
+                          {bio}
+                        </p>
+                        {showReadMore ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedLeader({ ...leader, name, role, bio })}
+                            className="mt-1 text-xs text-primary hover:text-primary/85 transition-colors underline underline-offset-2"
+                          >
+                            Read more
+                          </button>
+                        ) : (
+                          <span className="h-3" />
+                        )}
+                      </div>
+
+                      <div className="flex gap-3 mt-2">
+                        {[
+                          { href: normalizeUrl(leader.linkedin_url), icon: Linkedin, label: "LinkedIn" },
+                          { href: normalizeUrl(leader.twitter_url), icon: Twitter, label: "Twitter" },
+                          { href: normalizeUrl(leader.facebook_url), icon: Facebook, label: "Facebook" },
+                        ].map((social) => (
+                          <a
+                            key={social.label}
+                            href={social.href || "#"}
+                            target={social.href ? "_blank" : undefined}
+                            rel={social.href ? "noopener noreferrer" : undefined}
+                            aria-label={social.label}
+                            className={`w-10 h-10 rounded-full border border-border/50 bg-background/35 backdrop-blur-sm flex items-center justify-center transition-all duration-300 ${social.href
+                              ? "text-muted-foreground hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
+                              : "text-muted-foreground/40 pointer-events-none"
+                              }`}
+                          >
+                            <social.icon className="w-4 h-4" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+              {teamMembers.length === 0 && (
+                <div className="col-span-full text-center text-muted-foreground">
+                  No team members found.
                 </div>
-              </motion.div>
-            ))}
-            {teamMembers.length === 0 && (
-              <div className="col-span-full text-center text-muted-foreground">
-                No team members found.
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+
+            <Dialog open={!!selectedLeader} onOpenChange={(open) => !open && setSelectedLeader(null)}>
+              <DialogContent className="sm:max-w-[620px]">
+                <DialogHeader>
+                  <DialogTitle>{selectedLeader?.name || "Team Member"}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-wider text-primary font-semibold">
+                    {selectedLeader?.role || "Leadership"}
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {selectedLeader?.bio || ""}
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
         )}
       </div>
     </section>

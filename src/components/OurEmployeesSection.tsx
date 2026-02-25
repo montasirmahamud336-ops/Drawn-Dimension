@@ -25,6 +25,25 @@ const OurEmployeesSection = ({ showAll = false }: OurEmployeesSectionProps) => {
 
   const visibleEmployees = showAll ? employees : employees.slice(0, PREVIEW_LIMIT);
   const hasMore = !showAll && employees.length > PREVIEW_LIMIT;
+  const employeeCount = visibleEmployees.length;
+
+  const getMdColsClass = (count: number) => {
+    if (count <= 1) return "md:grid-cols-1";
+    if (count === 2) return "md:grid-cols-2";
+    return "md:grid-cols-3";
+  };
+
+  const getLgColsClass = (count: number) => {
+    if (count <= 1) return "lg:grid-cols-1";
+    if (count === 2) return "lg:grid-cols-2";
+    if (count === 3) return "lg:grid-cols-3";
+    if (count === 4) return "lg:grid-cols-4";
+    if (count === 5) return "lg:grid-cols-5";
+    return "lg:grid-cols-6";
+  };
+
+  const employeeGridClass = `grid grid-cols-1 sm:grid-cols-2 ${getMdColsClass(employeeCount)} ${getLgColsClass(employeeCount)} gap-4`;
+  const employeeGridWidthClass = employeeCount <= 1 ? "max-w-[190px] mx-auto" : "";
 
   return (
     <section className="section-padding">
@@ -54,7 +73,7 @@ const OurEmployeesSection = ({ showAll = false }: OurEmployeesSectionProps) => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className={`${employeeGridClass} ${employeeGridWidthClass}`}>
               {visibleEmployees.map((employee: any, index: number) => (
                 <motion.div
                   key={employee.id}
