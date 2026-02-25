@@ -1,5 +1,5 @@
 ﻿import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { z } from "zod";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
 import PageHero from "@/components/shared/PageHero";
 import PremiumBackground from "@/components/shared/PremiumBackground";
+import { getApiBaseUrl } from "@/components/admin/adminAuth";
 
 const signInSchema = z.object({
   email: z.string().trim().email("Invalid email address"),
@@ -33,30 +34,36 @@ const Auth = () => {
   const [isReset, setIsReset] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<null | "google" | "github" | "azure" | "apple">(null);
+  const [searchParams] = useSearchParams();
 
   const { signIn, signUp, resetPassword, resendSignupConfirmation, signInWithProvider } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const prefillEmail = searchParams.get("email") ?? "";
+  const nextParam = searchParams.get("next") ?? "";
+  const isEmployeeLoginFlow = nextParam.startsWith("/employee/dashboard");
 
   const inputClass =
     "mt-2 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 h-12";
 
-  const heroContent = isReset
+  const heroContent = !isEmployeeLoginFlow && isReset
     ? {
       title: "Reset Password",
       subtitle: "Account Recovery",
       description: "We'll send you a reset link to your email.",
     }
-    : isSignUp
+    : !isEmployeeLoginFlow && isSignUp
       ? {
         title: "Create Your Account",
         subtitle: "Client Access",
         description: "Register to access secure messaging, AI assistance, and project updates.",
       }
       : {
-        title: "Welcome Back",
-        subtitle: "Secure Login",
-        description: "Sign in to access your chat history, AI assistant, and project messages.",
+        title: isEmployeeLoginFlow ? "Welcome Employee" : "Welcome Back",
+        subtitle: isEmployeeLoginFlow ? "Employee Login" : "Secure Login",
+        description: isEmployeeLoginFlow
+          ? "Sign in to access your assigned work details and employee dashboard."
+          : "Sign in to access your chat history, AI assistant, and project messages.",
       };
 
   const getValidationMessage = (error: z.ZodError) =>
@@ -84,6 +91,26 @@ const Auth = () => {
     return rawMessage;
   };
 
+  const hasEmployeeDashboardAccess = async (accessToken: string | null | undefined) => {
+    if (!accessToken) return false;
+
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/employee/dashboard`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) return false;
+
+      const body = await response.json().catch(() => null);
+      return Boolean(body?.employee);
+    } catch (error) {
+      return false;
+    }
+  };
+
   const handleSignIn = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -104,7 +131,7 @@ const Auth = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signIn(parsed.data.email, parsed.data.password);
+    const { error, session } = await signIn(parsed.data.email, parsed.data.password);
     setIsLoading(false);
 
     if (error) {
@@ -137,8 +164,10 @@ const Auth = () => {
       return;
     }
 
-    toast({ title: "Welcome back!" });
-    navigate("/");
+    const isEmployee = await hasEmployeeDashboardAccess(session?.access_token);
+    const safeNext = nextParam.startsWith("/") ? nextParam : "";
+    toast({ title: isEmployeeLoginFlow ? "Welcome employee!" : "Welcome back!" });
+    navigate(safeNext || (isEmployee ? "/employee/dashboard" : "/"));
   };
 
   const handleSignUp = async (event: FormEvent<HTMLFormElement>) => {
@@ -254,7 +283,7 @@ const Auth = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="glass-card p-8"
               >
-                {isReset ? (
+                {!isEmployeeLoginFlow && isReset ? (
                   <form onSubmit={handleResetPassword} className="space-y-6" noValidate>
                     <div>
                       <label htmlFor="reset-email" className="text-sm font-medium text-foreground">Email</label>
@@ -272,7 +301,7 @@ const Auth = () => {
                       Send Reset Link
                     </button>
                   </form>
-                ) : isSignUp ? (
+                ) : !isEmployeeLoginFlow && isSignUp ? (
                   <form onSubmit={handleSignUp} className="space-y-6" noValidate>
                     <div>
                       <label htmlFor="signup-fullname" className="text-sm font-medium text-foreground">Full Name</label>
@@ -321,6 +350,7 @@ const Auth = () => {
                         name="email"
                         type="email"
                         placeholder="you@company.com"
+                        defaultValue={prefillEmail}
                         autoComplete="email"
                         className={inputClass}
                       />
@@ -336,18 +366,20 @@ const Auth = () => {
                         className={inputClass}
                       />
                     </div>
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsReset(true);
-                          setIsSignUp(false);
-                        }}
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
+                    {!isEmployeeLoginFlow && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsReset(true);
+                            setIsSignUp(false);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                    )}
                     <button type="submit" className="btn-primary w-full" disabled={isLoading}>
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
                       Sign In
@@ -355,7 +387,7 @@ const Auth = () => {
                   </form>
                 )}
 
-                {!isReset && (
+                {!isReset && !isEmployeeLoginFlow && (
                   <>
                     <div className="my-8 flex items-center gap-4">
                       <div className="h-px flex-1 bg-border" />
@@ -399,26 +431,28 @@ const Auth = () => {
                   </>
                 )}
 
-                <div className="mt-6 text-center">
-                  {isReset ? (
-                    <button
-                      onClick={() => setIsReset(false)}
-                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      Back to sign in
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setIsSignUp((prev) => !prev);
-                        setIsReset(false);
-                      }}
-                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-                    </button>
-                  )}
-                </div>
+                {!isEmployeeLoginFlow && (
+                  <div className="mt-6 text-center">
+                    {isReset ? (
+                      <button
+                        onClick={() => setIsReset(false)}
+                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        Back to sign in
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setIsSignUp((prev) => !prev);
+                          setIsReset(false);
+                        }}
+                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+                      </button>
+                    )}
+                  </div>
+                )}
               </motion.div>
             </div>
           </section>

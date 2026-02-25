@@ -56,6 +56,27 @@ interface ProfileDraft {
   job_role: string;
 }
 
+interface EmployeeProfile {
+  id: string;
+  name: string;
+  profession: string;
+  email: string;
+  mobile: string | null;
+}
+
+interface EmployeeAssignment {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  employee_email: string;
+  work_title: string;
+  work_details: string | null;
+  work_duration: string;
+  revision_due_at: string | null;
+  status: "assigned" | "done" | "draft";
+  created_at?: string;
+}
+
 const createEmptyProfile = (email?: string | null): ProfileDraft => ({
   full_name: "",
   email: email ?? "",
@@ -65,14 +86,31 @@ const createEmptyProfile = (email?: string | null): ProfileDraft => ({
   job_role: "",
 });
 
+const getApiBaseUrl = () => {
+  const envBase = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
+  if (envBase && envBase.trim().length > 0) {
+    return envBase.replace(/\/$/, "");
+  }
+
+  const { protocol, hostname } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${protocol}//${hostname}:4000`;
+  }
+
+  return window.location.origin.replace(/\/$/, "");
+};
+
 const Dashboard = () => {
-  const { user, signOut, loading: authLoading } = useAuth();
+  const { user, session, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [profileDraft, setProfileDraft] = useState<ProfileDraft>(createEmptyProfile());
   const [savedProfile, setSavedProfile] = useState<ProfileDraft>(createEmptyProfile());
+  const [employeeProfile, setEmployeeProfile] = useState<EmployeeProfile | null>(null);
+  const [employeeAssignments, setEmployeeAssignments] = useState<EmployeeAssignment[]>([]);
+  const [loadingEmployeeData, setLoadingEmployeeData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -90,7 +128,7 @@ const Dashboard = () => {
     if (user) {
       loadData();
     }
-  }, [user]);
+  }, [user, session?.access_token]);
 
   const mapProfileToDraft = (profile: Profile | null, fallbackEmail?: string | null): ProfileDraft => ({
     full_name: profile?.full_name ?? "",
@@ -105,8 +143,22 @@ const Dashboard = () => {
     if (!user) return;
 
     setLoading(true);
+    setLoadingEmployeeData(true);
 
-    const [profileResult, quotesResult] = await Promise.all([
+    const employeeDashboardPromise = session?.access_token
+      ? fetch(`${getApiBaseUrl()}/employee/dashboard`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        })
+          .then(async (response) => {
+            if (!response.ok) return null;
+            return response.json();
+          })
+          .catch(() => null)
+      : Promise.resolve(null);
+
+    const [profileResult, quotesResult, employeeDashboard] = await Promise.all([
       supabase
         .from("profiles")
         .select("full_name, email, company, avatar_url, bio, job_role")
@@ -117,6 +169,7 @@ const Dashboard = () => {
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
+      employeeDashboardPromise,
     ]);
 
     if (profileResult.error) {
@@ -148,6 +201,14 @@ const Dashboard = () => {
       setQuotes((quotesResult.data ?? []) as Quote[]);
     }
 
+    const employeeData = (employeeDashboard ?? {}) as {
+      employee?: EmployeeProfile | null;
+      assignments?: EmployeeAssignment[];
+    };
+    setEmployeeProfile(employeeData.employee ?? null);
+    setEmployeeAssignments(Array.isArray(employeeData.assignments) ? employeeData.assignments : []);
+
+    setLoadingEmployeeData(false);
     setLoading(false);
   };
 
@@ -551,6 +612,71 @@ const Dashboard = () => {
               </motion.aside>
 
               <section className="xl:col-span-8 space-y-6">
+                {employeeProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.08 }}
+                  >
+                    <Card className="glass-card border-green-500/30 overflow-hidden">
+                      <CardHeader className="border-b border-border/50 bg-green-500/5">
+                        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                          <div>
+                            <CardTitle className="text-2xl">Employee Work Dashboard</CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {employeeProfile.name} ({employeeProfile.profession})
+                            </p>
+                          </div>
+                          <Badge className="border-green-500/25 bg-green-500/10 text-green-400">
+                            {employeeAssignments.filter((item) => item.status !== "draft").length} tasks
+                          </Badge>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="p-6">
+                        {loadingEmployeeData ? (
+                          <div className="space-y-4">
+                            {[1, 2].map((item) => (
+                              <Skeleton key={item} className="h-20 w-full rounded-xl" />
+                            ))}
+                          </div>
+                        ) : employeeAssignments.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No assigned work yet.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {employeeAssignments.map((assignment) => (
+                              <div
+                                key={assignment.id}
+                                className={`rounded-xl border px-4 py-3 ${
+                                  assignment.status === "done"
+                                    ? "border-green-500/40 bg-green-500/10"
+                                    : "border-border/70 bg-card/60"
+                                }`}
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                  <h4 className="font-semibold text-foreground">{assignment.work_title}</h4>
+                                  <Badge className={assignment.status === "done" ? "bg-green-500/15 text-green-400" : "bg-blue-500/15 text-blue-400"}>
+                                    {assignment.status === "done" ? "Done" : "Assigned"}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">Duration: {assignment.work_duration}</p>
+                                {assignment.revision_due_at && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Revision: {new Date(assignment.revision_due_at).toLocaleString()}
+                                  </p>
+                                )}
+                                {assignment.work_details && (
+                                  <p className="text-sm text-muted-foreground mt-2">{assignment.work_details}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+
                 <motion.div
                   initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}

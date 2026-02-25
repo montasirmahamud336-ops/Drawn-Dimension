@@ -11,6 +11,9 @@ import teamRoutes from "./routes/team.js";
 import productRoutes from "./routes/products.js";
 import storageRoutes from "./routes/storage.js";
 import reviewRoutes from "./routes/reviews.js";
+import employeesRoutes from "./routes/employees.js";
+import workAssignmentsRoutes from "./routes/workAssignments.js";
+import employeeDashboardRoutes from "./routes/employeeDashboard.js";
 
 const app = express();
 
@@ -36,6 +39,9 @@ app.use(teamRoutes);
 app.use(productRoutes);
 app.use(storageRoutes);
 app.use(reviewRoutes);
+app.use(employeesRoutes);
+app.use(workAssignmentsRoutes);
+app.use(employeeDashboardRoutes);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

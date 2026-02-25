@@ -14,6 +14,7 @@ interface TeamFormProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     member: any | null;
+    memberType: "leadership" | "employee";
     onSuccess: () => void;
 }
 
@@ -50,11 +51,12 @@ const normalizeMedia = (item: any): MediaItem[] => {
     return [];
 };
 
-const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
+const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFormProps) => {
     const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
     const [loading, setLoading] = useState(false);
     const [existingMedia, setExistingMedia] = useState<MediaItem[]>([]);
     const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
+    const isEmployeeMode = memberType === "employee";
 
     const clearPendingMedia = () => {
         setPendingMedia((prev) => {
@@ -68,7 +70,7 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
         if (member) {
             setValue("name", member.name);
             setValue("role", member.role);
-            setValue("bio", member.bio);
+            setValue("bio", member.bio || "");
             setValue("linkedin_url", member.linkedin_url || "");
             setValue("twitter_url", member.twitter_url || "");
             setValue("facebook_url", member.facebook_url || "");
@@ -78,7 +80,7 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
             setExistingMedia([]);
         }
         clearPendingMedia();
-    }, [member, open, reset, setValue]);
+    }, [member, open, reset, setValue, memberType]);
 
     useEffect(() => {
         return () => {
@@ -89,13 +91,28 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
     const handleMediaChange = (e: ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
-        const next: PendingMedia[] = files.map((file) => ({
+        const selectedFiles = isEmployeeMode ? files.slice(0, 1) : files;
+        const next: PendingMedia[] = selectedFiles.map((file) => ({
             id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
             file,
             url: URL.createObjectURL(file),
             type: file.type.startsWith("video/") ? "video" : "image",
         }));
-        setPendingMedia((prev) => [...prev, ...next]);
+
+        if (isEmployeeMode) {
+            setExistingMedia((prev) => {
+                prev.forEach((item) => {
+                    if (item.url.startsWith("blob:")) URL.revokeObjectURL(item.url);
+                });
+                return [];
+            });
+            setPendingMedia((prev) => {
+                prev.forEach((item) => URL.revokeObjectURL(item.url));
+                return next;
+            });
+        } else {
+            setPendingMedia((prev) => [...prev, ...next]);
+        }
         e.target.value = "";
     };
 
@@ -136,20 +153,23 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
                 );
             }
 
-            const finalMedia = [...existingMedia, ...uploadedMedia];
+            const finalMedia = isEmployeeMode
+                ? [...existingMedia, ...uploadedMedia].slice(0, 1)
+                : [...existingMedia, ...uploadedMedia];
             if (!member && finalMedia.length === 0) {
-                throw new Error("Please upload at least one image or video");
+                throw new Error(isEmployeeMode ? "Please upload an employee image" : "Please upload at least one image or video");
             }
 
             const payload = {
                 name: data.name,
                 role: data.role,
-                bio: data.bio,
+                bio: isEmployeeMode ? null : (data.bio || null),
                 image_url: finalMedia[0]?.url || null,
                 media: finalMedia,
-                linkedin_url: data.linkedin_url || null,
-                twitter_url: data.twitter_url || null,
-                facebook_url: data.facebook_url || null,
+                linkedin_url: isEmployeeMode ? null : (data.linkedin_url || null),
+                twitter_url: isEmployeeMode ? null : (data.twitter_url || null),
+                facebook_url: isEmployeeMode ? null : (data.facebook_url || null),
+                member_type: memberType,
                 status: member?.status || "live",
             };
 
@@ -178,7 +198,7 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
                 throw new Error(message);
             }
 
-            toast.success(member ? "Team member updated" : "Team member created");
+            toast.success(member ? (isEmployeeMode ? "Employee updated" : "Team member updated") : (isEmployeeMode ? "Employee created" : "Team member created"));
             clearPendingMedia();
             onSuccess();
             onOpenChange(false);
@@ -193,15 +213,15 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>{member ? "Edit Team Member" : "Add Team Member"}</DialogTitle>
+                    <DialogTitle>{member ? (isEmployeeMode ? "Edit Employee" : "Edit Team Member") : (isEmployeeMode ? "Add Employee" : "Add Team Member")}</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="team-media-upload">Profile Media (Images/Videos)</Label>
+                        <Label htmlFor="team-media-upload">{isEmployeeMode ? "Employee Image" : "Profile Media (Images/Videos)"}</Label>
                         <div className="flex flex-wrap gap-3">
                             {existingMedia.map((media, index) => (
-                                <div key={`existing-${index}`} className="relative w-24 h-24 rounded-full overflow-hidden border border-border">
+                                <div key={`existing-${index}`} className={`relative w-24 h-24 ${isEmployeeMode ? "rounded-xl" : "rounded-full"} overflow-hidden border border-border`}>
                                     {media.type === "video" ? (
                                         <video src={media.url} className="w-full h-full object-cover" muted playsInline />
                                     ) : (
@@ -217,7 +237,7 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
                                 </div>
                             ))}
                             {pendingMedia.map((media) => (
-                                <div key={media.id} className="relative w-24 h-24 rounded-full overflow-hidden border border-border">
+                                <div key={media.id} className={`relative w-24 h-24 ${isEmployeeMode ? "rounded-xl" : "rounded-full"} overflow-hidden border border-border`}>
                                     {media.type === "video" ? (
                                         <video src={media.url} className="w-full h-full object-cover" muted playsInline />
                                     ) : (
@@ -233,7 +253,7 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
                                 </div>
                             ))}
                             {existingMedia.length === 0 && pendingMedia.length === 0 && (
-                                <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center text-muted-foreground border border-border">
+                                <div className={`w-24 h-24 ${isEmployeeMode ? "rounded-xl" : "rounded-full"} bg-muted flex items-center justify-center text-muted-foreground border border-border`}>
                                     <Users className="w-8 h-8 opacity-50" />
                                 </div>
                             )}
@@ -241,17 +261,21 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
                         <div>
                             <Label htmlFor="team-media-upload" className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-input rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
                                 <Upload className="w-4 h-4" />
-                                Select Multiple Media
+                                {isEmployeeMode ? "Select Image" : "Select Multiple Media"}
                             </Label>
                             <Input
                                 id="team-media-upload"
                                 type="file"
-                                accept="image/*,video/*"
-                                multiple
+                                accept={isEmployeeMode ? "image/*" : "image/*,video/*"}
+                                multiple={!isEmployeeMode}
                                 className="hidden"
                                 onChange={handleMediaChange}
                             />
-                            <p className="text-xs text-muted-foreground mt-2">Add multiple images/videos and remove any before saving.</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                {isEmployeeMode
+                                    ? "Add one square-style employee image."
+                                    : "Add multiple images/videos and remove any before saving."}
+                            </p>
                         </div>
                     </div>
 
@@ -262,35 +286,39 @@ const TeamForm = ({ open, onOpenChange, member, onSuccess }: TeamFormProps) => {
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="role">Role / Position</Label>
-                        <Input id="role" {...register("role", { required: true })} placeholder="Lead Designer" />
+                        <Label htmlFor="role">{isEmployeeMode ? "Profession" : "Role / Position"}</Label>
+                        <Input id="role" {...register("role", { required: true })} placeholder={isEmployeeMode ? "Mechanical Engineer" : "Lead Designer"} />
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="bio">Bio</Label>
-                        <Textarea id="bio" {...register("bio")} placeholder="Short biography..." rows={3} />
-                    </div>
+                    {!isEmployeeMode && (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor="bio">Bio</Label>
+                                <Textarea id="bio" {...register("bio")} placeholder="Short biography..." rows={3} />
+                            </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="linkedin_url">LinkedIn URL</Label>
-                        <Input id="linkedin_url" {...register("linkedin_url")} placeholder="https://linkedin.com/in/username" />
-                    </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="linkedin_url">LinkedIn URL</Label>
+                                <Input id="linkedin_url" {...register("linkedin_url")} placeholder="https://linkedin.com/in/username" />
+                            </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="twitter_url">Twitter URL</Label>
-                        <Input id="twitter_url" {...register("twitter_url")} placeholder="https://twitter.com/username" />
-                    </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="twitter_url">Twitter URL</Label>
+                                <Input id="twitter_url" {...register("twitter_url")} placeholder="https://twitter.com/username" />
+                            </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="facebook_url">Facebook URL</Label>
-                        <Input id="facebook_url" {...register("facebook_url")} placeholder="https://facebook.com/username" />
-                    </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="facebook_url">Facebook URL</Label>
+                                <Input id="facebook_url" {...register("facebook_url")} placeholder="https://facebook.com/username" />
+                            </div>
+                        </>
+                    )}
 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                         <Button type="submit" disabled={loading}>
                             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            {member ? "Save Changes" : "Add Member"}
+                            {member ? "Save Changes" : (isEmployeeMode ? "Add Employee" : "Add Member")}
                         </Button>
                     </DialogFooter>
                 </form>

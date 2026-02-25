@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; session: Session | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   resendSignupConfirmation: (email: string) => Promise<{ error: Error | null }>;
@@ -15,6 +15,45 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const getApiBaseUrl = () => {
+  const envBase = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
+  if (envBase && envBase.trim().length > 0) {
+    return envBase.replace(/\/$/, "");
+  }
+
+  const { protocol, hostname } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${protocol}//${hostname}:4000`;
+  }
+
+  return window.location.origin.replace(/\/$/, "");
+};
+
+const notifySignup = async (payload: {
+  method: "email" | "google";
+  email?: string | null;
+  fullName?: string | null;
+  accessToken?: string | null;
+}) => {
+  try {
+    const apiBase = getApiBaseUrl();
+    await fetch(`${apiBase}/auth/notify-signup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        method: payload.method,
+        email: payload.email ?? "",
+        fullName: payload.fullName ?? "",
+        accessToken: payload.accessToken ?? "",
+      }),
+    });
+  } catch (error) {
+    console.error("Signup notification failed", error);
+  }
+};
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -37,26 +76,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const handleSession = async (nextSession: Session | null) => {
+  const handleSession = async (nextSession: Session | null, event?: string) => {
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
     setLoading(false);
 
     if (nextSession?.user) {
       await ensureProfile(nextSession.user);
+
+      const provider = String(nextSession.user.app_metadata?.provider ?? "").toLowerCase();
+      const identities = Array.isArray(nextSession.user.identities)
+        ? nextSession.user.identities.map((identity: any) => String(identity?.provider ?? "").toLowerCase())
+        : [];
+      const isGoogleUser = provider === "google" || identities.includes("google");
+
+      if (event === "SIGNED_IN" && isGoogleUser) {
+        void notifySignup({
+          method: "google",
+          email: nextSession.user.email,
+          fullName: String(
+            nextSession.user.user_metadata?.full_name ??
+            nextSession.user.user_metadata?.name ??
+            ""
+          ),
+          accessToken: nextSession.access_token,
+        });
+      }
     }
   };
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session);
+      handleSession(session, "INITIAL_SESSION");
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        handleSession(nextSession);
+      (event, nextSession) => {
+        handleSession(nextSession, event);
       }
     );
 
@@ -74,6 +132,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!error && data.session?.user) {
       await ensureProfile(data.session.user, fullName);
     }
+    if (!error) {
+      void notifySignup({
+        method: "email",
+        email,
+        fullName: fullName ?? "",
+      });
+    }
     return { error };
   };
 
@@ -85,7 +150,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!error && data.session?.user) {
       await ensureProfile(data.session.user);
     }
-    return { error };
+    return { error, session: data.session ?? null };
   };
 
   const signOut = async () => {

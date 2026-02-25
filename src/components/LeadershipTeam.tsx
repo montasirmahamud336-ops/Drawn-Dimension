@@ -88,7 +88,9 @@ const TeamMemberMedia = ({ leader }: { leader: any }) => {
 };
 
 const LeadershipTeam = () => {
-  const { data: teamMembers, loading } = useLiveData("team");
+  const { data: teamMembers, loading } = useLiveData("team", {
+    params: { memberType: "leadership" },
+  });
   const normalizeUrl = (url?: string | null) => {
     if (!url) return null;
     if (url.startsWith("http://") || url.startsWith("https://")) return url;

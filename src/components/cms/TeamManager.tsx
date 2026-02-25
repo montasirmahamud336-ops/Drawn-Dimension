@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Edit, Trash2, RotateCcw, Users, UserMinus, GripVertical } from "lucide-react";
+import { Plus, Search, Edit, Trash2, RotateCcw, Users, UserMinus, GripVertical, UserSquare2 } from "lucide-react";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import TeamForm from "./TeamForm";
@@ -13,6 +13,7 @@ const TeamManager = () => {
     const [members, setMembers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("live");
+    const [memberType, setMemberType] = useState<"leadership" | "employee">("leadership");
     const [search, setSearch] = useState("");
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<any | null>(null);
@@ -24,6 +25,7 @@ const TeamManager = () => {
     const apiBase = getApiBaseUrl();
     const token = getAdminToken();
     const isReorderEnabled = search.trim().length === 0 && !isSavingOrder;
+    const isEmployeeMode = memberType === "employee";
 
     useEffect(() => {
         membersRef.current = members;
@@ -32,7 +34,7 @@ const TeamManager = () => {
     const fetchMembers = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/team?status=${activeTab}`);
+            const res = await fetch(`${apiBase}/team?status=${activeTab}&memberType=${memberType}`);
             if (res.ok) {
                 const data = await res.json();
                 setMembers(data);
@@ -46,7 +48,7 @@ const TeamManager = () => {
 
     useEffect(() => {
         fetchMembers();
-    }, [activeTab]);
+    }, [activeTab, memberType]);
 
     const saveMemberOrder = async (orderedMembers: any[]) => {
         try {
@@ -105,7 +107,7 @@ const TeamManager = () => {
     };
 
     const handleDelete = async (id: string, isHardDelete: boolean) => {
-        if (!confirm(isHardDelete ? "Permanently remove this member?" : "Move to Drafts?")) return;
+        if (!confirm(isHardDelete ? `Permanently remove this ${isEmployeeMode ? "employee" : "member"}?` : "Move to Drafts?")) return;
 
         try {
             let res;
@@ -126,7 +128,9 @@ const TeamManager = () => {
             }
 
             if (res.ok) {
-                toast.success(isHardDelete ? "Member removed" : "Member moved to Drafts");
+                toast.success(isHardDelete
+                    ? `${isEmployeeMode ? "Employee" : "Member"} removed`
+                    : `${isEmployeeMode ? "Employee" : "Member"} moved to Drafts`);
                 fetchMembers();
             } else {
                 throw new Error("Failed to delete");
@@ -148,7 +152,7 @@ const TeamManager = () => {
             });
 
             if (res.ok) {
-                toast.success("Member restored to Live");
+                toast.success(`${isEmployeeMode ? "Employee" : "Member"} restored to Live`);
                 fetchMembers();
             }
         } catch (error) {
@@ -165,25 +169,42 @@ const TeamManager = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Team Members</h2>
-                    <p className="text-muted-foreground">Manage your team profiles.</p>
+                    <h2 className="text-3xl font-bold tracking-tight">{isEmployeeMode ? "Our Employees" : "Team Members"}</h2>
+                    <p className="text-muted-foreground">
+                        {isEmployeeMode
+                            ? "Manage employee cards for the About page."
+                            : "Manage your team profiles."}
+                    </p>
                 </div>
                 <Button onClick={() => { setEditingMember(null); setIsFormOpen(true); }} className="gap-2 bg-orange-600 hover:bg-orange-700">
-                    <Plus className="w-4 h-4" /> Add Member
+                    <Plus className="w-4 h-4" /> {isEmployeeMode ? "Add Employee" : "Add Member"}
                 </Button>
+            </div>
+
+            <div className="flex items-center gap-4">
+                <Tabs
+                    value={memberType}
+                    onValueChange={(value) => setMemberType(value as "leadership" | "employee")}
+                    className="w-[400px]"
+                >
+                    <TabsList>
+                        <TabsTrigger value="leadership" className="gap-2"><Users className="w-4 h-4" /> Leadership Team</TabsTrigger>
+                        <TabsTrigger value="employee" className="gap-2"><UserSquare2 className="w-4 h-4" /> Our Employees</TabsTrigger>
+                    </TabsList>
+                </Tabs>
             </div>
 
             <div className="flex items-center gap-4">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
                     <TabsList>
-                        <TabsTrigger value="live" className="gap-2"><Users className="w-4 h-4" /> Live Team</TabsTrigger>
+                        <TabsTrigger value="live" className="gap-2"><Users className="w-4 h-4" /> {isEmployeeMode ? "Live Employees" : "Live Team"}</TabsTrigger>
                         <TabsTrigger value="draft" className="gap-2"><UserMinus className="w-4 h-4" /> Drafts</TabsTrigger>
                     </TabsList>
                 </Tabs>
                 <div className="relative flex-1 max-w-sm ml-auto">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search members..."
+                        placeholder={isEmployeeMode ? "Search employees..." : "Search members..."}
                         className="pl-8"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -216,7 +237,7 @@ const TeamManager = () => {
                             onDrop={(event) => event.preventDefault()}
                             onDragEnd={handleDragEnd}
                         >
-                            <div className="aspect-[4/3] relative overflow-hidden bg-muted">
+                            <div className={`${isEmployeeMode ? "aspect-square" : "aspect-[4/3]"} relative overflow-hidden bg-muted`}>
                                 {member.image_url ? (
                                     <img src={member.image_url} alt={member.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                 ) : (
@@ -255,14 +276,14 @@ const TeamManager = () => {
                                 )}
                                 <h3 className="font-semibold truncate text-lg">{member.name}</h3>
                                 <p className="text-sm font-medium text-primary mb-1">{member.role}</p>
-                                <p className="text-xs text-muted-foreground line-clamp-2">{member.bio}</p>
+                                {!isEmployeeMode && <p className="text-xs text-muted-foreground line-clamp-2">{member.bio}</p>}
                                 {member.status === 'draft' && <span className="text-xs bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded mt-2 inline-block">Draft</span>}
                             </CardContent>
                         </Card>
                     ))}
                     {filteredMembers.length === 0 && (
                         <div className="col-span-full text-center py-12 text-muted-foreground">
-                            No members found in {activeTab}.
+                            No {isEmployeeMode ? "employees" : "members"} found in {activeTab}.
                         </div>
                     )}
                 </div>
@@ -272,6 +293,7 @@ const TeamManager = () => {
                 open={isFormOpen}
                 onOpenChange={setIsFormOpen}
                 member={editingMember}
+                memberType={memberType}
                 onSuccess={() => fetchMembers()}
             />
         </div>

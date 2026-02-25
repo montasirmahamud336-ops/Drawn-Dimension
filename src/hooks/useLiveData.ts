@@ -23,16 +23,32 @@ const sortByDisplayOrder = (items: any[]) => {
     });
 };
 
+type UseLiveDataOptions = {
+    params?: Record<string, string | number | boolean | null | undefined>;
+};
+
 // Hook to fetch live data
-export const useLiveData = (endpoint: string) => {
+export const useLiveData = (endpoint: string, options: UseLiveDataOptions = {}) => {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const params = options.params ?? {};
+    const paramsKey = JSON.stringify(params);
 
     useEffect(() => {
         const fetch = async () => {
             try {
                 const apiBase = getApiBaseUrl();
-                const res = await window.fetch(`${apiBase}/${endpoint}?status=live`);
+                const query = new URLSearchParams({ status: "live" });
+
+                Object.entries(params).forEach(([key, value]) => {
+                    if (value === null || value === undefined || String(value).trim() === "") return;
+                    query.set(key, String(value));
+                });
+
+                const separator = endpoint.includes("?") ? "&" : "?";
+                const url = `${apiBase}/${endpoint}${separator}${query.toString()}`;
+                const res = await window.fetch(url);
+
                 if (res.ok) {
                     const json = await res.json();
                     setData(Array.isArray(json) ? sortByDisplayOrder(json) : []);
@@ -43,8 +59,10 @@ export const useLiveData = (endpoint: string) => {
                 setLoading(false);
             }
         };
+
+        setLoading(true);
         fetch();
-    }, [endpoint]);
+    }, [endpoint, paramsKey]);
 
     return { data, loading };
 };

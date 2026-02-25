@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
 import PageHero from "@/components/shared/PageHero";
 import LeadershipTeam from "@/components/LeadershipTeam";
+import OurEmployeesSection from "@/components/OurEmployeesSection";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
@@ -236,6 +237,9 @@ const About = () => {
 
           {/* Leadership Team */}
           <LeadershipTeam />
+
+          {/* Our Employees */}
+          <OurEmployeesSection />
         </main>
         <Footer />
       </PremiumBackground>
