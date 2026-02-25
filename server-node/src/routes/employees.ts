@@ -76,10 +76,12 @@ const buildEmployeeWelcomeHtml = (payload: {
   name: string;
   profession: string;
   email: string;
+  temporaryPassword: string;
 }) => {
   const safeName = escapeHtml(payload.name || "Employee");
   const safeProfession = escapeHtml(payload.profession || "Team Member");
   const safeEmail = escapeHtml(payload.email);
+  const safePassword = escapeHtml(payload.temporaryPassword || "");
   const loginLink = buildEmployeeLoginLink(payload.email);
   const logoUrl = getBrandLogoUrl();
 
@@ -94,7 +96,8 @@ const buildEmployeeWelcomeHtml = (payload: {
         <p style="margin: 0 0 12px; font-size: 15px;">You have been added as an employee in DrawnDimension.</p>
         <p style="margin: 0 0 8px; font-size: 15px;"><strong>Profession:</strong> ${safeProfession}</p>
         <p style="margin: 0 0 12px; font-size: 15px;"><strong>Login email:</strong> ${safeEmail}</p>
-        <p style="margin: 0 0 16px; font-size: 14px; color: #4b5563;">Use the password provided by admin and sign in from the button below.</p>
+        <p style="margin: 0 0 8px; font-size: 15px;"><strong>Temporary password:</strong> ${safePassword}</p>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #4b5563;">Sign in from the button below, then change your password immediately.</p>
         <a href="${loginLink}" style="display:inline-block;padding:10px 16px;background:#ef4444;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Open Employee Login</a>
       </div>
     </div>
@@ -105,6 +108,7 @@ const sendEmployeeWelcomeEmail = async (payload: {
   name: string;
   profession: string;
   email: string;
+  temporaryPassword: string;
 }) => {
   const mailer = getTransporter();
   await mailer.sendMail({
@@ -343,6 +347,7 @@ router.post("/employees", requireAuth, async (req, res) => {
         name,
         profession,
         email,
+        temporaryPassword: loginPassword,
       });
       emailNotificationSent = true;
     } catch (mailError: unknown) {

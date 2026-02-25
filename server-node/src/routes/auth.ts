@@ -109,6 +109,29 @@ const buildGoogleWelcomeHtml = (fullName: string, userEmail: string) => {
   `;
 };
 
+const buildEmailWelcomeHtml = (fullName: string, userEmail: string) => {
+  const logoUrl = getBrandLogoUrl();
+  const safeName = escapeHtml(fullName || "there");
+  const safeEmail = escapeHtml(userEmail);
+  const loginLink = `${env.siteBaseUrl.replace(/\/+$/, "")}/auth`;
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; border: 1px solid #ececec; border-radius: 12px; overflow: hidden;">
+      <div style="padding: 20px; background: linear-gradient(120deg,#0f172a,#1e293b); color: #fff; text-align: center;">
+        <img src="${logoUrl}" alt="DrawnDimension Logo" width="56" height="56" style="display:block;margin:0 auto 10px;border-radius:10px;object-fit:cover;" />
+        <h2 style="margin: 0; font-size: 22px;">Welcome to DrawnDimension</h2>
+      </div>
+      <div style="padding: 22px;">
+        <p style="margin: 0 0 12px; font-size: 15px;">Hi ${safeName},</p>
+        <p style="margin: 0 0 12px; font-size: 15px;">Your account has been created successfully.</p>
+        <p style="margin: 0 0 12px; font-size: 15px;"><strong>Account email:</strong> ${safeEmail}</p>
+        <p style="margin: 0 0 16px; color: #4b5563; font-size: 13px;">If your account needs email verification, please verify first, then sign in.</p>
+        <a href="${loginLink}" style="display:inline-block;padding:10px 16px;background:#ef4444;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Open Login</a>
+      </div>
+    </div>
+  `;
+};
+
 const sendOfficialNotification = async (payload: SignupEventPayload) => {
   const mailer = getTransporter();
   await mailer.sendMail({
@@ -126,6 +149,16 @@ const sendGoogleWelcomeEmail = async (email: string, fullName?: string) => {
     to: email,
     subject: "Welcome to DrawnDimension",
     html: buildGoogleWelcomeHtml(fullName || "there", email)
+  });
+};
+
+const sendEmailWelcomeEmail = async (email: string, fullName?: string) => {
+  const mailer = getTransporter();
+  await mailer.sendMail({
+    from: env.smtpFrom,
+    to: email,
+    subject: "Welcome to DrawnDimension",
+    html: buildEmailWelcomeHtml(fullName || "there", email)
   });
 };
 
@@ -200,16 +233,19 @@ router.post("/auth/notify-signup", async (req, res) => {
         return res.status(400).json({ message: "email is required" });
       }
 
-      await sendOfficialNotification({
-        method: "email",
-        email: bodyEmail,
-        fullName: bodyFullName
-      });
+      await Promise.all([
+        sendOfficialNotification({
+          method: "email",
+          email: bodyEmail,
+          fullName: bodyFullName
+        }),
+        sendEmailWelcomeEmail(bodyEmail, bodyFullName),
+      ]);
 
       return res.json({
         status: "ok",
         sentOfficial: true,
-        sentUser: false,
+        sentUser: true,
         skipped: false
       });
     }
