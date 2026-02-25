@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl } from "@/components/admin/adminAuth";
 
 interface AuthContextType {
   user: User | null;
@@ -15,20 +16,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const getApiBaseUrl = () => {
-  const envBase = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
-  if (envBase && envBase.trim().length > 0) {
-    return envBase.replace(/\/$/, "");
-  }
-
-  const { protocol, hostname } = window.location;
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return `${protocol}//${hostname}:4000`;
-  }
-
-  return window.location.origin.replace(/\/$/, "");
-};
 
 const notifySignup = async (payload: {
   method: "email" | "google";

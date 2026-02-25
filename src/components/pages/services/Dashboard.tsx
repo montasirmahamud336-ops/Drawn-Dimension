@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { getApiBaseUrl } from "@/components/admin/adminAuth";
 
 interface Quote {
   id: string;
@@ -85,20 +86,6 @@ const createEmptyProfile = (email?: string | null): ProfileDraft => ({
   bio: "",
   job_role: "",
 });
-
-const getApiBaseUrl = () => {
-  const envBase = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
-  if (envBase && envBase.trim().length > 0) {
-    return envBase.replace(/\/$/, "");
-  }
-
-  const { protocol, hostname } = window.location;
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return `${protocol}//${hostname}:4000`;
-  }
-
-  return window.location.origin.replace(/\/$/, "");
-};
 
 const Dashboard = () => {
   const { user, session, signOut, loading: authLoading } = useAuth();
