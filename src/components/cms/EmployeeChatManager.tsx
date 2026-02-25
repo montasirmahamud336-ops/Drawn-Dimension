@@ -184,7 +184,7 @@ const EmployeeChatManager = () => {
       if (selectedEmployeeId) {
         fetchMessages(selectedEmployeeId, true);
       }
-    }, 7000);
+    }, 15000);
 
     return () => window.clearInterval(timer);
   }, [selectedEmployeeId]);

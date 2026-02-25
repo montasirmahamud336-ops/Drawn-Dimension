@@ -110,7 +110,7 @@ const ChatWidget = () => {
     if (!isEmployeeDashboardRoute || !open || !session?.access_token) return;
     const timer = window.setInterval(() => {
       loadEmployeeMessages(true);
-    }, 7000);
+    }, 15000);
     return () => window.clearInterval(timer);
   }, [isEmployeeDashboardRoute, open, session?.access_token]);
 

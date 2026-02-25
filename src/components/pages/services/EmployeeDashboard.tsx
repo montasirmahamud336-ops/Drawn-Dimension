@@ -265,16 +265,17 @@ const EmployeeDashboard = () => {
   );
 
   useEffect(() => {
+    if (!showInboxFullView) return;
     loadEmployeeChat();
-  }, [loadEmployeeChat]);
+  }, [loadEmployeeChat, showInboxFullView]);
 
   useEffect(() => {
-    if (!session?.access_token) return;
+    if (!session?.access_token || !showInboxFullView) return;
     const timer = window.setInterval(() => {
       loadEmployeeChat(true);
-    }, 7000);
+    }, 15000);
     return () => window.clearInterval(timer);
-  }, [loadEmployeeChat, session?.access_token]);
+  }, [loadEmployeeChat, session?.access_token, showInboxFullView]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

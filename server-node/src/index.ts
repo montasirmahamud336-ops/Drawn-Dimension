@@ -77,7 +77,7 @@ if (env.corsOrigin.length > 0) {
   );
 }
 
-app.use(rateLimit({ windowMs: 10 * 60 * 1000, max: 120 }));
+app.use(rateLimit({ windowMs: 10 * 60 * 1000, max: 300 }));
 
 app.use(authRoutes);
 app.use(projectRoutes);
