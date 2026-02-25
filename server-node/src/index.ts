@@ -28,7 +28,52 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(uploadsPath));
 
 if (env.corsOrigin.length > 0) {
-  app.use(cors({ origin: env.corsOrigin, credentials: false }));
+  const normalizedOrigins = env.corsOrigin
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+
+  const allowedOrigins = new Set(normalizedOrigins);
+  const allowedHosts = new Set(
+    normalizedOrigins
+      .map((origin) => {
+        try {
+          return new URL(origin).host.toLowerCase();
+        } catch {
+          return "";
+        }
+      })
+      .filter(Boolean)
+  );
+
+  app.use(
+    cors({
+      credentials: false,
+      origin: (origin, callback) => {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+
+        const normalized = origin.trim().replace(/\/+$/, "");
+        if (allowedOrigins.has(normalized)) {
+          callback(null, true);
+          return;
+        }
+
+        try {
+          const host = new URL(normalized).host.toLowerCase();
+          if (allowedHosts.has(host)) {
+            callback(null, true);
+            return;
+          }
+        } catch {
+          // ignore parse errors and reject below
+        }
+
+        callback(new Error(`Origin not allowed by CORS: ${origin}`));
+      },
+    })
+  );
 }
 
 app.use(rateLimit({ windowMs: 10 * 60 * 1000, max: 120 }));
