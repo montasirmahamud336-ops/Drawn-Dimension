@@ -1,7 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Camera, CheckCircle2, Clock3, Loader2, LogOut, Paperclip, Save, Send } from "lucide-react";
+import { Camera, CheckCircle2, Clock3, Loader2, LogOut, Paperclip, Save, Send, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -61,6 +61,8 @@ type SubmissionDraft = {
   note: string;
   fileUrl: string;
 };
+
+type AssignmentView = "all" | "active" | "submitted" | "completed";
 
 const defaultSubmissionDraft: SubmissionDraft = {
   note: "",
@@ -126,6 +128,13 @@ const buildSafeFileName = (value: string) =>
     .replace(/[^a-zA-Z0-9._-]/g, "")
     .slice(0, 120) || "file";
 
+const truncateText = (value: string | null | undefined, max = 140) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "-";
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}...`;
+};
+
 const EmployeeDashboard = () => {
   const { user, session, signOut, loading: authLoading } = useAuth();
   const location = useLocation();
@@ -145,6 +154,7 @@ const EmployeeDashboard = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [submissionDrafts, setSubmissionDrafts] = useState<Record<string, SubmissionDraft>>({});
   const [submittingAssignmentId, setSubmittingAssignmentId] = useState<string | null>(null);
+  const [assignmentView, setAssignmentView] = useState<AssignmentView>("all");
   const [chatMessages, setChatMessages] = useState<EmployeeChatMessage[]>([]);
   const [loadingChat, setLoadingChat] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
@@ -158,6 +168,7 @@ const EmployeeDashboard = () => {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const chatAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const completedFocusRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -290,6 +301,14 @@ const EmployeeDashboard = () => {
     return () => window.cancelAnimationFrame(id);
   }, [showInboxFullView]);
 
+  useEffect(() => {
+    if (assignmentView !== "completed") return;
+    const id = window.requestAnimationFrame(() => {
+      completedFocusRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [assignmentView]);
+
   const activeAssignments = useMemo(
     () => assignments.filter((item) => item.status !== "done" && item.status !== "draft"),
     [assignments]
@@ -305,6 +324,27 @@ const EmployeeDashboard = () => {
     () => assignments.filter((item) => item.status === "done"),
     [assignments]
   );
+
+  const nonDraftAssignments = useMemo(
+    () => assignments.filter((item) => item.status !== "draft"),
+    [assignments]
+  );
+
+  const assignmentsInView = useMemo(() => {
+    if (assignmentView === "active") return activeAssignments;
+    if (assignmentView === "submitted") return submittedAssignments;
+    if (assignmentView === "completed") return doneAssignments;
+    return nonDraftAssignments;
+  }, [assignmentView, activeAssignments, submittedAssignments, doneAssignments, nonDraftAssignments]);
+
+  const latestCompletedAssignment = useMemo(() => {
+    if (doneAssignments.length === 0) return null;
+    return [...doneAssignments].sort((a, b) => {
+      const aTime = new Date(a.employee_submission_at ?? a.created_at ?? 0).getTime();
+      const bTime = new Date(b.employee_submission_at ?? b.created_at ?? 0).getTime();
+      return bTime - aTime;
+    })[0];
+  }, [doneAssignments]);
 
   const hasProfileChanges = useMemo(() => {
     if (!employee) return false;
@@ -618,10 +658,14 @@ const EmployeeDashboard = () => {
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-3xl border border-primary/20 bg-card/70 p-6 md:p-8"
+              className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card/90 via-card/75 to-primary/5 p-6 md:p-8 shadow-[0_30px_100px_-55px_rgba(239,68,68,0.8)] backdrop-blur"
             >
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-primary/90">
+                    <Sparkles className="h-3 w-3" />
+                    Work Intelligence Panel
+                  </span>
                   <h1 className="text-3xl md:text-4xl font-bold">Employee Dashboard</h1>
                   <p className="text-muted-foreground mt-2">
                     {employee
@@ -723,56 +767,191 @@ const EmployeeDashboard = () => {
               </Card>
 
               <div className="lg:col-span-2 grid md:grid-cols-3 gap-4">
-                <Card className="glass-card border-border/60">
-                  <CardContent className="p-5">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center mb-4">
-                      <Clock3 className="w-5 h-5" />
-                    </div>
-                    <p className="text-2xl font-bold">{activeAssignments.length}</p>
-                    <p className="text-sm text-muted-foreground">Active</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-card border-border/60">
-                  <CardContent className="p-5">
-                    <div className="w-10 h-10 rounded-xl bg-violet-500/20 text-violet-500 flex items-center justify-center mb-4">
-                      <Send className="w-5 h-5" />
-                    </div>
-                    <p className="text-2xl font-bold">{submittedAssignments.length}</p>
-                    <p className="text-sm text-muted-foreground">Submitted</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-card border-border/60">
-                  <CardContent className="p-5">
-                    <div className="w-10 h-10 rounded-xl bg-green-500/20 text-green-500 flex items-center justify-center mb-4">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                    <p className="text-2xl font-bold">{doneAssignments.length}</p>
-                    <p className="text-sm text-muted-foreground">Completed</p>
-                  </CardContent>
-                </Card>
+                {([
+                  {
+                    key: "active" as const,
+                    label: "Active",
+                    count: activeAssignments.length,
+                    icon: Clock3,
+                    iconClass: "bg-blue-500/20 text-blue-400",
+                    selectedClass: "border-blue-400/40 bg-blue-500/10 shadow-[0_18px_60px_-40px_rgba(59,130,246,0.85)]",
+                  },
+                  {
+                    key: "submitted" as const,
+                    label: "Submitted",
+                    count: submittedAssignments.length,
+                    icon: Send,
+                    iconClass: "bg-violet-500/20 text-violet-400",
+                    selectedClass: "border-violet-400/40 bg-violet-500/10 shadow-[0_18px_60px_-40px_rgba(139,92,246,0.85)]",
+                  },
+                  {
+                    key: "completed" as const,
+                    label: "Completed",
+                    count: doneAssignments.length,
+                    icon: CheckCircle2,
+                    iconClass: "bg-green-500/20 text-green-400",
+                    selectedClass: "border-green-400/40 bg-green-500/10 shadow-[0_18px_60px_-40px_rgba(34,197,94,0.85)]",
+                  },
+                ]).map((metric) => {
+                  const Icon = metric.icon;
+                  const isSelected = assignmentView === metric.key;
+                  return (
+                    <button
+                      key={metric.key}
+                      type="button"
+                      onClick={() => setAssignmentView(metric.key)}
+                      className="text-left"
+                    >
+                      <Card
+                        className={`h-full border transition-all duration-300 ${
+                          isSelected
+                            ? metric.selectedClass
+                            : "glass-card border-border/60 hover:border-primary/30 hover:bg-card/80"
+                        }`}
+                      >
+                        <CardContent className="p-5">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${metric.iconClass}`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <p className="text-3xl font-bold leading-none">{metric.count}</p>
+                          <p className="mt-2 text-sm text-muted-foreground">{metric.label}</p>
+                          <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">
+                            {isSelected ? "Focused" : "Click to focus"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </button>
+                  );
+                })}
               </div>
             </section>
 
+            {assignmentView === "completed" && (
+              <motion.section
+                ref={completedFocusRef}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-green-400/30 bg-gradient-to-r from-green-500/15 via-emerald-500/10 to-green-500/5 p-4 md:p-5"
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-green-300/90">Completed Focus</p>
+                    <h3 className="text-lg font-semibold mt-1">Latest completed work details</h3>
+                  </div>
+                  <Badge className="bg-green-500/20 text-green-200 border border-green-300/30 hover:bg-green-500/25">
+                    {doneAssignments.length} Completed
+                  </Badge>
+                </div>
+
+                {latestCompletedAssignment ? (
+                  <div className="mt-4 rounded-xl border border-green-300/30 bg-black/20 p-4">
+                    <div className="grid gap-3 md:grid-cols-[1.2fr_2fr_auto_auto] md:items-start">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.16em] text-green-200/70">Work</p>
+                        <p className="font-semibold mt-1">{latestCompletedAssignment.work_title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Duration: {latestCompletedAssignment.work_duration}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.16em] text-green-200/70">Details</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {truncateText(latestCompletedAssignment.work_details, 220)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.16em] text-green-200/70">Payment</p>
+                        <p className="text-sm font-medium mt-1">
+                          {formatPaymentAmount(latestCompletedAssignment.payment_amount)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {latestCompletedAssignment.payment_status}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.16em] text-green-200/70">Submitted</p>
+                        <p className="text-sm mt-1">
+                          {latestCompletedAssignment.employee_submission_at
+                            ? new Date(latestCompletedAssignment.employee_submission_at).toLocaleString()
+                            : "-"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-4">No completed work found yet.</p>
+                )}
+              </motion.section>
+            )}
+
             <Card className="glass-card border-border/60 overflow-hidden">
-              <CardHeader>
-                <CardTitle>Assigned Work Details</CardTitle>
+              <CardHeader className="border-b border-border/40 bg-gradient-to-r from-card/70 via-card/40 to-primary/5">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <CardTitle>Assigned Work Details</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {assignmentView === "all"
+                        ? "Overview of all active and completed work."
+                        : assignmentView === "active"
+                          ? "Only in-progress assignments are shown."
+                          : assignmentView === "submitted"
+                            ? "Only submitted assignments awaiting completion are shown."
+                            : "Completed assignments with delivery history are shown."}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { key: "all" as const, label: "All" },
+                      { key: "active" as const, label: "Active" },
+                      { key: "submitted" as const, label: "Submitted" },
+                      { key: "completed" as const, label: "Completed" },
+                    ]).map((view) => {
+                      const isActiveView = assignmentView === view.key;
+                      return (
+                        <button
+                          key={view.key}
+                          type="button"
+                          onClick={() => setAssignmentView(view.key)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            isActiveView
+                              ? "border-primary/60 bg-primary/20 text-primary"
+                              : "border-border/60 bg-background/40 text-muted-foreground hover:border-primary/35 hover:text-foreground"
+                          }`}
+                        >
+                          {view.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {loading ? (
                   <div className="py-10 text-center text-muted-foreground">Loading assignments...</div>
                 ) : !employee ? (
                   <div className="py-10 text-center text-muted-foreground">
                     Your login email is not mapped to any employee yet. Please contact admin.
                   </div>
-                ) : assignments.length === 0 ? (
-                  <div className="py-10 text-center text-muted-foreground">No assignments yet.</div>
+                ) : assignmentsInView.length === 0 ? (
+                  <div className="py-10 text-center text-muted-foreground">
+                    {assignmentView === "completed"
+                      ? "No completed assignments yet."
+                      : assignmentView === "submitted"
+                        ? "No submitted assignments yet."
+                        : assignmentView === "active"
+                          ? "No active assignments right now."
+                          : "No assignments yet."}
+                  </div>
                 ) : (
                   <div className="space-y-3">
-                    {assignments.map((assignment) => (
-                      <div
+                    {assignmentsInView.map((assignment) => (
+                      <motion.div
                         key={assignment.id}
+                        whileHover={{ y: -2 }}
+                        transition={{ duration: 0.2 }}
                         className={`rounded-xl border p-4 ${assignment.status === "done"
                           ? "border-green-500/30 bg-green-500/10"
                           : assignment.employee_submission_status === "submitted"
@@ -877,7 +1056,7 @@ const EmployeeDashboard = () => {
                             </Button>
                           </div>
                         )}
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}

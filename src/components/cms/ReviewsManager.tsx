@@ -128,11 +128,15 @@ const ReviewsManager = () => {
     const handleSave = async (data: any) => {
         try {
             const token = getAdminToken();
-            const url = isEditing && currentReview
+            if (!token) {
+                toast.error("Session expired. Please login again.");
+                return;
+            }
+            const isUpdate = Boolean(currentReview?.id);
+            const url = isUpdate
                 ? `${apiBase}/reviews/${currentReview.id}`
                 : `${apiBase}/reviews`;
-
-            const method = isEditing ? "PATCH" : "POST";
+            const method = isUpdate ? "PATCH" : "POST";
 
             const response = await fetch(url, {
                 method,
@@ -147,9 +151,18 @@ const ReviewsManager = () => {
                 setIsEditing(false);
                 setCurrentReview(null);
                 fetchReviews();
-                toast.success(isEditing ? "Review updated" : "Review uploaded successfully");
+                toast.success(isUpdate ? "Review updated" : "Review uploaded successfully");
             } else {
-                toast.error("Failed to save review");
+                const contentType = response.headers.get("content-type") || "";
+                let message = "Failed to save review";
+                if (contentType.includes("application/json")) {
+                    const body = await response.json().catch(() => null);
+                    message = body?.detail || body?.message || message;
+                } else {
+                    const text = await response.text().catch(() => "");
+                    if (text) message = text;
+                }
+                toast.error(message);
             }
         } catch (error) {
             console.error("Error saving review:", error);
