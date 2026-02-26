@@ -5,16 +5,10 @@ import { Link } from "react-router-dom";
 const HeroSection = () => {
   const services = [
     {
-      icon: Code,
-      title: "Web Design & Development",
-      description: "Modern, responsive websites",
-      link: "/services/web-design"
-    },
-    {
-      icon: Ruler,
-      title: "AutoCAD Technical Drawings",
-      description: "Precision engineering drawings",
-      link: "/services/autocad"
+      icon: FileText,
+      title: "PFD & P&ID Diagrams",
+      description: "Process flow documentation",
+      link: "/services/pfd-pid"
     },
     {
       icon: Box,
@@ -23,10 +17,16 @@ const HeroSection = () => {
       link: "/services/solidworks"
     },
     {
-      icon: FileText,
-      title: "PFD & P&ID Diagrams",
-      description: "Process flow documentation",
-      link: "/services/pfd-pid"
+      icon: Ruler,
+      title: "AutoCAD Technical Drawings",
+      description: "Precision engineering drawings",
+      link: "/services/autocad"
+    },
+    {
+      icon: Code,
+      title: "Web Design & Development",
+      description: "Modern, responsive websites",
+      link: "/services/web-design"
     }
   ];
 

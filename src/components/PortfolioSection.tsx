@@ -3,12 +3,14 @@ import { useInView } from "framer-motion";
 import { useRef, useState } from "react";
 import { useLiveData } from "@/hooks/useLiveData";
 import { Link, useNavigate } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 
 const PortfolioSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [activeCategory, setActiveCategory] = useState("All");
   const navigate = useNavigate();
+  const whatsappUrl = "https://wa.me/8801775119416";
 
   interface Project {
     id: string;
@@ -38,7 +40,7 @@ const PortfolioSection = () => {
   };
 
   return (
-    <section id="portfolio" className="section-padding relative overflow-hidden bg-secondary/30">
+    <section id="portfolio" className="relative overflow-hidden bg-secondary/30 py-14 md:py-16 lg:py-20">
       <div className="container-narrow relative z-10" ref={ref}>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -147,14 +149,27 @@ const PortfolioSection = () => {
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="flex justify-center mt-12"
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-12"
         >
-          <Link
-            to="/portfolio"
-            className="inline-flex min-w-40 items-center justify-center rounded-full border border-primary/55 bg-primary/10 px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-primary transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_24px_rgba(239,68,68,0.35)]"
-          >
-            View More
-          </Link>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Link
+              to="/portfolio"
+              className="inline-flex min-w-40 items-center justify-center rounded-full border border-primary/55 bg-primary/10 px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-primary transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_24px_rgba(239,68,68,0.35)]"
+            >
+              View More
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-w-[250px] whitespace-nowrap items-center justify-center gap-2 rounded-full border border-emerald-600/50 dark:border-emerald-500/40 bg-emerald-500/16 dark:bg-emerald-500/12 px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-emerald-700 dark:text-emerald-300 shadow-[0_8px_20px_rgba(16,185,129,0.16)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/60"
+            >
+              Message on WhatsApp
+              <MessageCircle className="w-4 h-4" />
+            </a>
+          </motion.div>
         </motion.div>
       </div>
     </section>

@@ -3,13 +3,14 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import {
   Globe, PenTool, Box, GitBranch, ShieldCheck, Palette,
-  Wrench, ArrowRight, ArrowUpRight
+  Wrench, ArrowRight, ArrowUpRight, MessageCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const ServicesSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const whatsappUrl = "https://wa.me/8801775119416";
 
   const services = [
     { icon: Globe, title: "Web Design & Development", description: "Stunning, responsive websites built with modern technologies. From landing pages to complex web applications.", features: ["Custom Design", "React/Next.js", "E-commerce", "CMS Integration"], link: "/services/web-design" },
@@ -21,7 +22,7 @@ const ServicesSection = () => {
   ];
 
   return (
-    <section id="services" className="section-padding relative overflow-hidden bg-secondary/30">
+    <section id="services" className="relative overflow-hidden bg-secondary/30 py-14 md:py-16 lg:py-20">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(239,68,68,0.14),transparent_36%)] pointer-events-none" />
       <div className="container-narrow relative z-10" ref={ref}>
         <motion.div
@@ -97,12 +98,25 @@ const ServicesSection = () => {
           <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
             We offer a wide range of additional engineering and digital services tailored to your specific needs.
           </p>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Link to="/services" className="btn-primary inline-flex items-center gap-2">
-              View All Services
-              <ArrowUpRight className="w-4 h-4" />
-            </Link>
-          </motion.div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Link to="/services" className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto sm:min-w-[280px]">
+                View All Services
+                <ArrowUpRight className="w-4 h-4" />
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 h-[48px] w-full sm:w-auto sm:min-w-[280px] whitespace-nowrap px-8 rounded-xl border border-emerald-600/50 dark:border-emerald-500/35 bg-emerald-500/16 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/55 shadow-[0_8px_20px_rgba(16,185,129,0.16)] transition-all duration-300"
+              >
+                Message Us on WhatsApp
+                <MessageCircle className="w-4 h-4" />
+              </a>
+            </motion.div>
+          </div>
         </motion.div>
       </div>
     </section>

@@ -5,9 +5,10 @@ import type { Review } from "@/components/shared/reviews";
 
 interface TestimonialSliderProps {
   testimonials: Review[];
+  sectionClassName?: string;
 }
 
-const TestimonialSlider = ({ testimonials }: TestimonialSliderProps) => {
+const TestimonialSlider = ({ testimonials, sectionClassName }: TestimonialSliderProps) => {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ const TestimonialSlider = ({ testimonials }: TestimonialSliderProps) => {
   const t = testimonials[current];
 
   return (
-    <section className="py-12 md:py-16 lg:py-20 relative overflow-hidden">
+    <section className={`${sectionClassName ?? "py-12 md:py-16 lg:py-20"} relative overflow-hidden`}>
       <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
       <div className="container-narrow">
         <motion.div

@@ -52,9 +52,9 @@ ${details}
     {
       icon: Phone,
       title: "WhatsApp",
-      value: "+880 1924733432",
+      value: "+880 1775-119416",
       description: "Mon-Fri from 9am to 6pm",
-      href: "https://wa.me/8801924733432",
+      href: "https://wa.me/8801775119416",
     },
     {
       icon: MapPin,
