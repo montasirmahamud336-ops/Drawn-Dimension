@@ -1,7 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Camera, CheckCircle2, Clock3, Loader2, LogOut, Paperclip, Save, Send, Sparkles } from "lucide-react";
+import { BarChart3, Camera, CheckCircle2, Clock3, ListTodo, Loader2, LogOut, Paperclip, Save, Send, Sparkles, Wallet } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -346,6 +346,28 @@ const EmployeeDashboard = () => {
     })[0];
   }, [doneAssignments]);
 
+  const totalTrackedAssignments = nonDraftAssignments.length;
+
+  const completionRate = useMemo(() => {
+    if (totalTrackedAssignments === 0) return 0;
+    return Math.round((doneAssignments.length / totalTrackedAssignments) * 100);
+  }, [doneAssignments.length, totalTrackedAssignments]);
+
+  const submittedRate = useMemo(() => {
+    if (activeAssignments.length === 0) return 0;
+    return Math.round((submittedAssignments.length / activeAssignments.length) * 100);
+  }, [activeAssignments.length, submittedAssignments.length]);
+
+  const unpaidAmount = useMemo(() => {
+    let total = 0;
+    assignments.forEach((assignment) => {
+      if (assignment.status === "draft" || assignment.payment_status !== "unpaid") return;
+      const amount = parsePaymentAmount(assignment.payment_amount);
+      if (amount !== null) total += amount;
+    });
+    return total;
+  }, [assignments]);
+
   const hasProfileChanges = useMemo(() => {
     if (!employee) return false;
     const currentMobile = profileDraft.mobile.trim();
@@ -654,12 +676,15 @@ const EmployeeDashboard = () => {
         <Navigation />
 
         <main className="pt-28 pb-20 px-4">
-          <div className="container-narrow space-y-6">
+          <div className="container-narrow space-y-6 relative">
+            <div className="pointer-events-none absolute -top-16 -left-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+            <div className="pointer-events-none absolute top-[22rem] -right-20 h-60 w-60 rounded-full bg-blue-500/10 blur-3xl" />
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card/90 via-card/75 to-primary/5 p-6 md:p-8 shadow-[0_30px_100px_-55px_rgba(239,68,68,0.8)] backdrop-blur"
+              className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-card/95 via-card/80 to-primary/10 p-6 md:p-8 shadow-[0_30px_110px_-55px_rgba(239,68,68,0.8)] backdrop-blur"
             >
+              <div className="pointer-events-none absolute inset-x-10 -top-10 h-24 rounded-full bg-primary/20 blur-2xl" />
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-primary/90">
@@ -680,8 +705,8 @@ const EmployeeDashboard = () => {
             </motion.section>
 
             <section className="grid lg:grid-cols-3 gap-4">
-              <Card className="glass-card border-border/60 lg:col-span-1">
-                <CardHeader>
+              <Card className="glass-card border-border/60 lg:col-span-1 overflow-hidden">
+                <CardHeader className="border-b border-border/40 bg-gradient-to-r from-card/80 to-primary/5">
                   <CardTitle className="text-xl">My Profile</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -772,29 +797,40 @@ const EmployeeDashboard = () => {
                     key: "active" as const,
                     label: "Active",
                     count: activeAssignments.length,
+                    note: "Running assignments",
                     icon: Clock3,
                     iconClass: "bg-blue-500/20 text-blue-400",
+                    progressClass: "bg-blue-400/90",
                     selectedClass: "border-blue-400/40 bg-blue-500/10 shadow-[0_18px_60px_-40px_rgba(59,130,246,0.85)]",
                   },
                   {
                     key: "submitted" as const,
                     label: "Submitted",
                     count: submittedAssignments.length,
+                    note: "Awaiting completion",
                     icon: Send,
                     iconClass: "bg-violet-500/20 text-violet-400",
+                    progressClass: "bg-violet-400/90",
                     selectedClass: "border-violet-400/40 bg-violet-500/10 shadow-[0_18px_60px_-40px_rgba(139,92,246,0.85)]",
                   },
                   {
                     key: "completed" as const,
                     label: "Completed",
                     count: doneAssignments.length,
+                    note: "Delivered successfully",
                     icon: CheckCircle2,
                     iconClass: "bg-green-500/20 text-green-400",
+                    progressClass: "bg-green-400/90",
                     selectedClass: "border-green-400/40 bg-green-500/10 shadow-[0_18px_60px_-40px_rgba(34,197,94,0.85)]",
                   },
                 ]).map((metric) => {
                   const Icon = metric.icon;
                   const isSelected = assignmentView === metric.key;
+                  const denominator =
+                    metric.key === "submitted"
+                      ? Math.max(activeAssignments.length, 1)
+                      : Math.max(totalTrackedAssignments, 1);
+                  const progress = metric.count === 0 ? 0 : Math.max(14, Math.round((metric.count / denominator) * 100));
                   return (
                     <button
                       key={metric.key}
@@ -806,7 +842,7 @@ const EmployeeDashboard = () => {
                         className={`h-full border transition-all duration-300 ${
                           isSelected
                             ? metric.selectedClass
-                            : "glass-card border-border/60 hover:border-primary/30 hover:bg-card/80"
+                            : "glass-card border-border/60 hover:border-primary/30 hover:bg-card/80 hover:shadow-[0_18px_48px_-36px_rgba(255,255,255,0.4)]"
                         }`}
                       >
                         <CardContent className="p-5">
@@ -815,9 +851,16 @@ const EmployeeDashboard = () => {
                           </div>
                           <p className="text-3xl font-bold leading-none">{metric.count}</p>
                           <p className="mt-2 text-sm text-muted-foreground">{metric.label}</p>
+                          <p className="mt-1 text-xs text-muted-foreground/80">{metric.note}</p>
                           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">
                             {isSelected ? "Focused" : "Click to focus"}
                           </p>
+                          <div className="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${metric.progressClass}`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
                         </CardContent>
                       </Card>
                     </button>
@@ -825,6 +868,52 @@ const EmployeeDashboard = () => {
                 })}
               </div>
             </section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="grid md:grid-cols-3 gap-3"
+            >
+              <Card className="border border-emerald-400/25 bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-[0.14em] text-emerald-200/90">Completion Rate</p>
+                    <BarChart3 className="w-4 h-4 text-emerald-300" />
+                  </div>
+                  <p className="mt-2 text-3xl font-semibold">{completionRate}%</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {doneAssignments.length} of {totalTrackedAssignments} assignments completed
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-violet-400/25 bg-gradient-to-br from-violet-500/20 via-violet-500/10 to-transparent">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-[0.14em] text-violet-200/90">Submission Momentum</p>
+                    <ListTodo className="w-4 h-4 text-violet-300" />
+                  </div>
+                  <p className="mt-2 text-3xl font-semibold">{submittedRate}%</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {submittedAssignments.length} submitted from {activeAssignments.length} active works
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-amber-400/25 bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-transparent">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-[0.14em] text-amber-200/90">Unpaid Pipeline</p>
+                    <Wallet className="w-4 h-4 text-amber-300" />
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold">{formatPaymentAmount(unpaidAmount)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pending settlement across unpaid assignments
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.section>
 
             {assignmentView === "completed" && (
               <motion.section
@@ -899,7 +988,10 @@ const EmployeeDashboard = () => {
                           ? "Only in-progress assignments are shown."
                           : assignmentView === "submitted"
                             ? "Only submitted assignments awaiting completion are shown."
-                            : "Completed assignments with delivery history are shown."}
+                          : "Completed assignments with delivery history are shown."}
+                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80 mt-2">
+                      Showing {assignmentsInView.length} assignment{assignmentsInView.length === 1 ? "" : "s"}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -936,14 +1028,35 @@ const EmployeeDashboard = () => {
                     Your login email is not mapped to any employee yet. Please contact admin.
                   </div>
                 ) : assignmentsInView.length === 0 ? (
-                  <div className="py-10 text-center text-muted-foreground">
-                    {assignmentView === "completed"
-                      ? "No completed assignments yet."
-                      : assignmentView === "submitted"
-                        ? "No submitted assignments yet."
-                        : assignmentView === "active"
-                          ? "No active assignments right now."
-                          : "No assignments yet."}
+                  <div className="py-8">
+                    <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-border/50 bg-background/35 px-6 py-10 text-center">
+                      <div className="mx-auto mb-3 w-fit rounded-xl border border-border/60 bg-card/70 p-3">
+                        <ListTodo className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <p className="text-base font-medium">
+                        {assignmentView === "completed"
+                          ? "No completed assignments yet."
+                          : assignmentView === "submitted"
+                            ? "No submitted assignments yet."
+                            : assignmentView === "active"
+                              ? "No active assignments right now."
+                              : "No assignments yet."}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Try switching the filter to explore other work buckets.
+                      </p>
+                      {assignmentView !== "all" && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-4"
+                          onClick={() => setAssignmentView("all")}
+                        >
+                          View All Assignments
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -952,16 +1065,25 @@ const EmployeeDashboard = () => {
                         key={assignment.id}
                         whileHover={{ y: -2 }}
                         transition={{ duration: 0.2 }}
-                        className={`rounded-xl border p-4 ${assignment.status === "done"
-                          ? "border-green-500/30 bg-green-500/10"
+                        className={`group relative overflow-hidden rounded-xl border p-4 ${assignment.status === "done"
+                          ? "border-green-500/30 bg-gradient-to-br from-green-500/12 via-green-500/8 to-transparent"
                           : assignment.employee_submission_status === "submitted"
-                            ? "border-violet-500/30 bg-violet-500/10"
-                            : "border-border/70 bg-card/60"
+                            ? "border-violet-500/30 bg-gradient-to-br from-violet-500/12 via-violet-500/8 to-transparent"
+                            : "border-border/70 bg-gradient-to-br from-card/80 to-card/40"
                           }`}
                       >
+                        <div
+                          className={`pointer-events-none absolute left-0 top-0 h-full w-1 ${
+                            assignment.status === "done"
+                              ? "bg-green-400/80"
+                              : assignment.employee_submission_status === "submitted"
+                                ? "bg-violet-400/80"
+                                : "bg-blue-400/80"
+                          }`}
+                        />
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                           <div>
-                            <h3 className="font-semibold text-lg">{assignment.work_title}</h3>
+                            <h3 className="font-semibold text-lg tracking-tight">{assignment.work_title}</h3>
                             <p className="text-sm text-muted-foreground mt-1">Duration: {assignment.work_duration}</p>
                             <p className="text-sm text-muted-foreground mt-1">
                               Payment: {formatPaymentAmount(assignment.payment_amount)} ({assignment.payment_status})
