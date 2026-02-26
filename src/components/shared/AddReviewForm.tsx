@@ -50,15 +50,6 @@ const AddReviewForm = ({ onSubmitted }: AddReviewFormProps) => {
       return false;
     }
 
-    if (form.role.trim().length < 2) {
-      toast({
-        title: "Role is required",
-        description: "Please add your role or company.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
     if (!form.service.trim()) {
       toast({
         title: "Select a service",
@@ -162,13 +153,12 @@ const AddReviewForm = ({ onSubmitted }: AddReviewFormProps) => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm text-foreground/90 font-medium">Role / Company</label>
+                  <label className="text-sm text-foreground/90 font-medium">Role / Company (Optional)</label>
                   <Input
                     value={form.role}
                     onChange={(event) => onChange("role", event.target.value)}
                     placeholder="Founder, Example Inc"
                     maxLength={120}
-                    required
                   />
                 </div>
               </div>

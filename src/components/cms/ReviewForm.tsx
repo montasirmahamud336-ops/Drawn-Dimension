@@ -214,13 +214,12 @@ const ReviewForm = ({ initialData, onSave, onCancel }: ReviewFormProps) => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="role">Role/Title *</Label>
+                            <Label htmlFor="role">Role/Title (Optional)</Label>
                             <Input
                                 id="role"
                                 name="role"
                                 value={formData.role}
                                 onChange={handleChange}
-                                required
                                 placeholder="e.g. CEO"
                             />
                         </div>
