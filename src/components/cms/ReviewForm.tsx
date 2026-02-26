@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Loader2, Save, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminToken } from "@/components/admin/adminAuth";
 import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
+import { SERVICES } from "@/data/servicesData";
 
 interface Review {
     id?: string;
@@ -28,10 +29,35 @@ interface ReviewFormProps {
     onCancel: () => void;
 }
 
+const REVIEW_SERVICE_STORAGE_KEY = "cms.review.service_options";
+
+const normalizeOption = (value: string) => value.trim().replace(/\s+/g, " ");
+
+const mergeUniqueOptions = (...groups: (string[] | undefined)[]) => {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+
+    groups.forEach((group) => {
+        (group || []).forEach((raw) => {
+            if (typeof raw !== "string") return;
+            const normalized = normalizeOption(raw);
+            if (!normalized || seen.has(normalized)) return;
+            seen.add(normalized);
+            merged.push(normalized);
+        });
+    });
+
+    return merged;
+};
+
 const ReviewForm = ({ initialData, onSave, onCancel }: ReviewFormProps) => {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [serviceOptions, setServiceOptions] = useState<string[]>(
+        mergeUniqueOptions([...SERVICES], initialData?.project ? [initialData.project] : [])
+    );
+    const [newServiceOption, setNewServiceOption] = useState("");
     const [formData, setFormData] = useState<Review>({
         name: initialData?.name || "",
         role: initialData?.role || "",
@@ -44,6 +70,46 @@ const ReviewForm = ({ initialData, onSave, onCancel }: ReviewFormProps) => {
         id: initialData?.id,
     });
 
+    const persistServiceOptions = (next: string[]) => {
+        setServiceOptions(next);
+        try {
+            localStorage.setItem(REVIEW_SERVICE_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+            // Non-blocking: form still works even if persistence is unavailable.
+        }
+    };
+
+    useEffect(() => {
+        const defaults = mergeUniqueOptions([...SERVICES], initialData?.project ? [initialData.project] : []);
+        try {
+            const raw = localStorage.getItem(REVIEW_SERVICE_STORAGE_KEY);
+            if (!raw) {
+                setServiceOptions(defaults);
+                return;
+            }
+            const parsed = JSON.parse(raw);
+            const fromStorage = Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+            setServiceOptions(mergeUniqueOptions(defaults, fromStorage));
+        } catch {
+            setServiceOptions(defaults);
+        }
+    }, [initialData?.project]);
+
+    useEffect(() => {
+        const normalized = normalizeOption(formData.project || "");
+        if (!normalized) return;
+        setServiceOptions((prev) => {
+            if (prev.includes(normalized)) return prev;
+            const next = [...prev, normalized];
+            try {
+                localStorage.setItem(REVIEW_SERVICE_STORAGE_KEY, JSON.stringify(next));
+            } catch {
+                // Ignore persistence errors.
+            }
+            return next;
+        });
+    }, [formData.project]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
@@ -55,6 +121,36 @@ const ReviewForm = ({ initialData, onSave, onCancel }: ReviewFormProps) => {
 
     const handleStatusChange = (value: "draft" | "live") => {
         setFormData((prev) => ({ ...prev, status: value }));
+    };
+
+    const handleProjectChange = (value: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            project: value === "__none__" ? "" : value,
+        }));
+    };
+
+    const handleAddServiceOption = () => {
+        const normalized = normalizeOption(newServiceOption);
+        if (!normalized) return;
+        if (serviceOptions.includes(normalized)) {
+            setFormData((prev) => ({ ...prev, project: normalized }));
+            setNewServiceOption("");
+            return;
+        }
+
+        const next = [...serviceOptions, normalized];
+        persistServiceOptions(next);
+        setFormData((prev) => ({ ...prev, project: normalized }));
+        setNewServiceOption("");
+    };
+
+    const handleRemoveServiceOption = (option: string) => {
+        const next = serviceOptions.filter((item) => item !== option);
+        persistServiceOptions(next);
+        if (formData.project === option) {
+            setFormData((prev) => ({ ...prev, project: "" }));
+        }
     };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,13 +239,65 @@ const ReviewForm = ({ initialData, onSave, onCancel }: ReviewFormProps) => {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="project">Service / Project</Label>
-                            <Input
-                                id="project"
-                                name="project"
-                                value={formData.project}
-                                onChange={handleChange}
-                                placeholder="e.g. Web Development"
-                            />
+                            <Select value={formData.project || "__none__"} onValueChange={handleProjectChange}>
+                                <SelectTrigger id="project">
+                                    <SelectValue placeholder="Select a service/project" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__">No specific service</SelectItem>
+                                    {serviceOptions.map((option) => (
+                                        <SelectItem key={option} value={option}>
+                                            {option}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <div className="flex gap-2">
+                                <Input
+                                    value={newServiceOption}
+                                    onChange={(e) => setNewServiceOption(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleAddServiceOption();
+                                        }
+                                    }}
+                                    placeholder="Add new service option"
+                                />
+                                <Button type="button" variant="outline" onClick={handleAddServiceOption}>
+                                    Add
+                                </Button>
+                            </div>
+                            {serviceOptions.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {serviceOptions.map((option) => (
+                                        <div
+                                            key={`service-chip-${option}`}
+                                            className={`inline-flex items-center rounded-full border px-2 py-1 text-xs ${
+                                                formData.project === option
+                                                    ? "border-primary text-primary"
+                                                    : "border-border text-muted-foreground"
+                                            }`}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev) => ({ ...prev, project: option }))}
+                                                className="px-1"
+                                            >
+                                                {option}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveServiceOption(option)}
+                                                className="ml-1 text-muted-foreground hover:text-destructive"
+                                                aria-label={`Remove ${option}`}
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
@@ -13,7 +14,7 @@ import { Loader2, Upload, Users, X } from "lucide-react";
 interface TeamFormProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    member: any | null;
+    member: TeamMemberSnapshot | null;
     memberType: "leadership" | "employee";
     onSuccess: () => void;
 }
@@ -21,6 +22,19 @@ interface TeamFormProps {
 type MediaItem = {
     url: string;
     type: "image" | "video";
+};
+
+type TeamMemberSnapshot = {
+    id?: string;
+    name?: string;
+    role?: string;
+    bio?: string | null;
+    image_url?: string | null;
+    media?: Array<{ url?: string; type?: string }> | null;
+    linkedin_url?: string | null;
+    twitter_url?: string | null;
+    facebook_url?: string | null;
+    status?: string;
 };
 
 type PendingMedia = {
@@ -36,11 +50,11 @@ const detectMediaType = (value: string) => {
     return "image";
 };
 
-const normalizeMedia = (item: any): MediaItem[] => {
+const normalizeMedia = (item: TeamMemberSnapshot | null | undefined): MediaItem[] => {
     if (Array.isArray(item?.media) && item.media.length > 0) {
         return item.media
-            .filter((m: any) => typeof m?.url === "string" && m.url.length > 0)
-            .map((m: any) => ({
+            .filter((m): m is { url: string; type?: string } => typeof m?.url === "string" && m.url.length > 0)
+            .map((m) => ({
                 url: m.url,
                 type: m.type === "video" ? "video" : "image",
             }));
@@ -51,12 +65,62 @@ const normalizeMedia = (item: any): MediaItem[] => {
     return [];
 };
 
+const TEAM_ROLE_STORAGE_KEY_PREFIX = "cms.team.role_options";
+
+const DEFAULT_LEADERSHIP_ROLE_OPTIONS = [
+    "Chief Executive Officer",
+    "Chief Operating Officer",
+    "Project Manager",
+    "Lead Designer",
+    "Lead Engineer",
+];
+
+const DEFAULT_EMPLOYEE_ROLE_OPTIONS = [
+    "Mechanical Engineer",
+    "Chemical Engineer",
+    "Electrical Engineer",
+    "CAD Operator",
+    "Graphic Designer",
+];
+
+const normalizeOption = (value: string) => value.trim().replace(/\s+/g, " ");
+
+const mergeUniqueOptions = (...groups: (string[] | undefined)[]) => {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+
+    groups.forEach((group) => {
+        (group || []).forEach((raw) => {
+            if (typeof raw !== "string") return;
+            const normalized = normalizeOption(raw);
+            if (!normalized || seen.has(normalized)) return;
+            seen.add(normalized);
+            merged.push(normalized);
+        });
+    });
+
+    return merged;
+};
+
 const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFormProps) => {
-    const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
+    const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm();
     const [loading, setLoading] = useState(false);
     const [existingMedia, setExistingMedia] = useState<MediaItem[]>([]);
     const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
+    const [roleOptions, setRoleOptions] = useState<string[]>([]);
+    const [newRoleOption, setNewRoleOption] = useState("");
     const isEmployeeMode = memberType === "employee";
+    const roleValue = (watch("role") as string | undefined) || "";
+    const roleStorageKey = `${TEAM_ROLE_STORAGE_KEY_PREFIX}.${isEmployeeMode ? "employee" : "leadership"}`;
+
+    const persistRoleOptions = (next: string[]) => {
+        setRoleOptions(next);
+        try {
+            localStorage.setItem(roleStorageKey, JSON.stringify(next));
+        } catch {
+            // Ignore persistence issues and keep form functional.
+        }
+    };
 
     const clearPendingMedia = () => {
         setPendingMedia((prev) => {
@@ -68,8 +132,8 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
     useEffect(() => {
         if (!open) return;
         if (member) {
-            setValue("name", member.name);
-            setValue("role", member.role);
+            setValue("name", member.name || "");
+            setValue("role", member.role || "");
             setValue("bio", member.bio || "");
             setValue("linkedin_url", member.linkedin_url || "");
             setValue("twitter_url", member.twitter_url || "");
@@ -81,6 +145,41 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
         }
         clearPendingMedia();
     }, [member, open, reset, setValue, memberType]);
+
+    useEffect(() => {
+        if (!open) return;
+        const defaults = isEmployeeMode ? DEFAULT_EMPLOYEE_ROLE_OPTIONS : DEFAULT_LEADERSHIP_ROLE_OPTIONS;
+        let stored: string[] = [];
+        try {
+            const raw = localStorage.getItem(roleStorageKey);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                stored = Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+            }
+        } catch {
+            stored = [];
+        }
+        const currentRole = typeof member?.role === "string" ? member.role : "";
+        const combined = mergeUniqueOptions(defaults, stored, currentRole ? [currentRole] : []);
+        setRoleOptions(combined);
+        setNewRoleOption("");
+    }, [open, member?.role, isEmployeeMode, roleStorageKey]);
+
+    useEffect(() => {
+        const normalized = normalizeOption(roleValue);
+        if (!normalized) return;
+
+        setRoleOptions((prev) => {
+            if (prev.includes(normalized)) return prev;
+            const next = [...prev, normalized];
+            try {
+                localStorage.setItem(roleStorageKey, JSON.stringify(next));
+            } catch {
+                // Non-blocking.
+            }
+            return next;
+        });
+    }, [roleStorageKey, roleValue]);
 
     useEffect(() => {
         return () => {
@@ -128,7 +227,34 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
         });
     };
 
-    const onSubmit = async (data: any) => {
+    const handleRoleChange = (value: string) => {
+        setValue("role", value, { shouldDirty: true, shouldValidate: true });
+    };
+
+    const handleAddRoleOption = () => {
+        const normalized = normalizeOption(newRoleOption);
+        if (!normalized) return;
+        if (roleOptions.includes(normalized)) {
+            handleRoleChange(normalized);
+            setNewRoleOption("");
+            return;
+        }
+
+        const next = [...roleOptions, normalized];
+        persistRoleOptions(next);
+        handleRoleChange(normalized);
+        setNewRoleOption("");
+    };
+
+    const handleRemoveRoleOption = (option: string) => {
+        const next = roleOptions.filter((item) => item !== option);
+        persistRoleOptions(next);
+        if (roleValue === option) {
+            setValue("role", "", { shouldDirty: true, shouldValidate: true });
+        }
+    };
+
+    const onSubmit = async (data: Record<string, unknown>) => {
         setLoading(true);
         const apiBase = getApiBaseUrl();
         const token = getAdminToken();
@@ -160,20 +286,28 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
                 throw new Error(isEmployeeMode ? "Please upload an employee image" : "Please upload at least one image or video");
             }
 
+            const name = typeof data.name === "string" ? data.name : "";
+            const role = typeof data.role === "string" ? data.role : "";
+            const bio = typeof data.bio === "string" ? data.bio : "";
+            const linkedinUrl = typeof data.linkedin_url === "string" ? data.linkedin_url : "";
+            const twitterUrl = typeof data.twitter_url === "string" ? data.twitter_url : "";
+            const facebookUrl = typeof data.facebook_url === "string" ? data.facebook_url : "";
+
             const payload = {
-                name: data.name,
-                role: data.role,
-                bio: isEmployeeMode ? null : (data.bio || null),
+                name,
+                role,
+                bio: isEmployeeMode ? null : (bio || null),
                 image_url: finalMedia[0]?.url || null,
                 media: finalMedia,
-                linkedin_url: isEmployeeMode ? null : (data.linkedin_url || null),
-                twitter_url: isEmployeeMode ? null : (data.twitter_url || null),
-                facebook_url: isEmployeeMode ? null : (data.facebook_url || null),
+                linkedin_url: isEmployeeMode ? null : (linkedinUrl || null),
+                twitter_url: isEmployeeMode ? null : (twitterUrl || null),
+                facebook_url: isEmployeeMode ? null : (facebookUrl || null),
                 member_type: memberType,
                 status: member?.status || "live",
             };
 
-            const url = member ? `${apiBase}/team/${member.id}` : `${apiBase}/team`;
+            const memberId = member?.id;
+            const url = member && memberId ? `${apiBase}/team/${memberId}` : `${apiBase}/team`;
             const method = member ? "PATCH" : "POST";
 
             const res = await fetch(url, {
@@ -202,8 +336,8 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
             clearPendingMedia();
             onSuccess();
             onOpenChange(false);
-        } catch (error: any) {
-            toast.error(error.message || "Something went wrong");
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : "Something went wrong");
         } finally {
             setLoading(false);
         }
@@ -287,7 +421,69 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
 
                     <div className="grid gap-2">
                         <Label htmlFor="role">{isEmployeeMode ? "Profession" : "Role / Position"}</Label>
-                        <Input id="role" {...register("role", { required: true })} placeholder={isEmployeeMode ? "Mechanical Engineer" : "Lead Designer"} />
+                        <input type="hidden" {...register("role", { required: true })} />
+                        <Select
+                            value={roleValue || undefined}
+                            onValueChange={handleRoleChange}
+                        >
+                            <SelectTrigger id="role">
+                                <SelectValue placeholder={isEmployeeMode ? "Select profession" : "Select role / position"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {roleOptions.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                        {option}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <div className="flex gap-2">
+                            <Input
+                                value={newRoleOption}
+                                onChange={(e) => setNewRoleOption(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleAddRoleOption();
+                                    }
+                                }}
+                                placeholder={isEmployeeMode ? "Add new profession option" : "Add new role option"}
+                            />
+                            <Button type="button" variant="outline" onClick={handleAddRoleOption}>
+                                Add
+                            </Button>
+                        </div>
+                        {roleOptions.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {roleOptions.map((option) => (
+                                    <div
+                                        key={`role-chip-${option}`}
+                                        className={`inline-flex items-center rounded-full border px-2 py-1 text-xs ${
+                                            roleValue === option
+                                                ? "border-primary text-primary"
+                                                : "border-border text-muted-foreground"
+                                        }`}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRoleChange(option)}
+                                            className="px-1"
+                                        >
+                                            {option}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveRoleOption(option)}
+                                            className="ml-1 text-muted-foreground hover:text-destructive"
+                                            aria-label={`Remove ${option}`}
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {errors.role && <span className="text-destructive text-sm">Role is required</span>}
                     </div>
 
                     {!isEmployeeMode && (
