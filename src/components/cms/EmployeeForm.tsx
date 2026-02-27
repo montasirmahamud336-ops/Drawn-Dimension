@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -200,9 +201,8 @@ const EmployeeForm = ({ open, onOpenChange, employee, onSuccess }: EmployeeFormP
             <Label htmlFor="employee-login-password">
               {employee ? "Login Password (optional)" : "Login Password"}
             </Label>
-            <Input
+            <PasswordInput
               id="employee-login-password"
-              type="password"
               value={draft.login_password}
               onChange={(event) => setDraft((prev) => ({ ...prev, login_password: event.target.value }))}
               placeholder={employee ? "Leave blank to keep current password" : "Minimum 6 characters"}

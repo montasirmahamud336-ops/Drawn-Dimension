@@ -56,10 +56,10 @@ const Navigation = () => {
         : "bg-transparent"
         }`}
     >
-      <div className="container-narrow">
-        <div className="flex items-center justify-between h-20">
+      <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14 2xl:px-20">
+        <div className="relative flex h-20 items-center justify-between">
           {/* Left: Logo */}
-          <motion.div whileHover={{ scale: 1.02 }}>
+          <motion.div whileHover={{ scale: 1.02 }} className="z-20">
             <Link
               to="/"
               className="flex items-center gap-3"
@@ -126,7 +126,7 @@ const Navigation = () => {
           </div>
 
           {/* Right: Theme Toggle + Auth */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3 ml-auto z-20">
             <ThemeToggle />
             {user ? (
               <div className="flex items-center gap-3">
@@ -144,11 +144,21 @@ const Navigation = () => {
                 </button>
               </div>
             ) : (
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                <Link to="/auth" className="btn-primary text-sm py-3 px-6">
-                  Sign In
-                </Link>
-              </motion.div>
+              <div className="flex items-center gap-2">
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
+                  <Link to="/contact" className="btn-outline h-10 min-w-[132px] px-5 py-2 text-sm rounded-lg">
+                    Get Started
+                  </Link>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
+                  <Link
+                    to="/auth?mode=signup"
+                    className="btn-primary h-10 min-w-[132px] px-5 py-2 text-sm rounded-lg"
+                  >
+                    Sign Up
+                  </Link>
+                </motion.div>
+              </div>
             )}
           </div>
 
@@ -248,9 +258,14 @@ const Navigation = () => {
                   </button>
                 </div>
               ) : (
-                <Link to="/auth" className="btn-primary text-center mt-4">
-                  Sign In
-                </Link>
+                <div className="flex flex-col gap-2 mt-4">
+                  <Link to="/contact" className="btn-outline text-center h-11">
+                    Get Started
+                  </Link>
+                  <Link to="/auth?mode=signup" className="btn-primary text-center h-11">
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
           </motion.div>

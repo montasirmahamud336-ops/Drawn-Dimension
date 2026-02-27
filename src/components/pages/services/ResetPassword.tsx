@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, ArrowRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
@@ -111,7 +111,7 @@ const ResetPassword = () => {
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input {...field} type="password" placeholder="********" className="pl-10" />
+                              <PasswordInput {...field} placeholder="********" className="pl-10" />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -127,7 +127,7 @@ const ResetPassword = () => {
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input {...field} type="password" placeholder="********" className="pl-10" />
+                              <PasswordInput {...field} placeholder="********" className="pl-10" />
                             </div>
                           </FormControl>
                           <FormMessage />

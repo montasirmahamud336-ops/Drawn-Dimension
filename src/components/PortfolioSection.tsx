@@ -1,6 +1,5 @@
-import { motion } from "framer-motion";
-import { useInView } from "framer-motion";
-import { useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useMemo, useRef, useState } from "react";
 import { useLiveData } from "@/hooks/useLiveData";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
@@ -8,6 +7,7 @@ import { MessageCircle } from "lucide-react";
 const PortfolioSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const shouldReduceMotion = useReducedMotion();
   const [activeCategory, setActiveCategory] = useState("All");
   const navigate = useNavigate();
   const whatsappUrl = "https://wa.me/8801775119416";
@@ -22,18 +22,24 @@ const PortfolioSection = () => {
   }
 
   const { data: projects, loading } = useLiveData("projects");
+  const projectList = projects as Project[];
 
-  const uniqueCategories = [
-    "All",
-    ...Array.from(
-      new Set((projects as Project[]).map((p) => p.category || "Uncategorized"))
-    )
-  ];
+  const uniqueCategories = useMemo(
+    () => [
+      "All",
+      ...Array.from(new Set(projectList.map((p) => p.category || "Uncategorized"))),
+    ],
+    [projectList],
+  );
 
-  const filteredProjects = activeCategory === "All"
-    ? (projects as Project[])
-    : (projects as Project[]).filter(p => (p.category || "Uncategorized") === activeCategory);
-  const visibleProjects = filteredProjects.slice(0, 6);
+  const filteredProjects = useMemo(
+    () =>
+      activeCategory === "All"
+        ? projectList
+        : projectList.filter((p) => (p.category || "Uncategorized") === activeCategory),
+    [activeCategory, projectList],
+  );
+  const visibleProjects = useMemo(() => filteredProjects.slice(0, 6), [filteredProjects]);
   const openDetails = (project: Project) => {
     if (!project?.id) return;
     navigate(`/portfolio/${encodeURIComponent(project.id)}`, { viewTransition: true });
@@ -95,11 +101,14 @@ const PortfolioSection = () => {
               return (
                 <motion.div
                   key={project.id || index}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.5, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  transition={
+                    shouldReduceMotion
+                      ? { duration: 0 }
+                      : { duration: 0.34, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }
+                  }
                   className="group cursor-pointer"
                   onClick={() => openDetails(project)}
                 >
@@ -108,7 +117,11 @@ const PortfolioSection = () => {
                       <img
                         src={project.image_url || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=400&fit=crop"}
                         alt={project.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        width={600}
+                        height={400}
+                        loading={index < 3 ? "eager" : "lazy"}
+                        decoding="async"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="absolute top-4 left-4">
