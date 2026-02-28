@@ -3,12 +3,13 @@ import Footer from "@/components/Footer";
 import CTASection from "@/components/CTASection";
 import PageTransition from "@/components/shared/PageTransition";
 import PageHero from "@/components/shared/PageHero";
-import { motion, AnimatePresence } from "framer-motion";
-import { MouseEvent, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { MouseEvent, useEffect, useMemo, useState } from "react";
 import { ExternalLink, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import PremiumBackground from "@/components/shared/PremiumBackground";
 import { useLiveData } from "@/hooks/useLiveData";
 import { useNavigate } from "react-router-dom";
+import { buildCardImageSources } from "@/components/shared/mediaUrl";
 
 type MediaItem = {
   url: string;
@@ -49,18 +50,23 @@ const getDescriptionPreview = (value: unknown) => {
   return { text: shortened, truncated: true };
 };
 
-const PortfolioMedia = ({ project }: { project: any }) => {
+const PortfolioMedia = ({ project, cardIndex }: { project: any; cardIndex: number }) => {
   const media = getMediaList(project);
   const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState<1 | -1>(1);
   const current = media[index];
   const hasMany = media.length > 1;
+  const imageSources = current.type === "image" ? buildCardImageSources(current.url) : null;
+  const [isImageReady, setIsImageReady] = useState(current.type === "video");
+  const eagerImage = cardIndex < 3;
+
+  useEffect(() => {
+    setIsImageReady(current.type === "video");
+  }, [current.type, current.url]);
 
   const prev = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (!hasMany) return;
-    setDirection(-1);
     setIndex((i) => (i - 1 + media.length) % media.length);
   };
 
@@ -68,33 +74,41 @@ const PortfolioMedia = ({ project }: { project: any }) => {
     e.preventDefault();
     e.stopPropagation();
     if (!hasMany) return;
-    setDirection(1);
     setIndex((i) => (i + 1) % media.length);
   };
 
   return (
     <div className="relative overflow-hidden aspect-video">
-      <AnimatePresence initial={false} mode="wait" custom={direction}>
-        <motion.div
-          key={`${current.url}-${index}`}
-          custom={direction}
-          initial={{ opacity: 0, x: direction > 0 ? 24 : -24 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: direction > 0 ? -24 : 24 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-          className="absolute inset-0"
-        >
-          {current.type === "video" ? (
-            <video src={current.url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
-          ) : (
-            <img
-              src={current.url}
-              alt={project.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            />
-          )}
-        </motion.div>
-      </AnimatePresence>
+      {current.type === "video" ? (
+        <video
+          src={current.url}
+          className="w-full h-full object-cover"
+          muted
+          playsInline
+          preload="none"
+        />
+      ) : (
+        <>
+          <div
+            className={`absolute inset-0 bg-muted/35 transition-opacity duration-300 ${isImageReady ? "opacity-0" : "opacity-100"}`}
+            aria-hidden="true"
+          />
+          <img
+            src={imageSources?.src ?? current.url}
+            srcSet={imageSources?.srcSet}
+            alt={project.title}
+            width={800}
+            height={600}
+            loading={eagerImage ? "eager" : "lazy"}
+            fetchPriority={eagerImage ? "high" : "low"}
+            decoding="async"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onLoad={() => setIsImageReady(true)}
+            onError={() => setIsImageReady(true)}
+            className={`w-full h-full object-cover transition-[transform,opacity] duration-300 group-hover:scale-[1.02] ${isImageReady ? "opacity-100" : "opacity-0"}`}
+          />
+        </>
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="absolute top-4 left-4">
         <span className="text-xs px-3 py-1 rounded-full border border-primary/35 bg-primary/90 text-primary-foreground shadow-[0_8px_18px_rgba(239,68,68,0.35)]">
@@ -130,11 +144,15 @@ const PortfolioMedia = ({ project }: { project: any }) => {
 
 const Portfolio = () => {
   const [activeCategory, setActiveCategory] = useState("All");
+  const [visibleCount, setVisibleCount] = useState(9);
   const navigate = useNavigate();
 
   const categories = ["All", "Web Design", "CAD & 3D", "Engineering", "Branding"];
 
-  const { data: projects, loading } = useLiveData("projects");
+  const { data: projects, loading } = useLiveData("projects", {
+    cacheTimeMs: 120_000,
+    revalidate: false,
+  });
   const openDetails = (project: any) => {
     if (!project?.id) return;
     navigate(`/portfolio/${encodeURIComponent(project.id)}`, { viewTransition: true });
@@ -173,6 +191,16 @@ const Portfolio = () => {
   const filteredProjects = activeCategory === "All"
     ? normalizedProjects
     : normalizedProjects.filter((p: any) => p.displayCategory === activeCategory);
+  const visibleProjects = useMemo(
+    () => filteredProjects.slice(0, visibleCount),
+    [filteredProjects, visibleCount]
+  );
+  const hasMoreProjects = visibleCount < filteredProjects.length;
+
+  useEffect(() => {
+    const mobileCount = window.matchMedia("(max-width: 767px)").matches ? 6 : 9;
+    setVisibleCount(mobileCount);
+  }, [activeCategory]);
 
 
   return (
@@ -218,56 +246,61 @@ const Portfolio = () => {
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <AnimatePresence mode="wait">
-                    {filteredProjects.map((project: any, index: number) => {
-                      const description = getDescriptionPreview(project.description);
+                  {visibleProjects.map((project: any, index: number) => {
+                    const description = getDescriptionPreview(project.description);
 
-                      return (
-                        <motion.div
-                          key={project.id || project.title}
-                          layout
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ duration: 0.4, delay: index * 0.05 }}
-                          className="group cursor-pointer"
-                          onClick={() => openDetails(project)}
-                        >
-                          <div className="glass-card overflow-hidden h-full flex flex-col bg-[linear-gradient(158deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] border-border/60">
-                            <PortfolioMedia project={project} />
-                            <div className="p-6 flex-grow flex flex-col">
-                              <h3
-                                className="text-lg font-semibold tracking-tight text-foreground mb-2 min-h-14 overflow-hidden group-hover:text-primary transition-colors"
-                                style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+                    return (
+                      <div
+                        key={project.id || project.title}
+                        className="group cursor-pointer"
+                        onClick={() => openDetails(project)}
+                      >
+                        <div className="glass-card dark:backdrop-blur-0 overflow-hidden h-full flex flex-col bg-[linear-gradient(158deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] border-border/60">
+                          <PortfolioMedia project={project} cardIndex={index} />
+                          <div className="p-6 flex-grow flex flex-col">
+                            <h3
+                              className="text-lg font-semibold tracking-tight text-foreground mb-2 min-h-14 overflow-hidden group-hover:text-primary transition-colors"
+                              style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+                            >
+                              {project.title}
+                            </h3>
+                            <p
+                              className="text-sm text-muted-foreground/95 leading-relaxed mb-6 min-h-[6.5rem] overflow-hidden"
+                              style={{ display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}
+                            >
+                              {description.text}
+                              {description.truncated && <span className="ml-1 font-medium text-foreground/90">Read more....</span>}
+                            </p>
+                            <div className="mt-auto flex justify-center">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openDetails(project);
+                                }}
+                                className="inline-flex min-w-32 items-center justify-center rounded-full border border-primary/55 bg-primary/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_24px_rgba(239,68,68,0.35)]"
                               >
-                                {project.title}
-                              </h3>
-                              <p
-                                className="text-sm text-muted-foreground/95 leading-relaxed mb-6 min-h-[6.5rem] overflow-hidden"
-                                style={{ display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}
-                              >
-                                {description.text}
-                                {description.truncated && <span className="ml-1 font-medium text-foreground/90">Read more....</span>}
-                              </p>
-                              <div className="mt-auto flex justify-center">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    openDetails(project);
-                                  }}
-                                  className="inline-flex min-w-32 items-center justify-center rounded-full border border-primary/55 bg-primary/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_24px_rgba(239,68,68,0.35)]"
-                                >
-                                  View Work
-                                </button>
-                              </div>
+                                View Work
+                              </button>
                             </div>
                           </div>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!loading && hasMoreProjects && (
+                <div className="mt-10 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount((count) => count + 9)}
+                    className="inline-flex min-w-36 items-center justify-center rounded-full border border-primary/55 bg-primary/10 px-6 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] text-primary transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_24px_rgba(239,68,68,0.35)]"
+                  >
+                    Load More
+                  </button>
                 </div>
               )}
             </div>

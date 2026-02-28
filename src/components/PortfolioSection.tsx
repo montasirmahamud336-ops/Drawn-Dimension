@@ -1,27 +1,79 @@
-import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useMemo, useRef, useState } from "react";
+import { motion, useInView } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveData } from "@/hooks/useLiveData";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
+import { buildCardImageSources } from "@/components/shared/mediaUrl";
+
+interface Project {
+  id: string;
+  title: string;
+  category: string | null;
+  description: string;
+  client?: string;
+  image_url?: string | null;
+}
+
+const PortfolioCardImage = ({
+  imageUrl,
+  title,
+  category,
+  index,
+}: {
+  imageUrl: string;
+  title: string;
+  category: string;
+  index: number;
+}) => {
+  const imageSources = useMemo(() => buildCardImageSources(imageUrl), [imageUrl]);
+  const [isImageReady, setIsImageReady] = useState(false);
+  const eagerImage = index < 3;
+
+  useEffect(() => {
+    setIsImageReady(false);
+  }, [imageSources.src]);
+
+  return (
+    <div className="relative overflow-hidden aspect-video">
+      <div
+        className={`absolute inset-0 bg-muted/35 transition-opacity duration-300 ${isImageReady ? "opacity-0" : "opacity-100"}`}
+        aria-hidden="true"
+      />
+      <img
+        src={imageSources.src}
+        srcSet={imageSources.srcSet}
+        alt={title}
+        width={600}
+        height={400}
+        loading={eagerImage ? "eager" : "lazy"}
+        fetchPriority={eagerImage ? "high" : "low"}
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        decoding="async"
+        onLoad={() => setIsImageReady(true)}
+        onError={() => setIsImageReady(true)}
+        className={`w-full h-full object-cover transition-[transform,opacity] duration-300 group-hover:scale-[1.02] ${isImageReady ? "opacity-100" : "opacity-0"}`}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute top-4 left-4">
+        <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow">
+          {category}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const PortfolioSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const shouldReduceMotion = useReducedMotion();
   const [activeCategory, setActiveCategory] = useState("All");
   const navigate = useNavigate();
   const whatsappUrl = "https://wa.me/8801775119416";
 
-  interface Project {
-    id: string;
-    title: string;
-    category: string | null;
-    description: string;
-    client?: string;
-    image_url?: string | null;
-  }
-
-  const { data: projects, loading } = useLiveData("projects");
+  const { data: projects, loading } = useLiveData("projects", {
+    cacheTimeMs: 120_000,
+    revalidate: false,
+  });
   const projectList = projects as Project[];
 
   const uniqueCategories = useMemo(
@@ -98,40 +150,23 @@ const PortfolioSection = () => {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleProjects.map((project, index) => {
+              const imageUrl =
+                project.image_url ||
+                "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=400&fit=crop";
+
               return (
-                <motion.div
+                <div
                   key={project.id || index}
-                  initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-                  animate={isInView ? { opacity: 1, y: 0 } : {}}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : { duration: 0.34, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }
-                  }
                   className="group cursor-pointer"
                   onClick={() => openDetails(project)}
                 >
-                  <div className="glass-card overflow-hidden h-full flex flex-col">
-                    <div className="relative overflow-hidden aspect-video">
-                      <img
-                        src={project.image_url || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=400&fit=crop"}
-                        alt={project.title}
-                        width={600}
-                        height={400}
-                        loading={index < 3 ? "eager" : "lazy"}
-                        fetchPriority={index < 3 ? "high" : "auto"}
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        decoding="async"
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="absolute top-4 left-4">
-                        <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow">
-                          {project.category || "Uncategorized"}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="glass-card dark:backdrop-blur-0 overflow-hidden h-full flex flex-col">
+                    <PortfolioCardImage
+                      imageUrl={imageUrl}
+                      title={project.title}
+                      category={project.category || "Uncategorized"}
+                      index={index}
+                    />
                     <div className="p-6 flex-grow flex flex-col justify-between">
                       <div>
                         <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
@@ -148,7 +183,7 @@ const PortfolioSection = () => {
                       )}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
 

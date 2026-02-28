@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
 import PremiumBackground from "@/components/shared/PremiumBackground";
+import PageHero from "@/components/shared/PageHero";
 import { useLiveData } from "@/hooks/useLiveData";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { buildCardImageSources } from "@/components/shared/mediaUrl";
 
 type MediaItem = {
   url: string;
@@ -50,6 +52,18 @@ const ProductDetails = () => {
 
   const media = product ? getMediaList(product) : [];
   const currentMedia = media[mediaIndex];
+  const imageSources = useMemo(
+    () =>
+      currentMedia?.type === "image" && currentMedia?.url
+        ? buildCardImageSources(currentMedia.url)
+        : null,
+    [currentMedia?.type, currentMedia?.url]
+  );
+  const [isImageReady, setIsImageReady] = useState(currentMedia?.type !== "image");
+
+  useEffect(() => {
+    setIsImageReady(currentMedia?.type !== "image");
+  }, [currentMedia?.type, currentMedia?.url]);
 
   const goToCheckout = () => {
     if (!product) return;
@@ -60,25 +74,51 @@ const ProductDetails = () => {
     <PageTransition>
       <PremiumBackground>
         <Navigation />
-        <main className="pt-32 pb-20">
-          <section className="section-padding">
-            <div className="container-narrow">
+        <main>
+          <PageHero
+            title={product?.name || "Product Details"}
+            subtitle={product?.category || "Digital Product"}
+            description="Explore complete product details, preview media, and purchase with confidence."
+          />
+          <section className="section-padding pt-0 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_20%,rgba(239,68,68,0.12),transparent_34%)] pointer-events-none" />
+            <div className="absolute -bottom-24 left-[-8%] w-[24rem] h-[24rem] rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+            <div className="container-narrow relative z-10">
               {loading ? (
                 <div className="flex justify-center items-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
               ) : !product ? (
-                <div className="glass-card p-8 text-center">
+                <div className="glass-card border-border/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01)_45%,rgba(239,68,68,0.08)_100%)] p-8 text-center">
                   <h1 className="text-2xl font-bold mb-4">Product not found</h1>
                   <Button onClick={() => navigate("/products")}>Back to Products</Button>
                 </div>
               ) : (
-                <div className="glass-card overflow-hidden border-border/60">
+                <div className="glass-card overflow-hidden border-border/60 bg-[linear-gradient(155deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01)_44%,rgba(239,68,68,0.08)_100%)] shadow-[0_18px_48px_-28px_rgba(15,23,42,0.6)]">
                   <div className="relative overflow-hidden aspect-video border-b border-border/60">
                     {currentMedia?.type === "video" ? (
-                      <video src={currentMedia.url} className="w-full h-full object-cover" controls autoPlay muted loop playsInline />
+                      <video src={currentMedia.url} className="w-full h-full object-cover" controls playsInline preload="metadata" />
                     ) : (
-                      <img src={currentMedia?.url} alt={product.name} className="w-full h-full object-cover" />
+                      <>
+                        <div
+                          className={`absolute inset-0 bg-muted/35 transition-opacity duration-300 ${isImageReady ? "opacity-0" : "opacity-100"}`}
+                          aria-hidden="true"
+                        />
+                        <img
+                          src={imageSources?.src ?? currentMedia?.url}
+                          srcSet={imageSources?.srcSet}
+                          alt={product.name}
+                          width={1200}
+                          height={700}
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                          loading="eager"
+                          fetchPriority="high"
+                          decoding="async"
+                          onLoad={() => setIsImageReady(true)}
+                          onError={() => setIsImageReady(true)}
+                          className={`w-full h-full object-cover transition-opacity duration-300 ${isImageReady ? "opacity-100" : "opacity-0"}`}
+                        />
+                      </>
                     )}
                     {media.length > 1 && (
                       <>

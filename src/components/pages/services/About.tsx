@@ -364,7 +364,7 @@ const About = () => {
     <PageTransition>
       <PremiumBackground>
         <Navigation />
-        <main aria-label="About Drawn Dimension - Premium Design and Engineering Services">
+        <main className="relative about-premium" aria-label="About Drawn Dimension - Premium Design and Engineering Services">
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -395,9 +395,11 @@ const About = () => {
             }
           />
 
-          <section className="pb-8 md:pb-9" aria-label="About page navigation">
-            <div className="container-narrow">
-              <nav className="glass-card border-slate-300/80 dark:border-border/55 p-4 md:p-5 flex flex-wrap items-center justify-center gap-2 md:gap-3">
+          <section className="relative overflow-hidden pb-8 md:pb-9" aria-label="About page navigation">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_24%,rgba(239,68,68,0.12),transparent_38%)] pointer-events-none" />
+            <div className="container-narrow relative z-10">
+              <nav className="glass-panel relative overflow-hidden border-primary/20 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(255,255,255,0.01)_45%,rgba(239,68,68,0.09)_100%)] p-4 md:p-5 flex flex-wrap items-center justify-center gap-2 md:gap-3 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.65)]">
+                <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
                 {[
                   { label: "Who We Are", href: "#who-we-are" },
                   { label: "Milestones", href: "#milestones" },
@@ -412,7 +414,7 @@ const About = () => {
                     key={item.label}
                     href={item.href}
                     onClick={(event) => scrollToSection(event, item.href)}
-                    className="inline-flex items-center rounded-full border border-slate-300/80 dark:border-border/55 px-4 py-1.5 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/45 hover:bg-primary/10 transition-all duration-300"
+                    className="inline-flex items-center rounded-full border border-slate-300/85 dark:border-border/55 bg-background/45 px-4 py-1.5 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/45 hover:bg-primary/12 hover:shadow-[0_8px_24px_-16px_rgba(239,68,68,0.55)] transition-all duration-300"
                   >
                     {item.label}
                   </a>
@@ -427,7 +429,8 @@ const About = () => {
             className="relative pt-8 pb-10 md:pt-10 md:pb-12 lg:pt-12 lg:pb-14 scroll-mt-24"
             aria-labelledby="who-we-are-heading"
           >
-            <div className="container-narrow">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_22%,rgba(239,68,68,0.11),transparent_36%)] pointer-events-none" />
+            <div className="container-narrow relative z-10">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -456,8 +459,9 @@ const About = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: index * 0.08 }}
-                    className="glass-card border-slate-300/80 dark:border-border/55 p-6 text-center"
+                    className="glass-card relative overflow-hidden border-slate-300/80 dark:border-border/55 p-6 text-center bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.1)_100%)] hover:border-primary/45 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_18px_42px_-30px_rgba(0,0,0,0.75)]"
                   >
+                    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                     <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
                       {stat.value}
                     </div>
@@ -475,7 +479,8 @@ const About = () => {
             className="relative py-12 md:py-14 lg:py-16 scroll-mt-24"
             aria-labelledby="company-milestones-heading"
           >
-            <div className="container-narrow">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(239,68,68,0.11),transparent_35%)] pointer-events-none" />
+            <div className="container-narrow relative z-10">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -493,7 +498,7 @@ const About = () => {
               </motion.div>
 
               <div className="relative">
-                <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-px bg-border/50 hidden md:block" />
+                <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-px bg-gradient-to-b from-transparent via-primary/45 to-transparent hidden md:block" />
 
                 {milestones.map((milestone, index) => (
                   <motion.div
@@ -505,13 +510,14 @@ const About = () => {
                     className={`relative flex items-center mb-6 md:mb-8 ${index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
                   >
                     <div className={`w-full md:w-1/2 ${index % 2 === 0 ? "md:pr-12 md:text-right" : "md:pl-12"}`}>
-                      <div className="glass-card p-6 border-slate-300/80 dark:border-border/55 transition-all duration-300 hover:border-primary/40 hover:shadow-[0_12px_36px_rgba(0,0,0,0.22)]">
+                      <div className="glass-card relative overflow-hidden p-6 border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_46%,rgba(239,68,68,0.1)_100%)] transition-all duration-500 hover:-translate-y-1 hover:border-primary/45 hover:shadow-[0_18px_42px_-28px_rgba(0,0,0,0.65)]">
+                        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                         <span className="text-primary font-bold text-xl">{milestone.year}</span>
                         <h3 className="text-lg font-semibold text-foreground mt-2">{milestone.title}</h3>
                         <p className="text-sm text-muted-foreground mt-2">{milestone.description}</p>
                       </div>
                     </div>
-                    <div className="absolute left-1/2 transform -translate-x-1/2 w-4 h-4 bg-primary rounded-full hidden md:block" />
+                    <div className="absolute left-1/2 transform -translate-x-1/2 w-4 h-4 bg-primary rounded-full ring-4 ring-primary/20 shadow-[0_0_14px_rgba(239,68,68,0.65)] hidden md:block" />
                   </motion.div>
                 ))}
               </div>
@@ -526,6 +532,7 @@ const About = () => {
             aria-labelledby="achievements-heading"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(239,68,68,0.12),transparent_34%)] pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_84%,rgba(239,68,68,0.08),transparent_34%)] pointer-events-none" />
             <div className="container-narrow relative z-10">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
@@ -554,8 +561,9 @@ const About = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.45, delay: index * 0.08 }}
-                    className="glass-card p-5 md:p-6 border-slate-300/80 dark:border-border/55 bg-gradient-to-b from-card to-card/80 hover:border-primary/50 transition-all duration-500 hover:shadow-[0_16px_38px_rgba(0,0,0,0.22)]"
+                    className="glass-card relative overflow-hidden p-5 md:p-6 border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_44%,rgba(239,68,68,0.1)_100%)] hover:border-primary/50 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_18px_42px_-30px_rgba(0,0,0,0.7)]"
                   >
+                    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                     <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                       <item.icon className="w-5 h-5 text-primary" />
                     </div>
@@ -576,6 +584,7 @@ const About = () => {
             aria-labelledby="what-we-do-heading"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(239,68,68,0.12),transparent_35%)] pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_82%,rgba(239,68,68,0.09),transparent_35%)] pointer-events-none" />
             <div className="container-narrow relative z-10">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
@@ -605,8 +614,9 @@ const About = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: index * 0.08 }}
-                    className="glass-card border-slate-300/80 dark:border-border/55 p-6 group bg-gradient-to-b from-card to-card/80 hover:border-primary/50 transition-all duration-500 hover:shadow-[0_16px_40px_rgba(0,0,0,0.25)]"
+                    className="glass-card relative overflow-hidden border-slate-300/80 dark:border-border/55 p-6 group bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.11)_100%)] hover:border-primary/50 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_46px_-28px_rgba(0,0,0,0.72)]"
                   >
+                    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                     <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                       <service.icon className="w-6 h-6 text-primary" />
                     </div>
@@ -634,7 +644,8 @@ const About = () => {
             ref={ref}
             aria-labelledby="mission-vision-heading"
           >
-            <div className="container-narrow">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_16%,rgba(239,68,68,0.12),transparent_35%)] pointer-events-none" />
+            <div className="container-narrow relative z-10">
               <div className="grid lg:grid-cols-2 gap-10 xl:gap-12 items-start">
                 <motion.div
                   initial={{ opacity: 0, x: -50 }}
@@ -662,8 +673,8 @@ const About = () => {
                       { icon: Wrench, label: "Execution Discipline" },
                       { icon: Award, label: "Quality Assurance" },
                     ].map((item) => (
-                      <div key={item.label} className="flex items-center gap-3 rounded-xl border border-slate-300/80 dark:border-border/55 bg-background/35 px-3 py-2">
-                        <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <div key={item.label} className="relative overflow-hidden flex items-center gap-3 rounded-xl border border-slate-300/80 dark:border-border/55 bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_62%,rgba(239,68,68,0.08)_100%)] px-3 py-2 shadow-[0_8px_18px_-14px_rgba(0,0,0,0.6)]">
+                        <div className="w-9 h-9 bg-primary/10 border border-primary/30 rounded-lg flex items-center justify-center">
                           <item.icon className="w-4 h-4 text-primary" />
                         </div>
                         <span className="text-sm font-medium text-foreground">{item.label}</span>
@@ -676,8 +687,9 @@ const About = () => {
                   initial={{ opacity: 0, x: 50 }}
                   animate={isInView ? { opacity: 1, x: 0 } : {}}
                   transition={{ duration: 0.8, delay: 0.2 }}
-                  className="glass-card p-7 lg:p-8 border-slate-300/80 dark:border-border/55 shadow-[0_20px_50px_rgba(0,0,0,0.20)]"
+                  className="glass-card relative overflow-hidden p-7 lg:p-8 border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.07),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.1)_100%)] shadow-[0_22px_50px_-26px_rgba(0,0,0,0.66)]"
                 >
+                  <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                   <h3 className="text-2xl font-bold mb-4 text-foreground">Our Mission</h3>
                   <p className="text-muted-foreground/95 mb-7">
                     To submit every client project with clean execution, accurate technical detail, and dependable quality
@@ -712,7 +724,9 @@ const About = () => {
             className="relative py-12 md:py-14 lg:py-16 scroll-mt-24"
             aria-labelledby="why-choose-us-heading"
           >
-            <div className="container-narrow">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_16%,rgba(239,68,68,0.15),transparent_35%)] pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_82%,rgba(239,68,68,0.10),transparent_35%)] pointer-events-none" />
+            <div className="container-narrow relative z-10">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -740,13 +754,21 @@ const About = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="glass-card border-slate-300/80 dark:border-border/55 p-6 group bg-gradient-to-b from-card to-card/80 hover:border-primary/50 transition-all duration-500 hover:shadow-[0_16px_40px_rgba(0,0,0,0.25)]"
+                    className="group relative overflow-hidden rounded-3xl border border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.12)_110%)] p-6 md:p-7 transition-all duration-500 hover:-translate-y-1.5 hover:border-primary/55 hover:shadow-[0_24px_56px_-34px_rgba(0,0,0,0.75)]"
                   >
-                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                      <value.icon className="w-6 h-6 text-primary" />
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(239,68,68,0.16),transparent_48%)] opacity-85 transition-opacity duration-500 group-hover:opacity-100" />
+                    <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
+                    <div className="relative z-10">
+                      <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/85 mb-4">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        Core Value {index + 1}
+                      </span>
+                      <div className="w-12 h-12 rounded-xl border border-primary/35 bg-primary/10 flex items-center justify-center mb-4 shadow-[0_10px_22px_rgba(239,68,68,0.22)] transition-all duration-300 group-hover:bg-primary/20 group-hover:border-primary/50 group-hover:shadow-[0_14px_30px_rgba(239,68,68,0.32)]">
+                        <value.icon className="w-6 h-6 text-primary" />
+                      </div>
+                      <h3 className="font-semibold text-foreground mb-2 text-2xl tracking-tight">{value.title}</h3>
+                      <p className="text-sm text-muted-foreground/95 leading-relaxed">{value.description}</p>
                     </div>
-                    <h3 className="font-semibold text-foreground mb-2">{value.title}</h3>
-                    <p className="text-sm text-muted-foreground">{value.description}</p>
                   </motion.div>
                 ))}
               </div>
@@ -760,7 +782,8 @@ const About = () => {
             className="relative py-12 md:py-14 lg:py-16 scroll-mt-24"
             aria-labelledby="about-faq-heading"
           >
-            <div className="container-narrow">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_22%,rgba(239,68,68,0.12),transparent_36%)] pointer-events-none" />
+            <div className="container-narrow relative z-10">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -788,8 +811,9 @@ const About = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.45, delay: index * 0.06 }}
-                    className="glass-card p-5 md:p-6 border-slate-300/80 dark:border-border/55 hover:border-primary/45 transition-all duration-400"
+                    className="glass-card relative overflow-hidden p-5 md:p-6 border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_48%,rgba(239,68,68,0.09)_100%)] hover:border-primary/45 transition-all duration-400 hover:-translate-y-1 hover:shadow-[0_16px_36px_-26px_rgba(0,0,0,0.72)]"
                   >
+                    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                     <h3 className="text-lg font-semibold text-foreground flex items-start gap-2">
                       <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
                       <span>{item.question}</span>
@@ -803,10 +827,16 @@ const About = () => {
           </section>
 
           {/* Leadership Team */}
-          <LeadershipTeam compact />
+          <div className="relative">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_18%,rgba(239,68,68,0.1),transparent_36%)] pointer-events-none" />
+            <LeadershipTeam compact />
+          </div>
 
           {/* Our Employees */}
-          <OurEmployeesSection compact />
+          <div className="relative">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(239,68,68,0.1),transparent_36%)] pointer-events-none" />
+            <OurEmployeesSection compact />
+          </div>
 
           {/* Final CTA */}
           <section
@@ -820,9 +850,10 @@ const About = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.7 }}
-                className="glass-card relative overflow-hidden p-8 md:p-10 border-primary/30 shadow-[0_24px_60px_rgba(0,0,0,0.28)]"
+                className="glass-card relative overflow-hidden p-8 md:p-10 border-primary/30 bg-[linear-gradient(155deg,rgba(255,255,255,0.07),rgba(255,255,255,0.01)_44%,rgba(239,68,68,0.13)_100%)] shadow-[0_24px_60px_-26px_rgba(0,0,0,0.72)]"
               >
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_15%,rgba(239,68,68,0.15),transparent_35%)] pointer-events-none" />
+                <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
                 <div className="relative z-10 flex flex-col items-center text-center">
                   <span className="text-primary font-semibold text-sm uppercase tracking-wider">
                     Start Your Next Project

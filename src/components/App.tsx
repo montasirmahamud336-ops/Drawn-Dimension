@@ -79,8 +79,14 @@ const App = () => {
       requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
       cancelIdleCallback?: (id: number) => void;
     };
-    const timerId = window.setTimeout(activateWidget, 5000);
-    const idleId = idleWindow.requestIdleCallback?.(activateWidget, { timeout: 2500 });
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    const shouldIdleLoad = isDesktop && !connection?.saveData;
+
+    const timerId = window.setTimeout(activateWidget, shouldIdleLoad ? 15000 : 25000);
+    const idleId = shouldIdleLoad
+      ? idleWindow.requestIdleCallback?.(activateWidget, { timeout: 10000 })
+      : undefined;
 
     return () => {
       window.clearTimeout(timerId);

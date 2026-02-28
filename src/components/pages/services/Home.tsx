@@ -3,6 +3,7 @@ import Navigation from "@/components/Navigation";
 import HeroSection from "@/components/HeroSection";
 import Footer from "@/components/Footer";
 import DeferredSection from "@/components/shared/DeferredSection";
+import PremiumBackground from "@/components/shared/PremiumBackground";
 import { fetchPublishedReviews, subscribeToPublishedReviews } from "@/components/shared/reviews";
 import { warmLiveData } from "@/hooks/useLiveData";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +24,12 @@ const Home = () => {
   const [shouldLoadTestimonials, setShouldLoadTestimonials] = useState(false);
 
   useEffect(() => {
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (!isDesktop || connection?.saveData) {
+      return;
+    }
+
     const prefetchHomeSections = () => {
       void import("@/components/ServicesSection");
       void import("@/components/PortfolioSection");
@@ -38,8 +45,8 @@ const Home = () => {
       requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
       cancelIdleCallback?: (id: number) => void;
     };
-    const timerId = window.setTimeout(prefetchHomeSections, 1200);
-    const idleId = idleWindow.requestIdleCallback?.(prefetchHomeSections, { timeout: 2200 });
+    const timerId = window.setTimeout(prefetchHomeSections, 4000);
+    const idleId = idleWindow.requestIdleCallback?.(prefetchHomeSections, { timeout: 6000 });
 
     return () => {
       window.clearTimeout(timerId);
@@ -72,7 +79,7 @@ const Home = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background relative overflow-x-hidden">
+      <PremiumBackground>
         <Navigation />
         <main className="relative z-10">
           <HeroSection />
@@ -122,7 +129,7 @@ const Home = () => {
           </DeferredSection>
         </main>
         <Footer />
-      </div>
+      </PremiumBackground>
     </PageTransition>
   );
 };

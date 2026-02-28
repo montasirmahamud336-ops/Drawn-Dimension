@@ -2,6 +2,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
 import PageHero from "@/components/shared/PageHero";
+import PremiumBackground from "@/components/shared/PremiumBackground";
 import ReviewCard from "@/components/shared/ReviewCard";
 import AddReviewForm from "@/components/shared/AddReviewForm";
 import { fetchPublishedReviews, subscribeToPublishedReviews } from "@/components/shared/reviews";
@@ -47,7 +48,7 @@ const AllReviews = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background">
+      <PremiumBackground>
         <Navigation />
         <main>
           <PageHero
@@ -56,12 +57,14 @@ const AllReviews = () => {
             description="Browse every review grouped by service so you can compare quality across each offering."
           />
 
-          <section className="py-12 md:py-16">
-            <div className="container-narrow">
-              <div className="mb-8">
+          <section className="section-padding pt-0 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(239,68,68,0.12),transparent_34%)] pointer-events-none" />
+            <div className="absolute -bottom-20 left-[-8%] w-[22rem] h-[22rem] rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+            <div className="container-narrow relative z-10">
+              <div className="glass-panel p-4 border-border/55 bg-gradient-to-br from-background/80 to-primary/[0.05] mb-8">
                 <Link
                   to="/testimonials"
-                  className="text-sm font-medium text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"
+                  className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
                 >
                   Back to main reviews
                 </Link>
@@ -96,9 +99,9 @@ const AllReviews = () => {
                       viewport={{ once: true }}
                       transition={{ duration: 0.4, delay: groupIndex * 0.05 }}
                     >
-                      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="mb-5 flex items-center justify-between gap-3 flex-wrap glass-card border-border/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01)_45%,rgba(239,68,68,0.08)_100%)] px-5 py-4">
                         <h2 className="text-xl md:text-2xl font-semibold text-foreground">{group.service}</h2>
-                        <span className="text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary font-medium">
+                        <span className="text-xs px-3 py-1.5 rounded-full border border-primary/35 bg-primary/10 text-primary font-semibold tracking-wide uppercase">
                           {group.reviews.length} review{group.reviews.length > 1 ? "s" : ""}
                         </span>
                       </div>
@@ -121,7 +124,7 @@ const AllReviews = () => {
           </section>
         </main>
         <Footer />
-      </div>
+      </PremiumBackground>
     </PageTransition>
   );
 };
