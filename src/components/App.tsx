@@ -10,9 +10,9 @@ import CustomCursor from "@/components/CustomCursor";
 import ScrollToTop from "@/components/shared/ScrollToTop";
 import SmoothScroll from "@/components/shared/SmoothScroll";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import Home from "./pages/services/Home";
 
 // Pages
-const Home = lazy(() => import("./pages/services/Home"));
 const ChatWidget = lazy(() => import("@/components/ChatWidget"));
 const AdminLogin = lazy(() => import("@/components/admin/AdminLogin"));
 
@@ -55,7 +55,7 @@ const PortfolioDetails = lazy(() => import("./pages/services/PortfolioDetails"))
 
 const queryClient = new QueryClient();
 const RouteFallback = () => (
-  <div className="min-h-[40vh] flex items-center justify-center text-sm text-muted-foreground">
+  <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
     Loading...
   </div>
 );
