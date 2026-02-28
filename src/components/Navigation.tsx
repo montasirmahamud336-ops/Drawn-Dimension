@@ -18,11 +18,27 @@ const Navigation = () => {
   const { user, signOut } = useAuth();
 
   useEffect(() => {
-    const handleScroll = () => {
+    let rafId = 0;
+    let ticking = false;
+
+    const updateScrolledState = () => {
       setIsScrolled(window.scrollY > 50);
+      ticking = false;
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      rafId = window.requestAnimationFrame(updateScrolledState);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.cancelAnimationFrame(rafId);
+    };
   }, []);
 
   useEffect(() => {
@@ -125,7 +141,16 @@ const Navigation = () => {
               className="flex items-center gap-3"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
-              <img src="/images/logo.png" alt="DrawnDimension Logo" className="w-12 h-12 object-contain" />
+              <img
+                src="/images/logo.png"
+                alt="DrawnDimension Logo"
+                width={48}
+                height={48}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+                className="w-12 h-12 object-contain"
+              />
               <span className="text-xl font-bold text-foreground">
                 Drawn<span className="text-primary">Dimension</span>
               </span>

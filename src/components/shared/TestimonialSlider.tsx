@@ -87,6 +87,8 @@ const TestimonialSlider = ({ testimonials, sectionClassName }: TestimonialSlider
                     <img
                       src={t.image}
                       alt={t.name}
+                      loading="lazy"
+                      decoding="async"
                       className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover border-2 border-primary/30"
                     />
                   ) : (

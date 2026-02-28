@@ -4,6 +4,7 @@ import HeroSection from "@/components/HeroSection";
 import Footer from "@/components/Footer";
 import DeferredSection from "@/components/shared/DeferredSection";
 import { fetchPublishedReviews, subscribeToPublishedReviews } from "@/components/shared/reviews";
+import { warmLiveData } from "@/hooks/useLiveData";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useState } from "react";
 
@@ -20,6 +21,33 @@ const HOME_REVIEWS_QUERY_KEY = ["home", "testimonials", "published"];
 const Home = () => {
   const queryClient = useQueryClient();
   const [shouldLoadTestimonials, setShouldLoadTestimonials] = useState(false);
+
+  useEffect(() => {
+    const prefetchHomeSections = () => {
+      void import("@/components/ServicesSection");
+      void import("@/components/PortfolioSection");
+      void import("@/components/GlobalReachSection");
+      void import("@/components/shared/TestimonialSlider");
+      void import("@/components/AboutSection");
+      void import("@/components/WhyChooseUsSection");
+      void import("@/components/CTASection");
+      void warmLiveData("projects", { cacheTimeMs: 120_000, revalidate: false });
+    };
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const timerId = window.setTimeout(prefetchHomeSections, 1200);
+    const idleId = idleWindow.requestIdleCallback?.(prefetchHomeSections, { timeout: 2200 });
+
+    return () => {
+      window.clearTimeout(timerId);
+      if (typeof idleId === "number") {
+        idleWindow.cancelIdleCallback?.(idleId);
+      }
+    };
+  }, []);
 
   const { data: testimonials = [] } = useQuery({
     queryKey: HOME_REVIEWS_QUERY_KEY,

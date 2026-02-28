@@ -5,6 +5,24 @@ const SmoothScroll = () => {
     const lenisRef = useRef<Lenis | null>(null);
 
     useEffect(() => {
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+        const isSmallViewport = window.matchMedia("(max-width: 1024px)").matches;
+        const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+        const isLowPowerDevice =
+            typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 4;
+
+        // Native scroll performs better on mobile/low-power devices.
+        if (
+            prefersReducedMotion ||
+            isCoarsePointer ||
+            isSmallViewport ||
+            connection?.saveData ||
+            isLowPowerDevice
+        ) {
+            return;
+        }
+
         const shouldUseNativeScroll = (node?: Element | null) => {
             const element = node as HTMLElement | null;
             if (!element) return false;
@@ -54,15 +72,17 @@ const SmoothScroll = () => {
             subtree: false,
         });
 
+        let rafId = 0;
         const raf = (time: number) => {
             lenis.raf(time);
-            requestAnimationFrame(raf);
+            rafId = requestAnimationFrame(raf);
         };
 
-        requestAnimationFrame(raf);
+        rafId = requestAnimationFrame(raf);
 
         return () => {
             observer.disconnect();
+            cancelAnimationFrame(rafId);
             delete (window as Window & { __lenis?: Lenis }).__lenis;
             lenis.destroy();
         };

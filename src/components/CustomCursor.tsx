@@ -21,7 +21,9 @@ const CustomCursor = () => {
   useEffect(() => {
     // Only show on devices with pointer (not touch)
     const hasPointer = window.matchMedia("(pointer: fine)").matches;
-    if (!hasPointer) return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (!hasPointer || prefersReducedMotion || connection?.saveData) return;
 
     setIsVisible(true);
 

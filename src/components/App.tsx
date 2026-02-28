@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import CustomCursor from "@/components/CustomCursor";
 import ScrollToTop from "@/components/shared/ScrollToTop";
@@ -12,8 +12,7 @@ import SmoothScroll from "@/components/shared/SmoothScroll";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 
 // Pages
-import Home from "./pages/services/Home";
-
+const Home = lazy(() => import("./pages/services/Home"));
 const ChatWidget = lazy(() => import("@/components/ChatWidget"));
 const AdminLogin = lazy(() => import("@/components/admin/AdminLogin"));
 
@@ -61,96 +60,132 @@ const RouteFallback = () => (
   </div>
 );
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <SmoothScroll />
-        <CustomCursor />
-        <BrowserRouter>
-          <AnimatePresence mode="wait">
-            <ScrollToTop />
-            <Suspense fallback={<RouteFallback />}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/our-employees" element={<OurEmployees />} />
-                <Route path="/services" element={<Services />} />
-                <Route path="/services/:slug" element={<DynamicServicePage />} />
-                <Route path="/faq" element={<FAQ />} />
-                <Route path="/blog" element={<Blog />} />
-                <Route path="/blog/:slug" element={<BlogDetails />} />
-                <Route path="/portfolio" element={<Portfolio />} />
-                <Route path="/portfolio/:id" element={<PortfolioDetails />} />
-                <Route path="/testimonials" element={<Testimonials />} />
-                <Route path="/testimonials/all" element={<AllReviews />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/terms-of-service" element={<TermsOfService />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/products/:id" element={<ProductDetails />} />
-                <Route path="/payment" element={<Payment />} />
+const App = () => {
+  const [shouldLoadChatWidget, setShouldLoadChatWidget] = useState(false);
 
-                <Route path="/database/login" element={<AdminLogin />} />
-                <Route
-                  path="/database"
-                  element={
-                    <AdminProtectedRoute>
-                      <CMSLayout />
-                    </AdminProtectedRoute>
-                  }
-                >
-                  <Route index element={<DashboardStats />} />
-                  <Route path="dashboard" element={<DashboardStats />} />
-                  <Route path="works" element={<WorksManager />} />
-                  <Route path="upload" element={<WorksManager />} />
-                  <Route path="products" element={<ProductsManager />} />
-                  <Route path="team" element={<TeamManager />} />
-                  <Route path="reviews" element={<ReviewsManager />} />
-                  <Route path="employees" element={<EmployeesManager />} />
-                  <Route path="work-assign" element={<WorkAssignManager />} />
-                  <Route path="world-map" element={<WorldMapManager />} />
-                  <Route path="pages" element={<PagesManager />} />
-                  <Route path="chat" element={<EmployeeChatManager />} />
-                </Route>
+  useEffect(() => {
+    if (shouldLoadChatWidget) return;
 
-                <Route
-                  path="/cms"
-                  element={
-                    <AdminProtectedRoute>
-                      <CMSLayout />
-                    </AdminProtectedRoute>
-                  }
-                >
-                  <Route index element={<DashboardStats />} />
-                  <Route path="works" element={<WorksManager />} />
-                  <Route path="products" element={<ProductsManager />} />
-                  <Route path="team" element={<TeamManager />} />
-                  <Route path="reviews" element={<ReviewsManager />} />
-                  <Route path="employees" element={<EmployeesManager />} />
-                  <Route path="work-assign" element={<WorkAssignManager />} />
-                  <Route path="world-map" element={<WorldMapManager />} />
-                  <Route path="pages" element={<PagesManager />} />
-                  <Route path="chat" element={<EmployeeChatManager />} />
-                </Route>
+    const activateWidget = () => {
+      setShouldLoadChatWidget(true);
+    };
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "scroll", "touchstart"];
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </AnimatePresence>
-          <Suspense fallback={null}>
-            <ChatWidget />
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+    events.forEach((eventName) => {
+      window.addEventListener(eventName, activateWidget, { passive: true, once: true });
+    });
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const timerId = window.setTimeout(activateWidget, 5000);
+    const idleId = idleWindow.requestIdleCallback?.(activateWidget, { timeout: 2500 });
+
+    return () => {
+      window.clearTimeout(timerId);
+      if (typeof idleId === "number") {
+        idleWindow.cancelIdleCallback?.(idleId);
+      }
+      events.forEach((eventName) => {
+        window.removeEventListener(eventName, activateWidget);
+      });
+    };
+  }, [shouldLoadChatWidget]);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <SmoothScroll />
+          <CustomCursor />
+          <BrowserRouter>
+            <AnimatePresence mode="wait">
+              <ScrollToTop />
+              <Suspense fallback={<RouteFallback />}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/our-employees" element={<OurEmployees />} />
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/services/:slug" element={<DynamicServicePage />} />
+                  <Route path="/faq" element={<FAQ />} />
+                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/blog/:slug" element={<BlogDetails />} />
+                  <Route path="/portfolio" element={<Portfolio />} />
+                  <Route path="/portfolio/:id" element={<PortfolioDetails />} />
+                  <Route path="/testimonials" element={<Testimonials />} />
+                  <Route path="/testimonials/all" element={<AllReviews />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-of-service" element={<TermsOfService />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/products/:id" element={<ProductDetails />} />
+                  <Route path="/payment" element={<Payment />} />
+
+                  <Route path="/database/login" element={<AdminLogin />} />
+                  <Route
+                    path="/database"
+                    element={
+                      <AdminProtectedRoute>
+                        <CMSLayout />
+                      </AdminProtectedRoute>
+                    }
+                  >
+                    <Route index element={<DashboardStats />} />
+                    <Route path="dashboard" element={<DashboardStats />} />
+                    <Route path="works" element={<WorksManager />} />
+                    <Route path="upload" element={<WorksManager />} />
+                    <Route path="products" element={<ProductsManager />} />
+                    <Route path="team" element={<TeamManager />} />
+                    <Route path="reviews" element={<ReviewsManager />} />
+                    <Route path="employees" element={<EmployeesManager />} />
+                    <Route path="work-assign" element={<WorkAssignManager />} />
+                    <Route path="world-map" element={<WorldMapManager />} />
+                    <Route path="pages" element={<PagesManager />} />
+                    <Route path="chat" element={<EmployeeChatManager />} />
+                  </Route>
+
+                  <Route
+                    path="/cms"
+                    element={
+                      <AdminProtectedRoute>
+                        <CMSLayout />
+                      </AdminProtectedRoute>
+                    }
+                  >
+                    <Route index element={<DashboardStats />} />
+                    <Route path="works" element={<WorksManager />} />
+                    <Route path="products" element={<ProductsManager />} />
+                    <Route path="team" element={<TeamManager />} />
+                    <Route path="reviews" element={<ReviewsManager />} />
+                    <Route path="employees" element={<EmployeesManager />} />
+                    <Route path="work-assign" element={<WorkAssignManager />} />
+                    <Route path="world-map" element={<WorldMapManager />} />
+                    <Route path="pages" element={<PagesManager />} />
+                    <Route path="chat" element={<EmployeeChatManager />} />
+                  </Route>
+
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </AnimatePresence>
+            {shouldLoadChatWidget ? (
+              <Suspense fallback={null}>
+                <ChatWidget />
+              </Suspense>
+            ) : null}
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

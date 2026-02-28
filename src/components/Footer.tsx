@@ -45,7 +45,15 @@ const Footer = () => {
           <div className="lg:col-span-2">
             <motion.div whileHover={{ scale: 1.02 }}>
               <Link to="/" className="flex items-center gap-3 mb-6">
-                <img src="/images/logo.png" alt="DrawnDimension Logo" className="w-12 h-12 object-contain" />
+                <img
+                  src="/images/logo.png"
+                  alt="DrawnDimension Logo"
+                  width={48}
+                  height={48}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-12 h-12 object-contain"
+                />
                 <span className="text-xl font-bold text-foreground">
                   Drawn<span className="text-primary">Dimension</span>
                 </span>

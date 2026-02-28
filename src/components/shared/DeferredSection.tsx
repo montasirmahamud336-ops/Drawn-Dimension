@@ -11,7 +11,7 @@ interface DeferredSectionProps {
 const DeferredSection = ({
   children,
   minHeight = 360,
-  rootMargin = "280px 0px",
+  rootMargin = "560px 0px",
   onVisible
 }: DeferredSectionProps) => {
   const anchorRef = useRef<HTMLDivElement | null>(null);
@@ -20,8 +20,34 @@ const DeferredSection = ({
 
   useEffect(() => {
     if (!inView || mounted) return;
-    setMounted(true);
-    onVisible?.();
+
+    let cancelled = false;
+    const mountSection = () => {
+      if (cancelled) return;
+      setMounted(true);
+      onVisible?.();
+    };
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let timeoutId: number | undefined;
+    const idleId = idleWindow.requestIdleCallback?.(mountSection, { timeout: 220 });
+
+    if (typeof idleId !== "number") {
+      timeoutId = window.setTimeout(mountSection, 0);
+    }
+
+    return () => {
+      cancelled = true;
+      if (typeof timeoutId === "number") {
+        window.clearTimeout(timeoutId);
+      }
+      if (typeof idleId === "number") {
+        idleWindow.cancelIdleCallback?.(idleId);
+      }
+    };
   }, [inView, mounted, onVisible]);
 
   if (mounted) {
