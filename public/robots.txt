@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Keep admin/auth/utility pages out of search indexing
+Disallow: /database
+Disallow: /database/
+Disallow: /cms
+Disallow: /cms/
+Disallow: /auth
+Disallow: /reset-password
+Disallow: /dashboard
+Disallow: /employee/
+Disallow: /payment
+
+Sitemap: https://drawndimension.com/sitemap.xml
