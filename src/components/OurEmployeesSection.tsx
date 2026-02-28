@@ -5,6 +5,7 @@ import { useLiveData } from "@/hooks/useLiveData";
 
 type OurEmployeesSectionProps = {
   showAll?: boolean;
+  compact?: boolean;
 };
 
 const PREVIEW_LIMIT = 6;
@@ -18,7 +19,7 @@ const getInitials = (name: string) => {
     .toUpperCase();
 };
 
-const OurEmployeesSection = ({ showAll = false }: OurEmployeesSectionProps) => {
+const OurEmployeesSection = ({ showAll = false, compact = false }: OurEmployeesSectionProps) => {
   const { data: employees, loading } = useLiveData("team", {
     params: { memberType: "employee" },
   });
@@ -46,19 +47,23 @@ const OurEmployeesSection = ({ showAll = false }: OurEmployeesSectionProps) => {
   const employeeGridWidthClass = employeeCount <= 1 ? "max-w-[190px] mx-auto" : "";
 
   return (
-    <section className="section-padding">
+    <section
+      id={compact ? "our-employees" : undefined}
+      className={compact ? "py-12 md:py-14 lg:py-16" : "section-padding"}
+      aria-labelledby="our-employees-heading"
+    >
       <div className="container-narrow">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className={compact ? "text-center mb-9 md:mb-10" : "text-center mb-12"}
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
             Our People
           </span>
-          <h2 className="text-3xl md:text-4xl font-bold mt-3 text-foreground">
+          <h2 id="our-employees-heading" className="text-3xl md:text-4xl font-bold mt-3 text-foreground">
             Our Employees
           </h2>
         </motion.div>
@@ -81,7 +86,7 @@ const OurEmployeesSection = ({ showAll = false }: OurEmployeesSectionProps) => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.35, delay: index * 0.05 }}
-                  className="glass-card overflow-hidden border-border/55 bg-card/45 w-full max-w-[300px]"
+                  className="glass-card overflow-hidden border-slate-300/80 dark:border-border/55 bg-card/45 w-full max-w-[300px]"
                 >
                   <div className="aspect-square bg-muted/40">
                     {employee.image_url ? (

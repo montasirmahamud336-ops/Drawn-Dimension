@@ -6,9 +6,25 @@ import { Link } from "react-router-dom";
 
 interface CTASectionProps {
   compact?: boolean;
+  titlePrefix?: string;
+  titleHighlight?: string;
+  description?: string;
+  primaryLabel?: string;
+  primaryHref?: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
 }
 
-const CTASection = ({ compact = false }: CTASectionProps) => {
+const CTASection = ({
+  compact = false,
+  titlePrefix = "Ready to Transform Your",
+  titleHighlight = "Vision Into Reality?",
+  description = "Let's discuss your project and discover how our engineering expertise and creative innovation can help you achieve extraordinary results.",
+  primaryLabel = "Get Free Consultation",
+  primaryHref = "/contact",
+  secondaryLabel = "View Our Portfolio",
+  secondaryHref = "/portfolio",
+}: CTASectionProps) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
@@ -45,8 +61,8 @@ const CTASection = ({ compact = false }: CTASectionProps) => {
             transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className={`${compact ? "text-3xl md:text-4xl mb-4" : "text-3xl md:text-5xl mb-6"} font-bold text-foreground leading-tight tracking-tight`}
           >
-            Ready to Transform Your
-            <span className="text-gradient-primary block">Vision Into Reality?</span>
+            {titlePrefix}
+            <span className="text-gradient-primary block">{titleHighlight}</span>
           </motion.h2>
 
           <motion.p
@@ -55,8 +71,7 @@ const CTASection = ({ compact = false }: CTASectionProps) => {
             transition={{ duration: 0.6, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className={`${compact ? "text-base md:text-lg mb-8" : "text-lg mb-10"} text-muted-foreground/95 max-w-3xl mx-auto leading-relaxed`}
           >
-            Let's discuss your project and discover how our engineering expertise and
-            creative innovation can help you achieve extraordinary results.
+            {description}
           </motion.p>
 
           <motion.div
@@ -67,19 +82,19 @@ const CTASection = ({ compact = false }: CTASectionProps) => {
           >
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Link
-                to="/contact"
+                to={primaryHref}
                 className="btn-primary inline-flex items-center justify-center gap-2 group min-w-[220px] shadow-[0_10px_30px_rgba(239,68,68,0.35)]"
               >
-                Get Free Consultation
+                {primaryLabel}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Link
-                to="/portfolio"
+                to={secondaryHref}
                 className="btn-outline inline-flex items-center justify-center min-w-[220px] border-primary/25 bg-background/35 backdrop-blur-sm"
               >
-                View Our Portfolio
+                {secondaryLabel}
               </Link>
             </motion.div>
           </motion.div>

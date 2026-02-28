@@ -1,0 +1,702 @@
+[
+  {
+    "id": 1,
+    "service_id": 4,
+    "question": "What is a Process Flow Diagram (PFD) and what is it used for?",
+    "answer": "A Process Flow Diagram (PFD) is a high-level engineering drawing that illustrates the major process equipment, flow streams, and key operating conditions — such as temperature, pressure, and flow rate — within an industrial system. It is used during the conceptual and front-end engineering design phases to visualize how materials and energy move through a process. Industries such as oil & gas, chemical manufacturing, pharmaceuticals, food processing, and power generation rely on PFDs as the foundational document for all subsequent detailed engineering, HAZOP studies, and cost estimation activities.",
+    "status": "live",
+    "display_order": 1,
+    "created_at": "2026-02-28T00:39:38.896Z",
+    "updated_at": "2026-02-28T00:39:38.896Z"
+  },
+  {
+    "id": 2,
+    "service_id": 4,
+    "question": "What is the difference between a PFD and a P&ID?",
+    "answer": "A Process Flow Diagram (PFD) provides a high-level overview of the process — showing major equipment, primary flow streams, and key operating parameters. A Piping and Instrumentation Diagram (P&ID) is far more detailed, showing every single pipe, valve, fitting, instrument, control loop, and safety device in the system. Think of the PFD as the strategic map and the P&ID as the detailed street-level plan. Both documents are essential to any process engineering project, and DrawnDimension provides professional drafting services for both.",
+    "status": "live",
+    "display_order": 2,
+    "created_at": "2026-02-28T00:39:39.015Z",
+    "updated_at": "2026-02-28T00:39:39.015Z"
+  },
+  {
+    "id": 3,
+    "service_id": 4,
+    "question": "What international standards govern PFD preparation?",
+    "answer": "Professional Process Flow Diagrams are prepared in accordance with internationally recognized standards including ISO 10628-1 (Flow Diagrams for Process Plants — General Rules) and ISO 10628-2 (Graphical Symbols). In the USA, ANSI/ISA-5.1 is also referenced for instrumentation symbols where they appear on PFDs. Additionally, major oil & gas operators such as Shell, BP, and Saudi Aramco have company-specific PFD standards. DrawnDimension's drafting team is experienced in all of these standards and will apply the correct one for your project location and industry.",
+    "status": "live",
+    "display_order": 3,
+    "created_at": "2026-02-28T00:39:39.109Z",
+    "updated_at": "2026-02-28T00:39:39.109Z"
+  },
+  {
+    "id": 4,
+    "service_id": 4,
+    "question": "What information is typically shown on a PFD?",
+    "answer": "A professionally prepared PFD includes: all major process equipment (vessels, reactors, heat exchangers, pumps, compressors, columns) with their tag numbers; all primary process streams with directional flow arrows; key operating conditions (temperature, pressure, flow rate) annotated on each stream; energy inputs and outputs; and a stream data table summarizing compositions, flow rates, temperatures, and pressures. Utility systems such as steam, cooling water, and fuel are shown where they interact with the main process. Minor equipment and detailed instrumentation are generally not shown on a PFD.",
+    "status": "live",
+    "display_order": 4,
+    "created_at": "2026-02-28T00:39:39.206Z",
+    "updated_at": "2026-02-28T00:39:39.206Z"
+  },
+  {
+    "id": 5,
+    "service_id": 4,
+    "question": "How long does it take to prepare a PFD professionally?",
+    "answer": "The time required to prepare a PFD depends on the complexity of the process. A simple single-unit process PFD can typically be completed in 24 to 48 hours. A moderately complex process with multiple unit operations may take 3 to 5 business days. Large, multi-train or multi-unit process systems can take 7 to 14 business days. DrawnDimension always confirms the scope and timeline with the client before starting, and we can accommodate urgent turnaround requests where needed.",
+    "status": "live",
+    "display_order": 5,
+    "created_at": "2026-02-28T00:39:39.298Z",
+    "updated_at": "2026-02-28T00:39:39.298Z"
+  },
+  {
+    "id": 6,
+    "service_id": 4,
+    "question": "Can DrawnDimension prepare PFDs from scratch, or only revise existing ones?",
+    "answer": "DrawnDimension provides both services. We can develop a PFD from scratch starting from a process description, block flow diagram, mass and energy balance data, or even a rough conceptual sketch. We also provide PFD revision and updating services for existing facilities where the process has changed or the documentation needs to be brought up to date. Both services are available to clients worldwide, regardless of industry or geographic location.",
+    "status": "live",
+    "display_order": 6,
+    "created_at": "2026-02-28T00:39:39.411Z",
+    "updated_at": "2026-02-28T00:39:39.411Z"
+  },
+  {
+    "id": 7,
+    "service_id": 4,
+    "question": "What software does DrawnDimension use to produce PFDs?",
+    "answer": "We primarily use AutoCAD for PFD drafting, which is the most widely accepted format in the global engineering industry. Deliverables are provided in AutoCAD DWG format, PDF, and any other format required by the client. We can also work with your company's existing title block templates and drawing standards to ensure seamless integration with your existing document management system.",
+    "status": "live",
+    "display_order": 7,
+    "created_at": "2026-02-28T00:39:39.509Z",
+    "updated_at": "2026-02-28T00:39:39.509Z"
+  },
+  {
+    "id": 8,
+    "service_id": 4,
+    "question": "Do I need a PFD before a HAZOP study can be conducted?",
+    "answer": "Yes. A Process Flow Diagram is one of the essential prerequisite documents for a Hazard and Operability (HAZOP) study. While the P&ID is the primary reference document used during HAZOP sessions, the PFD provides the team with the overall process context and operating philosophy. Without an accurate PFD, HAZOP facilitators and team members may lack the high-level understanding needed to effectively challenge the design during node-by-node reviews. DrawnDimension provides both PFD preparation and HAZOP support services.",
+    "status": "live",
+    "display_order": 8,
+    "created_at": "2026-02-28T00:39:39.620Z",
+    "updated_at": "2026-02-28T00:39:39.620Z"
+  },
+  {
+    "id": 9,
+    "service_id": 4,
+    "question": "Can DrawnDimension provide PFD services for clients outside Bangladesh?",
+    "answer": "Absolutely. DrawnDimension is a globally operating engineering drafting service. We have delivered PFD projects for clients in the United States, United Kingdom, Canada, Australia, the Middle East (including Saudi Arabia, UAE, Qatar, and Kuwait), Southeast Asia, and Europe. All work is conducted remotely with secure file transfer, and we are experienced in working across time zones to meet international project deadlines.",
+    "status": "live",
+    "display_order": 9,
+    "created_at": "2026-02-28T00:39:39.719Z",
+    "updated_at": "2026-02-28T00:39:39.719Z"
+  },
+  {
+    "id": 10,
+    "service_id": 4,
+    "question": "How much does a professional PFD service cost?",
+    "answer": "The cost of PFD preparation depends on the complexity of the process, the number of unit operations, the level of detail required, and the turnaround time needed. DrawnDimension offers competitive, transparent pricing for global clients. We provide a fixed-price quotation after reviewing your scope of work — with no hidden fees. Contact us at drawndimension.com to request a free quote for your PFD project.",
+    "status": "live",
+    "display_order": 10,
+    "created_at": "2026-02-28T00:39:39.810Z",
+    "updated_at": "2026-02-28T00:39:39.810Z"
+  },
+  {
+    "id": 11,
+    "service_id": 4,
+    "question": "What is a P&ID and why is it the most important document in a process plant?",
+    "answer": "A Piping and Instrumentation Diagram (P&ID) is a detailed schematic drawing that shows every piece of process equipment, all piping with specifications, all instruments, control loops, safety devices, and utility connections within a process facility. It is often called the 'bible' of the plant because it is the primary reference document for engineering design, construction, commissioning, operations, maintenance, and safety. Every discipline — process, piping, instrumentation, electrical, safety, and operations — relies on the P&ID throughout the entire facility lifecycle.",
+    "status": "live",
+    "display_order": 11,
+    "created_at": "2026-02-28T00:39:39.905Z",
+    "updated_at": "2026-02-28T00:39:39.905Z"
+  },
+  {
+    "id": 12,
+    "service_id": 4,
+    "question": "What symbols and standards are used in P&ID drawings?",
+    "answer": "P&IDs use internationally standardized symbols to represent equipment, instruments, and piping components. The primary standards are ISA 5.1 (ANSI/ISA-5.1-2009), which governs instrumentation symbols and identification globally, and ISO 10628-2, which covers equipment symbols. In the United Kingdom, BS EN ISO 10628 is the applicable standard. Major operating companies such as Shell, ExxonMobil, BP, and Saudi Aramco also have their own company-specific symbol libraries and P&ID conventions. DrawnDimension applies the correct standard based on your project location, industry, and client requirements.",
+    "status": "live",
+    "display_order": 12,
+    "created_at": "2026-02-28T00:39:40.000Z",
+    "updated_at": "2026-02-28T00:39:40.000Z"
+  },
+  {
+    "id": 13,
+    "service_id": 4,
+    "question": "What is the difference between a preliminary P&ID and an Approved for Design (AFD) P&ID?",
+    "answer": "P&IDs evolve through several stages during a project. A preliminary or conceptual P&ID is developed during early engineering to capture the initial design intent and support HAZOP preparation. An Issued for Review (IFR) P&ID is shared with the broader engineering team for comment. An Approved for Design (AFD) or Issued for Design (IFD) P&ID has been reviewed, commented, and approved for use in detailed engineering and procurement. An As-Built P&ID reflects the final installed and commissioned state of the plant. DrawnDimension can support all of these stages.",
+    "status": "live",
+    "display_order": 13,
+    "created_at": "2026-02-28T00:39:40.105Z",
+    "updated_at": "2026-02-28T00:39:40.105Z"
+  },
+  {
+    "id": 14,
+    "service_id": 4,
+    "question": "How are instruments identified on a P&ID?",
+    "answer": "Each instrument on a P&ID is identified by a unique tag number that follows a standardized naming convention, typically defined by ISA 5.1. The tag number consists of a loop number and a functional identification code. For example, FIC-101 represents Flow Indicating Controller on loop 101. The first letter(s) indicate the measured variable (F = Flow, T = Temperature, P = Pressure, L = Level), followed by modifier letters and function codes (I = Indicator, C = Controller, T = Transmitter, V = Valve). This system ensures every instrument has a globally unique identifier.",
+    "status": "live",
+    "display_order": 14,
+    "created_at": "2026-02-28T00:39:40.204Z",
+    "updated_at": "2026-02-28T00:39:40.204Z"
+  },
+  {
+    "id": 15,
+    "service_id": 4,
+    "question": "What are the most common P&ID review and approval stages?",
+    "answer": "In a typical engineering project, P&IDs are issued at multiple stages for review and approval: (1) Issued for HAZOP — shared with the HAZOP team for hazard identification; (2) Issued for Comment (IFC) — distributed to all disciplines for technical review; (3) Issued for Approval (IFA) — submitted to client and/or regulatory authority for approval; (4) Issued for Design (IFD) / Approved for Design (AFD) — released for detailed engineering; (5) Issued for Construction (IFC) — released to contractors; and (6) As-Built — updated to reflect final installed conditions. Each stage is captured in the drawing revision history.",
+    "status": "live",
+    "display_order": 15,
+    "created_at": "2026-02-28T00:39:40.314Z",
+    "updated_at": "2026-02-28T00:39:40.314Z"
+  },
+  {
+    "id": 16,
+    "service_id": 4,
+    "question": "What is a 'Smart P&ID' and how is it different from a standard AutoCAD P&ID?",
+    "answer": "A Smart P&ID is an intelligent engineering drawing created in specialized software such as AVEVA Diagrams (formerly Aveva PDMS), Intergraph SmartPlant P&ID, or AVEVA E3D. Unlike a standard AutoCAD P&ID, a Smart P&ID has data intelligence embedded in every symbol — each instrument, valve, and equipment item is a data object linked to an engineering database. This enables automated consistency checks, integration with other engineering tools (such as piping stress analysis and instrumentation databases), and more efficient plant lifecycle management. DrawnDimension provides standard AutoCAD P&IDs for most clients and can support Smart P&ID projects upon request.",
+    "status": "live",
+    "display_order": 16,
+    "created_at": "2026-02-28T00:39:40.433Z",
+    "updated_at": "2026-02-28T00:39:40.433Z"
+  },
+  {
+    "id": 17,
+    "service_id": 4,
+    "question": "How do you ensure P&ID accuracy and compliance with safety standards?",
+    "answer": "DrawnDimension implements a multi-step quality assurance process for every P&ID we produce. This includes a review of process descriptions and PFDs to ensure alignment; checking that all equipment, instruments, and piping are correctly represented and tagged; verifying compliance with the applicable ISA, ISO, or client-specific standard; cross-checking against equipment data sheets and instrument index; and a final independent review before issue. For projects with regulatory requirements (OSHA PSM, COMAH, ATEX), we ensure the P&IDs meet the documentation requirements of the relevant authority.",
+    "status": "live",
+    "display_order": 17,
+    "created_at": "2026-02-28T00:39:40.528Z",
+    "updated_at": "2026-02-28T00:39:40.528Z"
+  },
+  {
+    "id": 18,
+    "service_id": 4,
+    "question": "Can you update our existing P&IDs to reflect plant modifications?",
+    "answer": "Yes. Keeping P&IDs current with plant modifications is a critical safety requirement under Management of Change (MOC) procedures and regulatory standards such as OSHA PSM (29 CFR 1910.119) and UK COMAH regulations. DrawnDimension provides P&ID as-built updating services — we take your marked-up (redline) drawings or field survey data and update the P&IDs to accurately reflect the current state of the plant. This ensures your documentation remains compliant, accurate, and safe for use by operations and maintenance teams.",
+    "status": "live",
+    "display_order": 18,
+    "created_at": "2026-02-28T00:39:40.620Z",
+    "updated_at": "2026-02-28T00:39:40.620Z"
+  },
+  {
+    "id": 19,
+    "service_id": 4,
+    "question": "What industries does DrawnDimension serve for P&ID drafting?",
+    "answer": "DrawnDimension has experience producing P&IDs across a wide range of industries, including: oil and gas exploration and production, petroleum refining, petrochemical and chemical manufacturing, pharmaceutical and biotech facilities, food and beverage processing, water and wastewater treatment, power generation (gas turbines, combined cycle, boilers), LNG facilities, offshore platforms, and industrial gas production. We work with engineering procurement and construction (EPC) contractors, owner-operators, and engineering consultancies worldwide.",
+    "status": "live",
+    "display_order": 19,
+    "created_at": "2026-02-28T00:39:40.722Z",
+    "updated_at": "2026-02-28T00:39:40.722Z"
+  },
+  {
+    "id": 20,
+    "service_id": 4,
+    "question": "What file formats do you deliver and can you match our company title block?",
+    "answer": "We deliver P&IDs in AutoCAD DWG format (compatible with any AutoCAD version from 2010 onwards), PDF (vector, print-quality), and any other format required by the client. We routinely work with client-specific title blocks, drawing borders, line numbering systems, tag number formats, and symbol libraries to ensure our drawings integrate seamlessly with your existing document control system. Simply share your template files when you place your order and we will match them precisely.",
+    "status": "live",
+    "display_order": 20,
+    "created_at": "2026-02-28T00:39:40.811Z",
+    "updated_at": "2026-02-28T00:39:40.811Z"
+  },
+  {
+    "id": 21,
+    "service_id": 3,
+    "question": "What is SolidWorks and why is it the preferred 3D CAD software for mechanical engineers?",
+    "answer": "SolidWorks is a parametric, feature-based 3D CAD (Computer-Aided Design) software developed by Dassault Systemes. It is the world's most widely used mechanical CAD platform, trusted by millions of engineers across aerospace, automotive, industrial machinery, consumer products, oil & gas, medical devices, and construction. SolidWorks is preferred because of its powerful parametric modeling capabilities — meaning that changing one dimension automatically updates the entire model and all associated drawings — its intuitive interface, and its comprehensive suite of simulation, sheet metal, weldment, and surfacing tools. It produces highly accurate digital models that serve as the single source of truth from design through manufacturing.",
+    "status": "live",
+    "display_order": 1,
+    "created_at": "2026-02-28T00:39:40.905Z",
+    "updated_at": "2026-02-28T00:39:40.905Z"
+  },
+  {
+    "id": 22,
+    "service_id": 3,
+    "question": "What types of 3D models can DrawnDimension create in SolidWorks?",
+    "answer": "DrawnDimension provides the full range of SolidWorks modeling services: solid part modeling for machined, cast, and fabricated components; assembly modeling that shows how individual parts fit and move together; sheet metal design with flat-pattern outputs for laser cutting and press brake operations; weldment design for structural steel frames and welded assemblies; surface modeling for complex organic or aerodynamic geometries; pressure vessel and tank design; and custom machinery and equipment modeling. We work from sketches, engineering specifications, reference images, or existing 2D drawings.",
+    "status": "live",
+    "display_order": 2,
+    "created_at": "2026-02-28T00:39:40.995Z",
+    "updated_at": "2026-02-28T00:39:40.995Z"
+  },
+  {
+    "id": 23,
+    "service_id": 3,
+    "question": "Can SolidWorks models be used directly for CNC machining and manufacturing?",
+    "answer": "Yes. SolidWorks models are the ideal input for modern CNC manufacturing. The 3D solid model can be imported directly into CAM (Computer-Aided Manufacturing) software such as Mastercam, SolidCAM, or Fusion 360 to generate CNC toolpaths. For sheet metal parts, SolidWorks generates accurate flat patterns in DXF format for laser cutters and punch presses. For 3D printing (additive manufacturing), the model is exported as an STL file. For forging and casting, the SolidWorks model provides the exact geometry for die and mold design. DrawnDimension delivers models in STEP, IGES, and all other manufacturing-ready formats.",
+    "status": "live",
+    "display_order": 3,
+    "created_at": "2026-02-28T00:39:41.106Z",
+    "updated_at": "2026-02-28T00:39:41.106Z"
+  },
+  {
+    "id": 24,
+    "service_id": 3,
+    "question": "What is FEA (Finite Element Analysis) and can DrawnDimension perform it in SolidWorks?",
+    "answer": "Finite Element Analysis (FEA) is a computational method used to simulate how a structure or component will respond to applied loads, pressures, temperatures, and vibrations. SolidWorks Simulation (formerly CosmosWorks) is an integrated FEA tool that allows engineers to apply boundary conditions, mesh the model, and calculate stress, strain, displacement, and factor of safety throughout the structure. This allows engineers to identify weaknesses, optimize material usage, and verify structural integrity before a single physical prototype is made. DrawnDimension can perform static, thermal, and fatigue analysis studies using SolidWorks Simulation upon request.",
+    "status": "live",
+    "display_order": 4,
+    "created_at": "2026-02-28T00:39:41.215Z",
+    "updated_at": "2026-02-28T00:39:41.215Z"
+  },
+  {
+    "id": 25,
+    "service_id": 3,
+    "question": "What file formats does DrawnDimension deliver for SolidWorks projects?",
+    "answer": "DrawnDimension delivers a comprehensive set of file formats to meet all downstream requirements: native SolidWorks files (.SLDPRT for parts, .SLDASM for assemblies, .SLDDRW for drawings); neutral exchange formats including STEP (.STEP / .STP) and IGES (.IGS) for compatibility with any other CAD system; DXF and DWG for 2D drawing output; STL for 3D printing; PDF for 2D manufacturing drawings; and high-resolution JPEG or PNG renderings for presentations and marketing materials. We can also produce 3D PDF files that allow clients to view the 3D model without any CAD software installed.",
+    "status": "live",
+    "display_order": 5,
+    "created_at": "2026-02-28T00:39:41.307Z",
+    "updated_at": "2026-02-28T00:39:41.307Z"
+  },
+  {
+    "id": 26,
+    "service_id": 3,
+    "question": "Can DrawnDimension reverse-engineer a physical part and create a SolidWorks model?",
+    "answer": "Yes. Reverse engineering — creating a CAD model from an existing physical part — is a service we provide regularly. If you have a physical component without any drawings or CAD data, we can work from your precise measurements (or from a technical drawing of the measured part) to create an accurate SolidWorks 3D model. This is particularly useful for legacy parts where the original drawings are lost, for parts sourced from suppliers who cannot provide CAD data, or for components that need to be re-manufactured or modified.",
+    "status": "live",
+    "display_order": 6,
+    "created_at": "2026-02-28T00:39:41.418Z",
+    "updated_at": "2026-02-28T00:39:41.418Z"
+  },
+  {
+    "id": 27,
+    "service_id": 3,
+    "question": "How does SolidWorks sheet metal design work and what are its benefits?",
+    "answer": "SolidWorks has a dedicated sheet metal design environment that understands the physical characteristics of sheet metal fabrication. You design the part in its formed (3D) state, and SolidWorks automatically calculates the flat pattern — accounting for material thickness, bend allowances, and K-factors — that the fabricator will cut before bending. This flat pattern can be exported as a DXF file for laser cutting or waterjet cutting machines. The benefits include elimination of manual flat pattern calculations, reduced fabrication errors, accurate material estimation, and seamless communication between designer and fabricator.",
+    "status": "live",
+    "display_order": 7,
+    "created_at": "2026-02-28T00:39:41.507Z",
+    "updated_at": "2026-02-28T00:39:41.507Z"
+  },
+  {
+    "id": 28,
+    "service_id": 3,
+    "question": "Can DrawnDimension produce SolidWorks models for pressure vessels and tanks?",
+    "answer": "Yes. DrawnDimension has experience modeling pressure vessels, storage tanks, heat exchangers, reactors, and other pressure-containing equipment in SolidWorks. We model these to exact specifications including nozzle locations and orientations, manways, internal components (trays, demisters, baffles), support structures, and lifting lugs. The 3D model serves as the basis for manufacturing drawings, weld maps, and inspection documentation. For pressure vessel design to ASME Section VIII or PD 5500 standards, we work alongside qualified pressure vessel engineers to ensure design code compliance.",
+    "status": "live",
+    "display_order": 8,
+    "created_at": "2026-02-28T00:39:41.596Z",
+    "updated_at": "2026-02-28T00:39:41.596Z"
+  },
+  {
+    "id": 29,
+    "service_id": 3,
+    "question": "What industries globally use SolidWorks design services from DrawnDimension?",
+    "answer": "DrawnDimension serves clients across numerous industries worldwide, including: industrial machinery and custom equipment manufacturers in Europe and North America; oil & gas equipment fabricators in the Middle East; consumer product companies in the USA and UK; sheet metal fabricators in Australia and Southeast Asia; structural steel fabricators; medical device companies; food processing equipment manufacturers; and research and development organizations requiring custom prototype designs. We work with both large corporations and small engineering businesses.",
+    "status": "live",
+    "display_order": 9,
+    "created_at": "2026-02-28T00:39:41.683Z",
+    "updated_at": "2026-02-28T00:39:41.683Z"
+  },
+  {
+    "id": 30,
+    "service_id": 3,
+    "question": "How does the remote SolidWorks design process work when working with DrawnDimension?",
+    "answer": "Our remote design process is straightforward and highly efficient. You share your design requirements with us via email — this can be sketches, photographs, existing drawings, a written description, or a combination. We review your inputs, confirm the scope, deliverables, timeline, and price, and then begin modeling. We share screenshots, renderings, or a 3D PDF of the model at the review stage for your feedback. After incorporating any revisions, we deliver the final SolidWorks files and all requested output formats via secure file transfer. Most projects are completed within 2 to 7 business days depending on complexity.",
+    "status": "live",
+    "display_order": 10,
+    "created_at": "2026-02-28T00:39:41.772Z",
+    "updated_at": "2026-02-28T00:39:41.772Z"
+  },
+  {
+    "id": 31,
+    "service_id": 1,
+    "question": "Why does my engineering or technical business need a professional website?",
+    "answer": "In today's global marketplace, your website is the first point of contact between your business and potential clients worldwide. Studies consistently show that over 75% of users judge a company's credibility based on its website design. For engineering firms, technical consultancies, and industrial service providers, a professional website establishes expertise, builds trust, and generates a steady stream of qualified leads from clients in your target markets. A well-designed, SEO-optimized website works for your business 24 hours a day, 7 days a week — even while you sleep — reaching clients in the USA, UK, Europe, the Middle East, Australia, and beyond.",
+    "status": "live",
+    "display_order": 1,
+    "created_at": "2026-02-28T00:39:41.873Z",
+    "updated_at": "2026-02-28T00:39:41.873Z"
+  },
+  {
+    "id": 32,
+    "service_id": 1,
+    "question": "What is responsive web design and why does it matter globally?",
+    "answer": "Responsive web design means that a website automatically adapts its layout, content, and functionality to display correctly on any device — desktop computers, laptops, tablets, and smartphones. This is critically important because, globally, more than 60% of all web traffic comes from mobile devices. Google also uses mobile-first indexing, meaning it primarily evaluates the mobile version of your site when determining search rankings. Every website DrawnDimension builds is fully responsive by default — ensuring an excellent user experience for visitors from every country, on every device.",
+    "status": "live",
+    "display_order": 2,
+    "created_at": "2026-02-28T00:39:41.971Z",
+    "updated_at": "2026-02-28T00:39:41.971Z"
+  },
+  {
+    "id": 33,
+    "service_id": 1,
+    "question": "What is SEO and how does DrawnDimension optimize websites for global search rankings?",
+    "answer": "Search Engine Optimization (SEO) is the practice of optimizing a website so that it ranks highly on Google and other search engines for relevant search queries. DrawnDimension implements comprehensive on-page SEO for every website we build: strategic keyword research to identify the terms your global target audience is searching for; proper heading structure (H1, H2, H3) incorporating primary and secondary keywords; optimized meta titles and meta descriptions for every page; image optimization with descriptive alt text; clean, semantic HTML code that search engines can crawl efficiently; XML sitemaps; structured data (schema markup); Core Web Vitals optimization for page speed; and Google Search Console integration.",
+    "status": "live",
+    "display_order": 3,
+    "created_at": "2026-02-28T00:39:42.064Z",
+    "updated_at": "2026-02-28T00:39:42.064Z"
+  },
+  {
+    "id": 34,
+    "service_id": 1,
+    "question": "How long does it take to build a professional business website?",
+    "answer": "The timeline for a professional website project depends on its complexity and scope. A standard business or service website with 5 to 10 pages typically takes 2 to 4 weeks from kick-off to launch. A more complex website with custom functionality, e-commerce integration, or a large number of pages may take 6 to 8 weeks. A simple landing page can be completed in as little as 3 to 5 business days. DrawnDimension always agrees on a clear project timeline before starting, and we keep you updated throughout the development process.",
+    "status": "live",
+    "display_order": 4,
+    "created_at": "2026-02-28T00:39:42.151Z",
+    "updated_at": "2026-02-28T00:39:42.151Z"
+  },
+  {
+    "id": 35,
+    "service_id": 1,
+    "question": "What is the difference between a template website and a custom-designed website?",
+    "answer": "A template website uses a pre-built design theme that is customized with your content and branding. Templates are faster and more affordable but often result in a generic appearance that is shared by thousands of other websites. A custom-designed website is built from the ground up, tailored specifically to your brand identity, target audience, and business goals. Custom sites offer a unique visual identity, superior performance, better SEO architecture, and the flexibility to include any functionality your business needs. DrawnDimension specializes in custom web design that makes your business stand out from competitors globally.",
+    "status": "live",
+    "display_order": 5,
+    "created_at": "2026-02-28T00:39:42.252Z",
+    "updated_at": "2026-02-28T00:39:42.252Z"
+  },
+  {
+    "id": 36,
+    "service_id": 1,
+    "question": "Will my website be secure and how do you protect it from hackers?",
+    "answer": "Website security is a top priority in every site we build. DrawnDimension implements multiple security measures as standard: SSL/TLS encryption (HTTPS) for all traffic; secure hosting on reputable servers with regular backups; WordPress security hardening (for WordPress sites), including protection against SQL injection, cross-site scripting, and brute force attacks; regular plugin and theme updates; and firewall and malware scanning integration. For e-commerce websites handling payment information, we implement PCI-DSS compliant payment gateways to protect customer financial data.",
+    "status": "live",
+    "display_order": 6,
+    "created_at": "2026-02-28T00:39:42.348Z",
+    "updated_at": "2026-02-28T00:39:42.348Z"
+  },
+  {
+    "id": 37,
+    "service_id": 1,
+    "question": "Can DrawnDimension redesign my existing outdated website?",
+    "answer": "Yes. Website redesign is one of our most popular services. We regularly modernize outdated websites for engineering firms, industrial service companies, and technical consultancies. Our redesign process includes a thorough audit of your current site — assessing design, performance, mobile responsiveness, SEO, and content — followed by a complete rebuild using modern design principles and technologies. We carefully migrate all existing content and ensure that your current search engine rankings are protected during the transition by implementing proper URL redirects and preserving your site's SEO equity.",
+    "status": "live",
+    "display_order": 7,
+    "created_at": "2026-02-28T00:39:42.442Z",
+    "updated_at": "2026-02-28T00:39:42.442Z"
+  },
+  {
+    "id": 38,
+    "service_id": 1,
+    "question": "Do you provide website maintenance and support after launch?",
+    "answer": "Yes. DrawnDimension offers ongoing website maintenance and support services after launch. This includes regular WordPress core, theme, and plugin updates; security monitoring and malware scanning; uptime monitoring; monthly performance reports; content updates and page additions; and technical support for any issues that arise. We offer flexible maintenance packages to suit different budgets and requirements. Having a professional maintenance partner ensures your website remains fast, secure, and up-to-date — protecting your investment and your online reputation.",
+    "status": "live",
+    "display_order": 8,
+    "created_at": "2026-02-28T00:39:42.531Z",
+    "updated_at": "2026-02-28T00:39:42.531Z"
+  },
+  {
+    "id": 39,
+    "service_id": 1,
+    "question": "Can you integrate a Contact Us form, WhatsApp button, or live chat on my website?",
+    "answer": "Absolutely. DrawnDimension integrates all the conversion-focused features your business needs to generate leads from global visitors: contact forms with spam protection; WhatsApp click-to-chat buttons; live chat widgets (including Tidio, Crisp, and similar platforms); email subscription forms; phone click-to-call buttons for mobile users; Google Maps integration showing your office location; and social media profile links. These features make it easy for potential clients from anywhere in the world to reach you instantly.",
+    "status": "live",
+    "display_order": 9,
+    "created_at": "2026-02-28T00:39:42.626Z",
+    "updated_at": "2026-02-28T00:39:42.626Z"
+  },
+  {
+    "id": 40,
+    "service_id": 1,
+    "question": "How much does a professional business website cost with DrawnDimension?",
+    "answer": "Website pricing depends on the scope, number of pages, design complexity, and functionality required. DrawnDimension offers highly competitive pricing for clients globally, with packages suitable for startups, SMEs, and larger organizations. We provide a transparent, fixed-price quotation after an initial consultation to understand your requirements — there are no hidden costs or surprise invoices. Visit drawndimension.com to discuss your project and receive a free, no-obligation quote.",
+    "status": "live",
+    "display_order": 10,
+    "created_at": "2026-02-28T00:39:42.718Z",
+    "updated_at": "2026-02-28T00:39:42.718Z"
+  },
+  {
+    "id": 41,
+    "service_id": 5,
+    "question": "What is a HAZOP study and what is its primary purpose?",
+    "answer": "A Hazard and Operability (HAZOP) study is a structured, systematic technique used to identify potential hazards and operability problems in a process design or operating facility. It is conducted by a multidisciplinary team of experienced engineers who systematically examine each part of a process — using a set of guidewords applied to process parameters — to identify deviations from design intent that could lead to accidents, equipment damage, environmental harm, or production losses. The primary purpose of a HAZOP is to identify risks before they cause harm, and to recommend engineering and procedural safeguards to prevent or mitigate those risks. It is one of the most powerful tools in the process safety engineer's toolkit.",
+    "status": "live",
+    "display_order": 1,
+    "created_at": "2026-02-28T00:39:42.813Z",
+    "updated_at": "2026-02-28T00:39:42.813Z"
+  },
+  {
+    "id": 42,
+    "service_id": 5,
+    "question": "What international standards govern HAZOP studies?",
+    "answer": "HAZOP studies are governed by several internationally recognized standards and regulations. The primary technical standard is IEC 61882 (Hazard and Operability Studies — Application Guide), which defines the methodology, team composition, guidewords, and documentation requirements. In the United States, OSHA's Process Safety Management (PSM) standard (29 CFR 1910.119) mandates Process Hazard Analysis (PHA) — of which HAZOP is the most rigorous method — for facilities handling highly hazardous chemicals above threshold quantities. In the UK and EU, the COMAH Regulations (Control of Major Accident Hazards) require equivalent safety studies. Many oil & gas companies (Shell, BP, ExxonMobil, Saudi Aramco) also have their own internal HAZOP procedures.",
+    "status": "live",
+    "display_order": 2,
+    "created_at": "2026-02-28T00:39:42.902Z",
+    "updated_at": "2026-02-28T00:39:42.902Z"
+  },
+  {
+    "id": 43,
+    "service_id": 5,
+    "question": "What are HAZOP guidewords and how are they used?",
+    "answer": "HAZOP guidewords are standardized words used to systematically challenge each process parameter at each node (section of the process being studied). The standard guidewords defined in IEC 61882 are: NO or NONE (the intended function does not occur — e.g., no flow); MORE (a quantitative increase — e.g., high flow, high temperature, high pressure); LESS (a quantitative decrease — e.g., low flow, low level); AS WELL AS (an additional component or phase is present — e.g., contamination); PART OF (only a fraction of the intended transfer occurs); REVERSE (the opposite of the intended flow or function — e.g., reverse flow, reverse reaction); OTHER THAN (something completely different occurs — e.g., wrong material). Each guideword is applied to each process parameter (flow, temperature, pressure, level, composition, phase) to generate potential deviations for analysis.",
+    "status": "live",
+    "display_order": 3,
+    "created_at": "2026-02-28T00:39:43.020Z",
+    "updated_at": "2026-02-28T00:39:43.020Z"
+  },
+  {
+    "id": 44,
+    "service_id": 5,
+    "question": "Who should be on a HAZOP team?",
+    "answer": "A HAZOP team is multidisciplinary and typically consists of 5 to 8 people. The key roles are: a HAZOP Chairman/Facilitator who leads the sessions and ensures the methodology is applied correctly; a HAZOP Scribe/Secretary who records all findings in real-time; a Process Engineer who is the primary technical expert on the process design; an Instrument and Control Engineer who understands the control systems and safety interlocks; an Operations Representative who provides practical insight into how the plant is operated; a Safety Engineer who advises on consequence severity and safeguard adequacy; and sometimes a Maintenance Engineer or Commissioning Engineer. The team must have the collective knowledge to evaluate all aspects of the process.",
+    "status": "live",
+    "display_order": 4,
+    "created_at": "2026-02-28T00:39:43.112Z",
+    "updated_at": "2026-02-28T00:39:43.112Z"
+  },
+  {
+    "id": 45,
+    "service_id": 5,
+    "question": "At what stage of a project should a HAZOP be conducted?",
+    "answer": "For new projects, the primary HAZOP is best conducted during the detailed engineering phase when P&IDs are approximately 30 to 60 percent complete — detailed enough to show the design intent, but early enough that findings can be incorporated without expensive rework. A second review ('close-out HAZOP') is often conducted before commissioning when the P&IDs are fully complete. For plant modifications, a HAZOP or What-If study should be conducted as part of the Management of Change (MOC) process before the modification is implemented. For existing operating facilities, a HAZOP revalidation should be conducted periodically — typically every 5 years or following a significant incident.",
+    "status": "live",
+    "display_order": 5,
+    "created_at": "2026-02-28T00:39:43.198Z",
+    "updated_at": "2026-02-28T00:39:43.198Z"
+  },
+  {
+    "id": 46,
+    "service_id": 5,
+    "question": "What is a HAZOP action register and how is it managed?",
+    "answer": "A HAZOP action register is a formal list of all recommendations and action items generated during the HAZOP study. Each action item is uniquely numbered, clearly described, assigned to a responsible person or discipline, and given a target completion date. The register records the HAZOP node, the deviation, the cause, the consequence, the existing safeguards, the recommendation, and its priority level. After the HAZOP, each action must be tracked to close-out — either by implementing the engineering change, revising the procedure, or formally accepting and documenting the risk with justification. Regulatory auditors will scrutinize the completeness and timeliness of HAZOP action close-out.",
+    "status": "live",
+    "display_order": 6,
+    "created_at": "2026-02-28T00:39:43.286Z",
+    "updated_at": "2026-02-28T00:39:43.286Z"
+  },
+  {
+    "id": 47,
+    "service_id": 5,
+    "question": "What is the difference between HAZOP and other Process Hazard Analysis (PHA) methods?",
+    "answer": "There are several PHA techniques, each suited to different purposes. HAZOP (Hazard and Operability Study) is the most thorough and systematic, using structured guidewords applied node-by-node to P&IDs — it is the industry standard for complex continuous processes. What-If Analysis is a less structured brainstorming technique, useful for simpler systems or preliminary reviews. Failure Mode and Effects Analysis (FMEA) focuses on equipment failures rather than process deviations. Fault Tree Analysis (FTA) and Event Tree Analysis (ETA) are quantitative methods used to calculate failure probabilities. Layer of Protection Analysis (LOPA) is often conducted after HAZOP to quantify the adequacy of safeguards for high-risk scenarios. DrawnDimension supports HAZOP and What-If Analysis services.",
+    "status": "live",
+    "display_order": 7,
+    "created_at": "2026-02-28T00:39:43.377Z",
+    "updated_at": "2026-02-28T00:39:43.377Z"
+  },
+  {
+    "id": 48,
+    "service_id": 5,
+    "question": "Can DrawnDimension provide HAZOP documentation and reporting only, without facilitating the sessions?",
+    "answer": "Yes. If your engineering team has already conducted HAZOP sessions using worksheets or a basic recording tool, DrawnDimension can take your raw HAZOP notes and produce a professionally formatted, comprehensive HAZOP report that meets regulatory and audit requirements. This includes organizing the findings into a structured report with an executive summary, scope and methodology, team and attendance records, node-by-node findings, action register, and all required appendices. A professionally documented HAZOP report provides the audit trail needed to demonstrate regulatory compliance and is far more defensible than raw workshop notes.",
+    "status": "live",
+    "display_order": 8,
+    "created_at": "2026-02-28T00:39:43.476Z",
+    "updated_at": "2026-02-28T00:39:43.476Z"
+  },
+  {
+    "id": 49,
+    "service_id": 5,
+    "question": "How does DrawnDimension conduct HAZOP studies for international clients remotely?",
+    "answer": "DrawnDimension has extensive experience supporting HAZOP studies for clients worldwide through a combination of remote facilitation and documentation services. For documentation projects, we work entirely remotely — you share your P&IDs, process descriptions, and any existing HAZOP notes, and we produce the formal documentation. For facilitation projects, we can join HAZOP sessions via video conference (Microsoft Teams, Zoom, or your preferred platform) as HAZOP chairman or scribe. We have supported HAZOP projects for clients in the USA, UK, Canada, Australia, Saudi Arabia, UAE, Qatar, and other locations.",
+    "status": "live",
+    "display_order": 9,
+    "created_at": "2026-02-28T00:39:43.577Z",
+    "updated_at": "2026-02-28T00:39:43.577Z"
+  },
+  {
+    "id": 50,
+    "service_id": 5,
+    "question": "What happens after a HAZOP if a high-risk scenario is identified?",
+    "answer": "When a HAZOP team identifies a high-risk scenario — where the existing safeguards are judged to be insufficient — a recommendation is issued to add or improve safeguards. Typical recommendations include adding independent safety instrumented functions (SIFs) such as high-high pressure trips; installing additional relief devices; adding detection systems (gas detectors, flame detectors); changing the design to eliminate the hazard; adding procedural controls; or performing a more detailed quantitative risk assessment (QRA). For scenarios requiring a Safety Instrumented System (SIS), a subsequent Layer of Protection Analysis (LOPA) and SIL (Safety Integrity Level) determination study may be required to formally verify that the safeguards are adequate.",
+    "status": "live",
+    "display_order": 10,
+    "created_at": "2026-02-28T00:39:43.669Z",
+    "updated_at": "2026-02-28T00:39:43.669Z"
+  },
+  {
+    "id": 51,
+    "service_id": 2,
+    "question": "What is AutoCAD and why is it the global standard for engineering drafting?",
+    "answer": "AutoCAD is a 2D and 3D computer-aided design (CAD) software developed by Autodesk, first released in 1982. It has become the undisputed global standard for engineering, architectural, and technical drafting. Today, AutoCAD is used in over 150 countries and is the primary drafting tool for civil engineers, structural engineers, mechanical engineers, process engineers, architects, electrical engineers, and construction professionals worldwide. Its universal DWG file format is accepted by virtually every organization in every industry. When a client, contractor, or regulatory authority asks for a CAD drawing, they are almost always asking for an AutoCAD DWG file.",
+    "status": "live",
+    "display_order": 1,
+    "created_at": "2026-02-28T00:39:43.757Z",
+    "updated_at": "2026-02-28T00:39:43.757Z"
+  },
+  {
+    "id": 52,
+    "service_id": 2,
+    "question": "What types of drawings can DrawnDimension produce in AutoCAD?",
+    "answer": "DrawnDimension produces the full range of engineering and technical drawings in AutoCAD including: process engineering drawings (PFDs, P&IDs, block flow diagrams); mechanical drawings (fabrication drawings, assembly drawings, detail drawings); structural drawings (steel connection details, reinforcement layouts, foundation plans); civil and site drawings (site layout plans, grading plans, road drawings, utilities layouts); architectural drawings (floor plans, elevations, sections, construction details); electrical drawings (single-line diagrams, cable tray layouts, panel schedules, electrical room plans); HVAC and fire protection drawings; plot plans and equipment layout drawings; and as-built documentation.",
+    "status": "live",
+    "display_order": 2,
+    "created_at": "2026-02-28T00:39:43.847Z",
+    "updated_at": "2026-02-28T00:39:43.847Z"
+  },
+  {
+    "id": 53,
+    "service_id": 2,
+    "question": "What is the difference between AutoCAD DWG and DXF file formats?",
+    "answer": "DWG (Drawing) is AutoCAD's native proprietary file format and is the most widely used CAD format in the world. It preserves all drawing entities, layers, blocks, attributes, and formatting exactly as created. DXF (Drawing Exchange Format) is an open, interoperable format developed by Autodesk to enable file exchange between AutoCAD and other CAD systems (such as SolidWorks, MicroStation, CATIA, and others). While DXF can be opened by almost any CAD program, it may not perfectly preserve all AutoCAD-specific features. DrawnDimension delivers drawings primarily in DWG format and also provides DXF, PDF, and other formats as required.",
+    "status": "live",
+    "display_order": 3,
+    "created_at": "2026-02-28T00:39:43.945Z",
+    "updated_at": "2026-02-28T00:39:43.945Z"
+  },
+  {
+    "id": 54,
+    "service_id": 2,
+    "question": "Can DrawnDimension convert scanned drawings or PDF drawings into AutoCAD DWG files?",
+    "answer": "Yes. PDF-to-CAD and scan-to-CAD conversion is one of our most frequently requested services. We take scanned drawings (TIFF, JPEG, PNG) or vector/raster PDF drawings and manually redraft them as clean, accurate, fully layered AutoCAD DWG files. This is not automated software conversion — our drafters trace and rebuild each drawing manually to ensure accuracy and proper layering. This service is especially valuable for engineering firms that have archives of paper or PDF drawings that need to be brought into a digital CAD environment for editing and updating.",
+    "status": "live",
+    "display_order": 4,
+    "created_at": "2026-02-28T00:39:44.032Z",
+    "updated_at": "2026-02-28T00:39:44.032Z"
+  },
+  {
+    "id": 55,
+    "service_id": 2,
+    "question": "How are AutoCAD drawing layers used and why do they matter?",
+    "answer": "Layers in AutoCAD are analogous to transparent overlays in traditional drafting. Every drawing element (lines, annotations, hatching, dimensions, title blocks) is placed on a named layer that can be turned on or off, frozen, locked, or printed selectively. A well-organized layer structure is essential for a professional drawing: it allows different disciplines to view only the information relevant to them, enables selective printing at different scales, and makes future drawing editing far more efficient. DrawnDimension follows industry standard layer naming conventions — including ISO 13567 (the international standard for CAD layer naming) or your company's specific standard — for all drawings we produce.",
+    "status": "live",
+    "display_order": 5,
+    "created_at": "2026-02-28T00:39:44.124Z",
+    "updated_at": "2026-02-28T00:39:44.124Z"
+  },
+  {
+    "id": 56,
+    "service_id": 2,
+    "question": "What AutoCAD version do you use and can you save to an older version?",
+    "answer": "DrawnDimension uses the most recent version of AutoCAD to take advantage of the latest tools and capabilities. However, we can save DWG files to any version of AutoCAD from 2010 onwards to ensure compatibility with your existing software. When placing your order, simply specify the AutoCAD version you require, and we will save accordingly. We can also provide drawings in AutoCAD LT-compatible format where required.",
+    "status": "live",
+    "display_order": 6,
+    "created_at": "2026-02-28T00:39:44.222Z",
+    "updated_at": "2026-02-28T00:39:44.222Z"
+  },
+  {
+    "id": 57,
+    "service_id": 2,
+    "question": "Can DrawnDimension produce AutoCAD drawings for construction projects?",
+    "answer": "Yes. DrawnDimension regularly produces construction drawings in AutoCAD for residential, commercial, industrial, and infrastructure projects. This includes architectural plans (floor plans, elevations, sections, details), structural drawings (reinforcement layouts, connection details, foundation drawings), civil drawings (site layouts, road plans, drainage details, earthworks), and MEP drawings (HVAC, plumbing, electrical). Our drafters are experienced in construction drawing conventions and standards applicable to the USA, UK, Australia, Canada, and the Middle East, and can produce drawings in the format and scale required by your local building authority.",
+    "status": "live",
+    "display_order": 7,
+    "created_at": "2026-02-28T00:39:44.312Z",
+    "updated_at": "2026-02-28T00:39:44.312Z"
+  },
+  {
+    "id": 58,
+    "service_id": 2,
+    "question": "What is an as-built drawing and how does DrawnDimension produce them?",
+    "answer": "An as-built drawing is a drawing that has been updated to reflect the exact condition of a facility or structure as it was actually constructed — including all changes made during construction, commissioning, and operations. As-built drawings are a critical part of facility documentation required for maintenance, modifications, safety assessments, and regulatory compliance. DrawnDimension produces as-built drawings by taking your marked-up (redline) construction drawings, site survey data, or field measurements and updating the AutoCAD drawings to accurately reflect as-built conditions. We maintain a clear revision history on all updated drawings.",
+    "status": "live",
+    "display_order": 8,
+    "created_at": "2026-02-28T00:39:44.405Z",
+    "updated_at": "2026-02-28T00:39:44.405Z"
+  },
+  {
+    "id": 59,
+    "service_id": 2,
+    "question": "How does outsourcing AutoCAD drafting to DrawnDimension save money?",
+    "answer": "Outsourcing CAD drafting work to DrawnDimension offers significant cost advantages compared to in-house drafting for most companies. You pay only for the work you need — without the overhead of a full-time employee's salary, benefits, software licenses, hardware, and office space. For project-based businesses, this eliminates the problem of overstaffing during quiet periods and understaffing during project peaks. Our global team is also able to offer highly competitive per-drawing or hourly rates, particularly advantageous for clients in high-cost markets such as the USA, UK, Canada, and Australia. Many clients find that outsourcing reduces their drafting costs by 40 to 60 percent.",
+    "status": "live",
+    "display_order": 9,
+    "created_at": "2026-02-28T00:39:44.493Z",
+    "updated_at": "2026-02-28T00:39:44.493Z"
+  },
+  {
+    "id": 60,
+    "service_id": 2,
+    "question": "Can DrawnDimension work with our company's custom title block and drawing standard?",
+    "answer": "Yes, absolutely. We routinely work with client-specific drawing templates, title blocks, drawing borders, layer naming standards, line type standards, text styles, and dimension styles. Simply share your template DWT file and any applicable drawing standards document when you place your order. We will configure our AutoCAD environment to match your standard precisely, ensuring that all drawings we deliver integrate seamlessly into your existing document management system and are indistinguishable from drawings produced in-house.",
+    "status": "live",
+    "display_order": 10,
+    "created_at": "2026-02-28T00:39:44.592Z",
+    "updated_at": "2026-02-28T00:39:44.592Z"
+  },
+  {
+    "id": 61,
+    "service_id": 2,
+    "question": "What is a technical drawing and how is it different from other types of drawings?",
+    "answer": "A technical drawing is a precise, standardized graphical representation of an object, structure, or system that communicates exact dimensions, tolerances, materials, finishes, and manufacturing requirements to the people who will build, assemble, or install it. Unlike artistic or architectural concept drawings, technical drawings follow strict international standards (such as ISO 128, ASME Y14.5, and BS 8888) to ensure they are interpreted consistently and correctly by any qualified engineer or manufacturer, anywhere in the world. Technical drawings use orthographic projection, standardized symbols, and precise dimensioning to eliminate all ambiguity from the design information.",
+    "status": "live",
+    "display_order": 11,
+    "created_at": "2026-02-28T00:39:44.684Z",
+    "updated_at": "2026-02-28T00:39:44.684Z"
+  },
+  {
+    "id": 62,
+    "service_id": 2,
+    "question": "What types of technical drawings does DrawnDimension produce?",
+    "answer": "DrawnDimension provides the full range of technical drawing services: General Arrangement (GA) drawings showing overall equipment or plant layouts; detail drawings of individual components with full dimensions and tolerances; assembly drawings showing how parts fit together with bills of materials; fabrication drawings for welded assemblies, structural steel, and pressure vessels; piping isometric drawings for pipe fabrication and installation; schematic diagrams including hydraulic, pneumatic, and electrical schematics; installation drawings showing how equipment should be positioned and fixed; as-built drawings reflecting current installed conditions; and conversion of hand drawings, sketches, and legacy PDFs into professional CAD drawings.",
+    "status": "live",
+    "display_order": 12,
+    "created_at": "2026-02-28T00:39:44.794Z",
+    "updated_at": "2026-02-28T00:39:44.794Z"
+  },
+  {
+    "id": 63,
+    "service_id": 2,
+    "question": "What is GD&T and does DrawnDimension apply it to technical drawings?",
+    "answer": "GD&T stands for Geometric Dimensioning and Tolerancing. It is a symbolic language used on engineering drawings to define the allowable variation in the form, orientation, location, and runout of manufactured features, beyond what simple plus/minus dimensional tolerances can express. GD&T uses standardized symbols (such as flatness, perpendicularity, true position, cylindricity, and concentricity callouts) to communicate precise functional requirements that ensure parts will fit and function correctly when assembled. The primary standards are ASME Y14.5 (used predominantly in the USA) and ISO 1101 (used internationally). DrawnDimension drafters are proficient in both standards and can apply GD&T to your drawings as required.",
+    "status": "live",
+    "display_order": 13,
+    "created_at": "2026-02-28T00:39:44.901Z",
+    "updated_at": "2026-02-28T00:39:44.901Z"
+  },
+  {
+    "id": 64,
+    "service_id": 2,
+    "question": "What international standards does DrawnDimension apply to technical drawings?",
+    "answer": "DrawnDimension applies internationally recognized standards to all technical drawings, selected based on the client's geographic location, industry, and specific requirements. For general engineering drawings, we apply ISO 128 (general principles of presentation), ISO 286 (limits and fits — tolerancing), ISO 1101 (geometrical tolerancing — GD&T), and ISO 7200 (title block requirements). For US clients and projects, we apply ASME Y14.5 (dimensioning and tolerancing), ASME Y14.100 (engineering drawing practices), and other relevant ASME standards. For UK clients, we apply BS 8888. For process engineering drawings, ISO 10628 applies. We can also work to company-specific standards for major operators.",
+    "status": "live",
+    "display_order": 14,
+    "created_at": "2026-02-28T00:39:45.224Z",
+    "updated_at": "2026-02-28T00:39:45.224Z"
+  },
+  {
+    "id": 65,
+    "service_id": 2,
+    "question": "What is the difference between a detail drawing, an assembly drawing, and a general arrangement drawing?",
+    "answer": "These three drawing types serve different purposes in the engineering documentation hierarchy. A detail drawing (also called a component drawing or part drawing) shows a single manufactured part in full detail — every dimension, tolerance, surface finish, material specification, and manufacturing note needed to produce that part. An assembly drawing shows how multiple individual parts fit together to form a complete assembly — it identifies each part by a balloon reference number linked to a bill of materials (BOM), and shows assembly dimensions and notes. A general arrangement (GA) drawing shows the overall layout of a complete system, equipment item, or facility — conveying the spatial arrangement, overall dimensions, and major component locations without the fine manufacturing detail of a detail drawing.",
+    "status": "live",
+    "display_order": 15,
+    "created_at": "2026-02-28T00:39:45.323Z",
+    "updated_at": "2026-02-28T00:39:45.323Z"
+  },
+  {
+    "id": 66,
+    "service_id": 2,
+    "question": "Can DrawnDimension produce technical drawings for pressure vessels and process equipment?",
+    "answer": "Yes. DrawnDimension has extensive experience producing technical drawings for pressure vessels, storage tanks, heat exchangers, reactors, columns, and other process equipment. Our pressure vessel drawing packages typically include: general arrangement drawings with nozzle schedules and nozzle orientation diagrams; shell and head detail drawings; nozzle detail drawings; internal component drawings (trays, baffles, demisters); support structure drawings; and weld maps. We can produce drawings to ASME Section VIII (used in the USA and internationally), PD 5500 (UK), EN 13445 (Europe), and other applicable pressure vessel codes.",
+    "status": "live",
+    "display_order": 16,
+    "created_at": "2026-02-28T00:39:45.413Z",
+    "updated_at": "2026-02-28T00:39:45.413Z"
+  },
+  {
+    "id": 67,
+    "service_id": 2,
+    "question": "What is a piping isometric drawing and when is it used?",
+    "answer": "A piping isometric drawing is a three-dimensional representation of a section of pipe run (a 'spool'), drawn in isometric projection so that all three axes are visible simultaneously. Piping isometrics show the exact routing of the pipe, all fittings (elbows, tees, reducers, flanges), valves, instruments, and pipe supports, along with all dimensions needed for fabrication and installation. They also include weld numbers, material specifications, and inspection requirements. Piping isometrics are used by pipe fabricators to pre-fabricate pipe spools in a workshop before they are installed on site, which significantly reduces on-site construction time and improves quality. DrawnDimension produces piping isometrics from P&IDs, 3D models, or field survey data.",
+    "status": "live",
+    "display_order": 17,
+    "created_at": "2026-02-28T00:39:45.507Z",
+    "updated_at": "2026-02-28T00:39:45.507Z"
+  },
+  {
+    "id": 68,
+    "service_id": 2,
+    "question": "How does DrawnDimension ensure the accuracy of technical drawings?",
+    "answer": "Accuracy is the most critical quality attribute of any technical drawing, and DrawnDimension implements a rigorous quality assurance process for every drawing we produce. Our process includes: verification of all input data (design specifications, reference drawings, equipment data sheets) before drafting begins; use of parametric CAD tools that maintain geometric and dimensional consistency throughout the drawing; dimensional cross-checking against source data; review of drawing for completeness (all views, sections, details, and notes required for manufacturing or construction); standard compliance check (ISO, ASME, BS, or client standard as applicable); independent review by a second drafter before issue; and a final check that all revision changes have been correctly incorporated.",
+    "status": "live",
+    "display_order": 18,
+    "created_at": "2026-02-28T00:39:45.599Z",
+    "updated_at": "2026-02-28T00:39:45.599Z"
+  },
+  {
+    "id": 69,
+    "service_id": 2,
+    "question": "Can DrawnDimension produce technical drawings for products that will be manufactured overseas?",
+    "answer": "Yes. DrawnDimension frequently produces technical drawings for products manufactured in countries other than the client's home country. When drawings will be used by overseas manufacturers, we ensure that the dimensioning standard is appropriate (ISO or ASME), all units are clearly specified (metric or imperial), material specifications are referenced to internationally recognized standards (ASTM, EN, JIS, BS), tolerancing is explicit and not reliant on assumed manufacturing standards, and surface finish requirements use internationally understood symbols and Ra values. Clear, unambiguous drawings reduce manufacturing errors and quality issues when working with offshore suppliers.",
+    "status": "live",
+    "display_order": 19,
+    "created_at": "2026-02-28T00:39:45.695Z",
+    "updated_at": "2026-02-28T00:39:45.695Z"
+  },
+  {
+    "id": 70,
+    "service_id": 2,
+    "question": "How can I get a quote for technical drawing services from DrawnDimension?",
+    "answer": "Getting a quote from DrawnDimension is quick and straightforward. Simply contact us through our website at drawndimension.com with a description of your project — the type of drawings needed, approximate quantity and complexity, the applicable standard, and your required delivery timeline. If you have reference materials (sketches, existing drawings, specifications), share them with your enquiry. We will review your requirements and provide a transparent, fixed-price quotation — typically within 24 hours for standard requests. We serve clients across the USA, UK, Canada, Australia, the Middle East, Europe, and Southeast Asia, and can accommodate urgent turnaround requests.",
+    "status": "live",
+    "display_order": 20,
+    "created_at": "2026-02-28T00:39:45.782Z",
+    "updated_at": "2026-02-28T00:39:45.782Z"
+  }
+]

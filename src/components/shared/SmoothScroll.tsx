@@ -5,6 +5,17 @@ const SmoothScroll = () => {
     const lenisRef = useRef<Lenis | null>(null);
 
     useEffect(() => {
+        const shouldUseNativeScroll = (node?: Element | null) => {
+            const element = node as HTMLElement | null;
+            if (!element) return false;
+            if (element.closest("[data-lenis-prevent]")) return true;
+            return Boolean(
+                element.closest(
+                    "textarea, [contenteditable='true'], [contenteditable='plaintext-only'], .cms-rich-editor",
+                ),
+            );
+        };
+
         const lenis = new Lenis({
             duration: 0.85,
             easing: (t) => 1 - Math.pow(1 - t, 3),
@@ -12,13 +23,12 @@ const SmoothScroll = () => {
             gestureOrientation: "vertical",
             smoothWheel: true,
             touchMultiplier: 1.2,
-            // Keep native scrolling inside overlays/modals.
-            prevent: (node) => {
-                return !!node?.closest?.("[data-lenis-prevent]");
-            },
+            // Keep native scrolling inside overlays/modals and text-editing boxes.
+            prevent: (node) => shouldUseNativeScroll(node),
         });
 
         lenisRef.current = lenis;
+        (window as Window & { __lenis?: Lenis }).__lenis = lenis;
 
         const syncLenisState = () => {
             const hasOpenDialog = !!document.querySelector('[role="dialog"][data-state="open"]');
@@ -53,6 +63,7 @@ const SmoothScroll = () => {
 
         return () => {
             observer.disconnect();
+            delete (window as Window & { __lenis?: Lenis }).__lenis;
             lenis.destroy();
         };
     }, []);

@@ -1,14 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, User, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { buildServiceNavItems, type ApiServiceRecord } from "@/components/shared/serviceCatalog";
 
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const [liveServices, setLiveServices] = useState<ApiServiceRecord[]>([]);
+  const [servicesLoaded, setServicesLoaded] = useState(false);
+  const [servicesLoadFailed, setServicesLoadFailed] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
 
@@ -25,26 +30,81 @@ const Navigation = () => {
     setIsServicesOpen(false);
   }, [location]);
 
-  const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/about", label: "About" },
-    {
-      href: "/services",
-      label: "Services",
-      submenu: [
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+    const apiBase = getApiBaseUrl();
+
+    const loadServices = async () => {
+      try {
+        const res = await fetch(`${apiBase}/services?status=live`, { signal: controller.signal });
+        if (!res.ok) {
+          throw new Error("Failed to fetch live services");
+        }
+        const data = await res.json();
+        if (!mounted || !Array.isArray(data)) return;
+        setLiveServices(data);
+        setServicesLoadFailed(false);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Failed to load navigation services", error);
+        if (mounted) {
+          setServicesLoadFailed(true);
+        }
+      } finally {
+        if (mounted) {
+          setServicesLoaded(true);
+        }
+      }
+    };
+
+    loadServices();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  const serviceSubmenu = useMemo(() => {
+    if (liveServices.length > 0) {
+      return buildServiceNavItems(liveServices).slice(0, 12);
+    }
+
+    if (servicesLoadFailed || !servicesLoaded) {
+      return [
         { href: "/services/web-design", label: "Web Design & Development" },
         { href: "/services/autocad", label: "AutoCAD Drawings" },
         { href: "/services/solidworks", label: "3D SolidWorks" },
         { href: "/services/pfd-pid", label: "PFD & P&ID" },
         { href: "/services/hazop", label: "HAZOP Study" },
         { href: "/services/graphic-design", label: "Graphic Design" },
-      ]
+      ];
+    }
+
+    return [];
+  }, [liveServices, servicesLoadFailed, servicesLoaded]);
+
+  const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/about", label: "About" },
+    {
+      href: "/services",
+      label: "Services",
+      submenu: serviceSubmenu
     },
     { href: "/products", label: "Products" },
     { href: "/portfolio", label: "Our Works" },
     { href: "/testimonials", label: "Reviews" },
+    { href: "/faq", label: "FAQ" },
+    { href: "/blog", label: "Blog" },
     { href: "/contact", label: "Contact" },
   ];
+
+  const isLinkActive = (href: string) => {
+    if (href === "/blog") return location.pathname === "/blog" || location.pathname.startsWith("/blog/");
+    return location.pathname === href;
+  };
 
   return (
     <motion.nav
@@ -112,7 +172,7 @@ const Navigation = () => {
                     <Link
                       to={link.href}
                       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className={`text-sm font-medium transition-colors duration-300 ${location.pathname === link.href
+                      className={`text-sm font-medium transition-colors duration-300 ${isLinkActive(link.href)
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground"
                         }`}
@@ -235,7 +295,7 @@ const Navigation = () => {
                     <Link
                       to={link.href}
                       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className={`block py-3 text-lg transition-colors ${location.pathname === link.href
+                      className={`block py-3 text-lg transition-colors ${isLinkActive(link.href)
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground"
                         }`}

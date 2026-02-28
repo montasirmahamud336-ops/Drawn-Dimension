@@ -28,11 +28,16 @@ const EmployeesManager = lazy(() => import("@/components/cms/EmployeesManager"))
 const WorkAssignManager = lazy(() => import("@/components/cms/WorkAssignManager"));
 const EmployeeChatManager = lazy(() => import("@/components/cms/EmployeeChatManager"));
 const WorldMapManager = lazy(() => import("@/components/cms/WorldMapManager"));
+const PagesManager = lazy(() => import("@/components/cms/PagesManager"));
 
 // Routes
 const About = lazy(() => import("./pages/services/About"));
 const OurEmployees = lazy(() => import("./pages/services/OurEmployees"));
 const Services = lazy(() => import("./pages/services/Services"));
+const DynamicServicePage = lazy(() => import("./pages/services/DynamicServicePage"));
+const FAQ = lazy(() => import("./pages/services/FAQ"));
+const Blog = lazy(() => import("./pages/services/Blog"));
+const BlogDetails = lazy(() => import("./pages/services/BlogDetails"));
 const Portfolio = lazy(() => import("./pages/services/Portfolio"));
 const Testimonials = lazy(() => import("./pages/services/Testimonials"));
 const AllReviews = lazy(() => import("./pages/services/AllReviews"));
@@ -48,14 +53,6 @@ const Products = lazy(() => import("./pages/Products"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const Payment = lazy(() => import("./pages/Payment"));
 const PortfolioDetails = lazy(() => import("./pages/services/PortfolioDetails"));
-
-// Service Pages
-const WebDesign = lazy(() => import("./pages/WebDesign"));
-const AutoCAD = lazy(() => import("./pages/AutoCAD"));
-const SolidWorks = lazy(() => import("./pages/SolidWorks"));
-const PFDPID = lazy(() => import("./pages/PFDPID"));
-const HAZOP = lazy(() => import("./pages/HAZOP"));
-const GraphicDesign = lazy(() => import("./pages/GraphicDesign"));
 
 const queryClient = new QueryClient();
 const RouteFallback = () => (
@@ -81,12 +78,10 @@ const App = () => (
                 <Route path="/about" element={<About />} />
                 <Route path="/our-employees" element={<OurEmployees />} />
                 <Route path="/services" element={<Services />} />
-                <Route path="/services/web-design" element={<WebDesign />} />
-                <Route path="/services/autocad" element={<AutoCAD />} />
-                <Route path="/services/solidworks" element={<SolidWorks />} />
-                <Route path="/services/pfd-pid" element={<PFDPID />} />
-                <Route path="/services/hazop" element={<HAZOP />} />
-                <Route path="/services/graphic-design" element={<GraphicDesign />} />
+                <Route path="/services/:slug" element={<DynamicServicePage />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogDetails />} />
                 <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/portfolio/:id" element={<PortfolioDetails />} />
                 <Route path="/testimonials" element={<Testimonials />} />
@@ -121,6 +116,7 @@ const App = () => (
                   <Route path="employees" element={<EmployeesManager />} />
                   <Route path="work-assign" element={<WorkAssignManager />} />
                   <Route path="world-map" element={<WorldMapManager />} />
+                  <Route path="pages" element={<PagesManager />} />
                   <Route path="chat" element={<EmployeeChatManager />} />
                 </Route>
 
@@ -140,6 +136,7 @@ const App = () => (
                   <Route path="employees" element={<EmployeesManager />} />
                   <Route path="work-assign" element={<WorkAssignManager />} />
                   <Route path="world-map" element={<WorldMapManager />} />
+                  <Route path="pages" element={<PagesManager />} />
                   <Route path="chat" element={<EmployeeChatManager />} />
                 </Route>
 

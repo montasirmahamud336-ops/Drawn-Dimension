@@ -119,7 +119,9 @@ const PortfolioSection = () => {
                         alt={project.title}
                         width={600}
                         height={400}
-                        loading={index < 3 ? "eager" : "lazy"}
+                        loading={index === 0 ? "eager" : "lazy"}
+                        fetchPriority={index === 0 ? "high" : "auto"}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         decoding="async"
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                       />

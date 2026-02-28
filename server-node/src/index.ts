@@ -16,6 +16,9 @@ import workAssignmentsRoutes from "./routes/workAssignments.js";
 import employeeDashboardRoutes from "./routes/employeeDashboard.js";
 import chatRoutes from "./routes/chat.js";
 import worldMapSettingsRoutes from "./routes/worldMapSettings.js";
+import servicesRoutes from "./routes/services.js";
+import serviceFaqsRoutes from "./routes/serviceFaqs.js";
+import serviceBlogsRoutes from "./routes/serviceBlogs.js";
 
 const app = express();
 
@@ -86,6 +89,9 @@ app.use(teamRoutes);
 app.use(productRoutes);
 app.use(storageRoutes);
 app.use(reviewRoutes);
+app.use(servicesRoutes);
+app.use(serviceFaqsRoutes);
+app.use(serviceBlogsRoutes);
 app.use(employeesRoutes);
 app.use(workAssignmentsRoutes);
 app.use(employeeDashboardRoutes);

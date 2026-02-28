@@ -63,7 +63,7 @@ const TeamMemberMedia = ({ leader }: { leader: any }) => {
   return (
     <div className="relative mb-5">
       <div className="absolute -inset-2 rounded-full bg-[radial-gradient(circle,rgba(239,68,68,0.18)_0%,rgba(239,68,68,0.08)_45%,transparent_72%)] opacity-55 blur-md" />
-      <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-full border-2 border-white/20 group-hover:border-primary/45 transition-colors duration-300 overflow-hidden">
+      <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-full border-2 border-slate-300/85 dark:border-white/20 group-hover:border-primary/45 transition-colors duration-300 overflow-hidden">
         {current ? (
           current.type === "video" ? (
             <video src={current.url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
@@ -98,7 +98,11 @@ const TeamMemberMedia = ({ leader }: { leader: any }) => {
   );
 };
 
-const LeadershipTeam = () => {
+type LeadershipTeamProps = {
+  compact?: boolean;
+};
+
+const LeadershipTeam = ({ compact = false }: LeadershipTeamProps) => {
   const { data: teamMembers, loading } = useLiveData("team", {
     params: { memberType: "leadership" },
   });
@@ -122,19 +126,23 @@ const LeadershipTeam = () => {
   };
 
   return (
-    <section className="section-padding">
+    <section
+      id={compact ? "leadership-team" : undefined}
+      className={compact ? "py-12 md:py-14 lg:py-16" : "section-padding"}
+      aria-labelledby="leadership-team-heading"
+    >
       <div className="container-narrow">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16"
+          className={compact ? "text-center mb-9 md:mb-10" : "text-center mb-16"}
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
             Meet Our Leaders
           </span>
-          <h2 className="text-4xl md:text-5xl font-bold mt-4 text-foreground">
+          <h2 id="leadership-team-heading" className="text-4xl md:text-5xl font-bold mt-4 text-foreground">
             Our Leadership Team
           </h2>
         </motion.div>
@@ -159,7 +167,7 @@ const LeadershipTeam = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: index * 0.15 }}
-                    className="glass-card relative overflow-hidden p-7 group border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_42%,rgba(255,255,255,0.01)_100%)] backdrop-blur-xl transition-all duration-500 hover:border-border/70 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] w-full min-h-[500px] h-full"
+                    className="glass-card relative overflow-hidden p-7 group border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_42%,rgba(255,255,255,0.01)_100%)] backdrop-blur-xl transition-all duration-500 hover:border-slate-400/80 dark:hover:border-border/70 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] w-full min-h-[500px] h-full"
                   >
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%)]" />
                     <div className="flex flex-col items-center text-center relative z-10 h-full">
@@ -201,7 +209,7 @@ const LeadershipTeam = () => {
                             target={social.href ? "_blank" : undefined}
                             rel={social.href ? "noopener noreferrer" : undefined}
                             aria-label={social.label}
-                            className={`w-10 h-10 rounded-full border border-border/50 bg-background/35 backdrop-blur-sm flex items-center justify-center transition-all duration-300 ${social.href
+                            className={`w-10 h-10 rounded-full border border-slate-300/80 dark:border-border/50 bg-background/35 backdrop-blur-sm flex items-center justify-center transition-all duration-300 ${social.href
                               ? "text-muted-foreground hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
                               : "text-muted-foreground/40 pointer-events-none"
                               }`}

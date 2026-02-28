@@ -11,6 +11,7 @@ import {
     ClipboardCheck,
     MessageCircleMore,
     Globe2,
+    FileText,
 } from "lucide-react";
 
 // Helper to clear token (should be imported from shared auth util)
@@ -27,6 +28,7 @@ const menuItems = [
     { label: "Employee", to: "/cms/employees", icon: UserSquare2 },
     { label: "Work Assign To", to: "/cms/work-assign", icon: ClipboardCheck },
     { label: "World Map", to: "/cms/world-map", icon: Globe2 },
+    { label: "Pages", to: "/cms/pages", icon: FileText },
     { label: "Chat", to: "/cms/chat", icon: MessageCircleMore },
 ];
 

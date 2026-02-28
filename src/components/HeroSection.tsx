@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Play, Code, Ruler, Box, FileText, Shield, Palette } from "lucide-react";
+import { ArrowRight, Play, Code, Ruler, Box, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const HeroSection = () => {
@@ -38,6 +38,7 @@ const HeroSection = () => {
         <div className="absolute top-20 right-[-10rem] w-[28rem] h-[28rem] rounded-full bg-primary/7 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.09),transparent_45%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.05),transparent_22%,rgba(0,0,0,0.25)_100%)]" />
+
       </div>
 
       {/* Floating accents */}
