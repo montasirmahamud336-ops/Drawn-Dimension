@@ -1,6 +1,7 @@
 import "dotenv/config";
 
-const defaultCorsOrigins = "http://localhost:8080,http://127.0.0.1:8080";
+const defaultCorsOrigins =
+  "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081";
 
 const required = [
   "ADMIN_USERNAME",
@@ -34,6 +35,16 @@ export const env = {
   smtpPass: process.env.SMTP_PASS ?? "",
   smtpFrom: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "",
   officialNotificationEmail: process.env.OFFICIAL_NOTIFICATION_EMAIL ?? process.env.SMTP_USER ?? "",
+  contactFormNotificationEmail:
+    process.env.CONTACT_FORM_NOTIFICATION_EMAIL ??
+    process.env.OFFICIAL_NOTIFICATION_EMAIL ??
+    process.env.SMTP_USER ??
+    "",
+  liveChatNotificationEmail:
+    process.env.LIVE_CHAT_NOTIFICATION_EMAIL ??
+    process.env.OFFICIAL_NOTIFICATION_EMAIL ??
+    process.env.SMTP_USER ??
+    "",
   siteBaseUrl: process.env.SITE_BASE_URL ?? "http://localhost:8080",
   brandLogoUrl: process.env.BRAND_LOGO_URL ?? "",
   corsOrigin: (process.env.CORS_ORIGIN ?? defaultCorsOrigins)

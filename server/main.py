@@ -14,10 +14,12 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.routes.auth_webhooks import router as auth_webhooks_router
+
 load_dotenv()
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"), override=False)
 
-supabase_url = os.getenv("VITE_SUPABASE_URL")
+supabase_url = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("VITE_SUPABASE_PUBLISHABLE_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
 supabase_service_key = os.getenv("SUPABASE_SERVICE_KEY")
@@ -39,6 +41,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_webhooks_router)
 
 _model_cache: dict[str, Any] = {"value": None, "ts": 0}
 

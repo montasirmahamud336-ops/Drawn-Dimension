@@ -275,6 +275,16 @@ const WorkAssignForm = ({ open, onOpenChange, assignment, employees, onSuccess }
         throw new Error(message);
       }
 
+      const responseBody = await response.json().catch(() => null);
+      if (
+        !assignment &&
+        responseBody &&
+        responseBody.email_notification_sent === false &&
+        responseBody.email_notification_error
+      ) {
+        toast.warning(`Assignment saved, but email was not sent: ${responseBody.email_notification_error}`);
+      }
+
       toast.success(assignment ? "Assignment updated" : "Work assigned");
       onOpenChange(false);
       onSuccess();

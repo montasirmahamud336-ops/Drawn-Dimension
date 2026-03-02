@@ -19,8 +19,12 @@ import worldMapSettingsRoutes from "./routes/worldMapSettings.js";
 import servicesRoutes from "./routes/services.js";
 import serviceFaqsRoutes from "./routes/serviceFaqs.js";
 import serviceBlogsRoutes from "./routes/serviceBlogs.js";
+import formMessagesRoutes from "./routes/formMessages.js";
+import liveChatRequestsRoutes from "./routes/liveChatRequests.js";
 
 const app = express();
+const isLoopbackHost = (host: string) =>
+  host === "localhost" || host === "127.0.0.1" || host === "::1";
 
 const uploadsPath = path.resolve("uploads");
 if (!fs.existsSync(uploadsPath)) {
@@ -66,8 +70,16 @@ if (env.corsOrigin.length > 0) {
         }
 
         try {
-          const host = new URL(normalized).host.toLowerCase();
+          const parsedUrl = new URL(normalized);
+          const host = parsedUrl.host.toLowerCase();
           if (allowedHosts.has(host)) {
+            callback(null, true);
+            return;
+          }
+
+          // In local/dev mode allow any localhost/loopback origin regardless of port
+          // to prevent CORS errors when Vite falls back to a different port (e.g. 8081).
+          if (env.nodeEnv !== "production" && isLoopbackHost(parsedUrl.hostname.toLowerCase())) {
             callback(null, true);
             return;
           }
@@ -97,6 +109,8 @@ app.use(workAssignmentsRoutes);
 app.use(employeeDashboardRoutes);
 app.use(chatRoutes);
 app.use(worldMapSettingsRoutes);
+app.use(formMessagesRoutes);
+app.use(liveChatRequestsRoutes);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

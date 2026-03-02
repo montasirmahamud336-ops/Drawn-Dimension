@@ -360,6 +360,44 @@
   font-size: 1.05rem;
 }
 
+.cms-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+
+.cms-nav-scroll::-webkit-scrollbar {
+  display: block !important;
+  width: 8px;
+}
+
+.cms-nav-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cms-nav-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 999px;
+}
+
+.cms-main-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+.cms-main-scroll::-webkit-scrollbar {
+  display: block !important;
+  width: 8px;
+}
+
+.cms-main-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cms-main-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 999px;
+}
+
 .blog-rich-content h6 {
   font-size: 0.98rem;
 }

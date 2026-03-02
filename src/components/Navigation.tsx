@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ChevronDown, User, LogOut } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -15,7 +15,8 @@ const Navigation = () => {
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [servicesLoadFailed, setServicesLoadFailed] = useState(false);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, session, signOut } = useAuth();
+  const isSignedIn = Boolean(user || session?.user);
 
   useEffect(() => {
     let rafId = 0;
@@ -122,6 +123,15 @@ const Navigation = () => {
     return location.pathname === href;
   };
 
+  const openLiveChat = () => {
+    window.dispatchEvent(new CustomEvent("open-live-chat"));
+  };
+
+  const desktopActionButtonBase =
+    "h-9 min-w-[112px] px-3 py-2 text-sm rounded-lg inline-flex items-center justify-center font-semibold transition-colors shrink-0";
+  const liveChatButtonClass =
+    "bg-gradient-to-r from-emerald-600 via-green-500 to-lime-500 text-white border border-emerald-300/70 shadow-[0_0_22px_rgba(34,197,94,0.55)] hover:from-emerald-500 hover:via-green-400 hover:to-lime-400";
+
   return (
     <motion.nav
       initial={{ y: -100 }}
@@ -213,13 +223,21 @@ const Navigation = () => {
           {/* Right: Theme Toggle + Auth */}
           <div className="hidden lg:flex items-center gap-3 ml-auto z-20">
             <ThemeToggle />
-            {user ? (
-              <div className="flex items-center gap-3">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                  <Link to="/dashboard" className="btn-primary text-sm py-3 px-6">
-                    Dashboard
-                  </Link>
-                </motion.div>
+            {isSignedIn ? (
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={openLiveChat}
+                  className={`${desktopActionButtonBase} ${liveChatButtonClass}`}
+                >
+                  Live Chat
+                </button>
+                <Link
+                  to="/dashboard"
+                  className={`${desktopActionButtonBase} bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow-lg`}
+                >
+                  Dashboard
+                </Link>
                 <button
                   onClick={() => signOut()}
                   className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
@@ -330,9 +348,19 @@ const Navigation = () => {
                   )}
                 </div>
               ))}
-              {user ? (
+              {isSignedIn ? (
                 <div className="flex flex-col gap-2 mt-4">
-                  <Link to="/dashboard" className="btn-primary text-center">
+                  <button
+                    type="button"
+                    onClick={openLiveChat}
+                    className={`h-10 rounded-lg inline-flex items-center justify-center font-semibold transition-colors ${liveChatButtonClass}`}
+                  >
+                    Live Chat
+                  </button>
+                  <Link
+                    to="/dashboard"
+                    className="h-10 rounded-lg inline-flex items-center justify-center font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow-lg"
+                  >
                     Dashboard
                   </Link>
                   <button

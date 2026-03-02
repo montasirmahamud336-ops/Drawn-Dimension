@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { getAdminProfile, refreshAdminProfileFromApi, clearAdminToken } from "@/components/admin/adminAuth";
 import {
     LayoutDashboard,
     Briefcase,
@@ -10,16 +12,14 @@ import {
     UserSquare2,
     ClipboardCheck,
     MessageCircleMore,
+    MessageSquareText,
     Globe2,
     FileText,
+    Inbox,
+    ShieldPlus,
 } from "lucide-react";
 
-// Helper to clear token (should be imported from shared auth util)
-const clearAdminToken = () => {
-    localStorage.removeItem("admin_token");
-};
-
-const menuItems = [
+const baseMenuItems = [
     { label: "Dashboard", to: "/cms", icon: LayoutDashboard },
     { label: "Live Works", to: "/cms/works", icon: Briefcase },
     { label: "Live Products", to: "/cms/products", icon: ShoppingBag },
@@ -29,11 +29,43 @@ const menuItems = [
     { label: "Work Assign To", to: "/cms/work-assign", icon: ClipboardCheck },
     { label: "World Map", to: "/cms/world-map", icon: Globe2 },
     { label: "Pages", to: "/cms/pages", icon: FileText },
+    { label: "Form Massage", to: "/cms/form-massage", icon: Inbox },
+    { label: "Live Chat", to: "/cms/live-chat", icon: MessageSquareText },
     { label: "Chat", to: "/cms/chat", icon: MessageCircleMore },
 ];
 
 const CMSLayout = () => {
     const navigate = useNavigate();
+    const [adminProfile, setAdminProfile] = useState(getAdminProfile());
+    const isMainAdmin = Boolean(adminProfile?.isMain);
+    const menuItems = isMainAdmin
+        ? [...baseMenuItems, { label: "Give Access", to: "/cms/give-access", icon: ShieldPlus }]
+        : baseMenuItems;
+
+    useEffect(() => {
+        let mounted = true;
+        const syncProfile = async () => {
+            const profile = await refreshAdminProfileFromApi();
+            if (mounted) {
+                setAdminProfile(profile);
+            }
+        };
+
+        void syncProfile();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        const lenis = (window as Window & { __lenis?: { stop: () => void; start: () => void } }).__lenis;
+        lenis?.stop();
+
+        return () => {
+            lenis?.start();
+        };
+    }, []);
 
     const handleLogout = () => {
         clearAdminToken();
@@ -41,7 +73,7 @@ const CMSLayout = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground flex">
+        <div className="h-screen min-h-0 overflow-hidden bg-background text-foreground flex">
             {/* Sidebar */}
             <aside className="w-64 border-r border-border/40 bg-card/50 backdrop-blur-xl p-6 flex flex-col fixed inset-y-0 left-0 z-50">
                 <div className="mb-8">
@@ -51,7 +83,10 @@ const CMSLayout = () => {
                     <p className="text-xs text-muted-foreground mt-1">Management System</p>
                 </div>
 
-                <nav className="space-y-2 flex-1">
+                <nav
+                    data-lenis-prevent
+                    className="cms-nav-scroll space-y-2 flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 touch-pan-y"
+                >
                     {menuItems.map((item) => (
                         <NavLink
                             key={item.to}
@@ -83,7 +118,10 @@ const CMSLayout = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-64 p-8 animate-in fade-in duration-500">
+            <main
+                data-lenis-prevent
+                className="cms-main-scroll flex-1 min-h-0 h-full ml-64 p-8 animate-in fade-in duration-500 overflow-y-auto overscroll-contain"
+            >
                 <Outlet />
             </main>
         </div>

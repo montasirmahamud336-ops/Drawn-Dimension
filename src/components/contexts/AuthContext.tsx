@@ -12,20 +12,26 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   resendSignupConfirmation: (email: string) => Promise<{ error: Error | null }>;
-  signInWithProvider: (provider: "google" | "github" | "azure" | "apple") => Promise<{ error: Error | null }>;
+  signInWithProvider: (
+    provider: "google" | "github" | "azure" | "apple",
+    redirectPath?: string
+  ) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const OAUTH_POST_LOGIN_REDIRECT_KEY = "post_auth_redirect_path";
 
 const notifySignup = async (payload: {
   method: "email" | "google";
   email?: string | null;
   fullName?: string | null;
   accessToken?: string | null;
+  userId?: string | null;
+  userCreatedAt?: string | null;
 }) => {
   try {
     const apiBase = getApiBaseUrl();
-    await fetch(`${apiBase}/auth/notify-signup`, {
+    const response = await fetch(`${apiBase}/auth/notify-signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -35,8 +41,29 @@ const notifySignup = async (payload: {
         email: payload.email ?? "",
         fullName: payload.fullName ?? "",
         accessToken: payload.accessToken ?? "",
+        userId: payload.userId ?? "",
+        userCreatedAt: payload.userCreatedAt ?? "",
       }),
     });
+
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") || "";
+      let message = "Failed to notify signup event";
+
+      if (contentType.includes("application/json")) {
+        const body = await response.json().catch(() => null);
+        if (body?.message) {
+          message = String(body.message);
+        }
+      } else {
+        const text = await response.text().catch(() => "");
+        if (text) {
+          message = text;
+        }
+      }
+
+      throw new Error(message);
+    }
   } catch (error) {
     console.error("Signup notification failed", error);
   }
@@ -63,7 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const handleSession = async (nextSession: Session | null, event?: string) => {
+  const handleSession = async (nextSession: Session | null, _event?: string) => {
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
     setLoading(false);
@@ -77,7 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         : [];
       const isGoogleUser = provider === "google" || identities.includes("google");
 
-      if (event === "SIGNED_IN" && isGoogleUser) {
+      if ((_event === "SIGNED_IN" || _event === "INITIAL_SESSION") && isGoogleUser) {
         void notifySignup({
           method: "google",
           email: nextSession.user.email,
@@ -88,6 +115,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           ),
           accessToken: nextSession.access_token,
         });
+      }
+
+      const pendingOAuthRedirect = window.sessionStorage.getItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+      if (pendingOAuthRedirect) {
+        if (window.location.pathname === pendingOAuthRedirect) {
+          window.sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+        } else if (window.location.pathname === "/" || window.location.pathname === "/auth") {
+          window.sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+          window.location.replace(pendingOAuthRedirect);
+          return;
+        }
       }
     }
   };
@@ -124,6 +162,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         method: "email",
         email,
         fullName: fullName ?? "",
+        userId: data.user?.id ?? "",
+        userCreatedAt: data.user?.created_at ?? "",
       });
     }
     return { error };
@@ -160,11 +200,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
-  const signInWithProvider = async (provider: "google" | "github" | "azure" | "apple") => {
+  const signInWithProvider = async (
+    provider: "google" | "github" | "azure" | "apple",
+    redirectPath = "/dashboard"
+  ) => {
+    const safeRedirectPath = redirectPath.startsWith("/") ? redirectPath : "/dashboard";
+    window.sessionStorage.setItem(OAUTH_POST_LOGIN_REDIRECT_KEY, safeRedirectPath);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: `${window.location.origin}${safeRedirectPath}` },
     });
+    if (error) {
+      window.sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+    }
     return { error };
   };
 

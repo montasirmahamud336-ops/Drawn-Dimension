@@ -45,6 +45,20 @@ const Auth = () => {
   const nextParam = searchParams.get("next") ?? "";
   const modeParam = (searchParams.get("mode") ?? "").toLowerCase();
   const isEmployeeLoginFlow = nextParam.startsWith("/employee/dashboard");
+  const oauthRedirectPath = isEmployeeLoginFlow ? "/employee/dashboard" : "/dashboard";
+
+  const resolvePostLoginPath = (hasEmployeeDashboardAccess: boolean) => {
+    if (isEmployeeLoginFlow) {
+      return "/employee/dashboard";
+    }
+
+    // Prevent redirects to home from stale/malformed next query values.
+    if (nextParam.startsWith("/dashboard")) {
+      return nextParam;
+    }
+
+    return hasEmployeeDashboardAccess ? "/employee/dashboard" : "/dashboard";
+  };
 
   const setAuthMode = (mode: "signin" | "signup" | "reset") => {
     const params = new URLSearchParams(searchParams);
@@ -227,9 +241,9 @@ const Auth = () => {
     }
 
     const isEmployee = await hasEmployeeDashboardAccess(session?.access_token);
-    const safeNext = nextParam.startsWith("/") ? nextParam : "";
+    const postLoginPath = resolvePostLoginPath(isEmployee);
     toast({ title: isEmployeeLoginFlow ? "Welcome employee!" : "Welcome back!" });
-    navigate(safeNext || (isEmployee ? "/employee/dashboard" : "/"));
+    navigate(postLoginPath);
   };
 
   const handleSignUp = async (event: FormEvent<HTMLFormElement>) => {
@@ -275,7 +289,7 @@ const Auth = () => {
 
   const handleOAuth = async (provider: "google" | "github" | "azure" | "apple", label: string) => {
     setOauthLoading(provider);
-    const { error } = await signInWithProvider(provider);
+    const { error } = await signInWithProvider(provider, oauthRedirectPath);
 
     if (error) {
       setOauthLoading(null);

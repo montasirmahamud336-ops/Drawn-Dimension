@@ -6,7 +6,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import PremiumBackground from "@/components/shared/PremiumBackground";
-import { setAdminToken, isAdminAuthed, getApiBaseUrl } from "@/components/admin/adminAuth";
+import { setAdminToken, clearAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
@@ -17,10 +17,12 @@ const AdminLogin = () => {
   const apiBase = getApiBaseUrl();
 
   useEffect(() => {
-    if (isAdminAuthed()) {
-      navigate("/database");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("switch") === "1") {
+      clearAdminToken();
+      return;
     }
-  }, [navigate]);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +52,7 @@ const AdminLogin = () => {
       const data = await res.json();
       if (!data?.token) throw new Error("No session created");
 
-      setAdminToken(data.token);
+      setAdminToken(data.token, data.admin ?? null);
       navigate("/database");
     } catch (err: any) {
       setError(err.message || "Failed to login");
@@ -76,7 +78,7 @@ const AdminLogin = () => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Username or Email</Label>
               <Input
                 id="username"
                 type="text"
@@ -84,7 +86,7 @@ const AdminLogin = () => {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 className="bg-background/50"
-                placeholder="pritom"
+                placeholder="montasirmahamud336 or email"
               />
             </div>
 

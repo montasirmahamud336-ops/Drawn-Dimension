@@ -6,39 +6,72 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle, Clock, Globe } from "lucide-react";
 import PremiumBackground from "@/components/shared/PremiumBackground";
+import { getApiBaseUrl } from "@/components/admin/adminAuth";
 
 const Contact = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const form = e.target as HTMLFormElement;
+    e.stopPropagation();
+    const form = e.currentTarget as HTMLFormElement;
     const formData = new FormData(form);
 
-    const firstName = formData.get("firstName");
-    const lastName = formData.get("lastName");
-    const email = formData.get("email");
-    const phone = formData.get("phone");
-    const service = formData.get("service");
-    const details = formData.get("details");
+    const firstName = String(formData.get("firstName") ?? "").trim();
+    const lastName = String(formData.get("lastName") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim();
+    const phone = String(formData.get("phone") ?? "").trim();
+    const service = String(formData.get("service") ?? "").trim();
+    const details = String(formData.get("details") ?? "").trim();
 
-    const subject = `New Project Inquiry: ${service} - ${firstName} ${lastName}`;
-    const body = `
-Name: ${firstName} ${lastName}
-Email: ${email}
-Phone: ${phone}
-Service Interested In: ${service}
+    setSubmitError(null);
+    setIsLoading(true);
 
-Project Details:
-${details}
-    `.trim();
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/form-messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          phone,
+          service,
+          details,
+          sourcePage: "/contact",
+        }),
+      });
 
-    window.location.href = `mailto:drawndimensioninfo@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        let message = "Failed to send message. Please try again.";
 
-    setIsSubmitted(true);
-    setTimeout(() => setIsSubmitted(false), 3000);
-    form.reset();
+        if (contentType.includes("application/json")) {
+          const body = await response.json().catch(() => null);
+          if (body?.message) {
+            message = String(body.message);
+          }
+        } else {
+          const text = await response.text().catch(() => "");
+          if (text) message = text;
+        }
+
+        throw new Error(message);
+      }
+
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 3000);
+      form.reset();
+    } catch (error: any) {
+      setSubmitError(error?.message || "Failed to send message. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const contactInfo = [
@@ -110,8 +143,6 @@ ${details}
                     <motion.a
                       key={info.title}
                       href={info.href || "#"}
-                      target={info.href ? "_blank" : undefined}
-                      rel={info.href ? "noopener noreferrer" : undefined}
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
@@ -159,7 +190,12 @@ ${details}
                   transition={{ duration: 0.8, delay: 0.2 }}
                   className="lg:col-span-3"
                 >
-                  <form onSubmit={handleSubmit} className="glass-card p-8 md:p-9 border-border/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] relative overflow-hidden">
+                  <form
+                    onSubmit={handleSubmit}
+                    action="#"
+                    method="post"
+                    className="glass-card p-8 md:p-9 border-border/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] relative overflow-hidden"
+                  >
                     <div className="pointer-events-none absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                     <div className="mb-6">
                       <h3 className="text-xl font-semibold tracking-tight text-foreground">Project Brief</h3>
@@ -262,7 +298,7 @@ ${details}
                       {isSubmitted ? (
                         <>
                           <CheckCircle className="w-5 h-5" />
-                          An engineer will contact you shortly
+                          Our team will notify you shortly via your email and WhatsApp number
                         </>
                       ) : isLoading ? (
                         <>
@@ -276,6 +312,10 @@ ${details}
                         </>
                       )}
                     </motion.button>
+
+                    {submitError && (
+                      <p className="mt-3 text-sm text-destructive">{submitError}</p>
+                    )}
                   </form>
                 </motion.div>
               </div>

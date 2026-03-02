@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Eye, Briefcase, ShoppingBag, Users } from "lucide-react";
-import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
+import { Link } from "react-router-dom";
+import { getAdminToken, getApiBaseUrl, getAdminProfile, refreshAdminProfileFromApi } from "@/components/admin/adminAuth";
 
 interface DashboardStats {
     views: number;
@@ -30,6 +32,8 @@ const Dashboard = () => {
         products: 0,
     });
     const [loading, setLoading] = useState(true);
+    const [adminProfile, setAdminProfile] = useState(getAdminProfile());
+    const isMainAdmin = Boolean(adminProfile?.isMain);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -71,11 +75,43 @@ const Dashboard = () => {
         fetchStats();
     }, []);
 
+    useEffect(() => {
+        let mounted = true;
+        const syncProfile = async () => {
+            const profile = await refreshAdminProfileFromApi();
+            if (mounted) {
+                setAdminProfile(profile ?? getAdminProfile());
+            }
+        };
+
+        void syncProfile();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
     return (
         <div className="space-y-8">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-                <p className="text-muted-foreground">Overview of your website activity and content.</p>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+                    <p className="text-muted-foreground">Overview of your website activity and content.</p>
+                </div>
+                <div className="flex items-center gap-2 self-start">
+                    <span className="rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+                        {isMainAdmin ? "Main Account" : "Manager Account"}
+                    </span>
+                    {isMainAdmin ? (
+                        <Button asChild>
+                            <Link to="/database/give-access">Give Access</Link>
+                        </Button>
+                    ) : (
+                        <Button asChild variant="outline">
+                            <Link to="/database/login?switch=1">Switch Account</Link>
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
