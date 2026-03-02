@@ -1,9 +1,17 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MessageCircle, X, Send, Loader2, Paperclip } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+
+interface AiMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
 
 interface EmployeeChatMessage {
   id: string;
@@ -42,6 +50,8 @@ interface LiveChatAttachment {
   size: number;
 }
 
+type ChatPanelMode = "ai" | "live";
+
 const extractExtension = (fileName: string) => {
   const ext = fileName.split(".").pop() || "";
   return ext.trim().toLowerCase();
@@ -66,6 +76,11 @@ const isAllowedAttachment = (fileName: string) => {
 
 const ChatWidget = () => {
   const [open, setOpen] = useState(false);
+  const [panelMode, setPanelMode] = useState<ChatPanelMode>("ai");
+
+  const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   const [employeeMessages, setEmployeeMessages] = useState<EmployeeChatMessage[]>([]);
   const [employeeDraft, setEmployeeDraft] = useState("");
@@ -82,6 +97,8 @@ const ChatWidget = () => {
   const [liveAiModeActive, setLiveAiModeActive] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const lastMessageKeyRef = useRef("");
   const liveAttachmentInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -93,23 +110,83 @@ const ChatWidget = () => {
     (pathname.startsWith("/cms") || pathname.startsWith("/database")) && pathname !== "/database/login";
   const isEmployeeDashboardRoute = pathname.startsWith("/employee/dashboard");
   const isMessageShortcutOnlyRoute = isCmsRoute;
+
+  const canSendAi = aiInput.trim().length > 0 && !aiLoading;
+  const aiPlaceholder = useMemo(() => (aiLoading ? "Thinking..." : "Type your message..."), [aiLoading]);
   const canSendLiveMessage =
     (liveDraft.trim().length > 0 || Boolean(liveAttachment)) && !liveSending && !liveUploading;
 
+  const isLivePanelOpen = open && panelMode === "live";
+
+  const getLastMessageKey = () => {
+    if (isEmployeeDashboardRoute) {
+      const last = employeeMessages[employeeMessages.length - 1];
+      return `${employeeMessages.length}:${last?.id ?? ""}:${last?.created_at ?? ""}`;
+    }
+
+    if (panelMode === "live") {
+      const last = liveMessages[liveMessages.length - 1];
+      return `${liveMessages.length}:${last?.id ?? ""}:${last?.created_at ?? ""}`;
+    }
+
+    const last = aiMessages[aiMessages.length - 1];
+    return `${aiMessages.length}:${last?.id ?? ""}:${last?.created_at ?? ""}`;
+  };
+
+  const isNearBottom = (element: HTMLDivElement, threshold = 72) =>
+    element.scrollHeight - element.scrollTop - element.clientHeight <= threshold;
+
+  const scrollToBottom = () => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  };
+
+  const handleMessageScroll = () => {
+    if (!scrollRef.current) return;
+    shouldStickToBottomRef.current = isNearBottom(scrollRef.current);
+  };
+
+  const makeId = () => {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+  };
+
   useEffect(() => {
     const handleOpenLiveChat = () => {
+      if (isEmployeeDashboardRoute || isMessageShortcutOnlyRoute) return;
+      if (!user || !session?.access_token) {
+        toast({
+          title: "Please sign in to chat",
+          description: "Create an account to start live chat with us.",
+        });
+        return;
+      }
+
+      setPanelMode("live");
       setOpen(true);
     };
 
     window.addEventListener("open-live-chat", handleOpenLiveChat);
     return () => window.removeEventListener("open-live-chat", handleOpenLiveChat);
-  }, []);
+  }, [isEmployeeDashboardRoute, isMessageShortcutOnlyRoute, user, session?.access_token, toast]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [open, employeeMessages, employeeLoading, liveMessages, liveLoading, liveSending]);
+    if (!open) return;
+    shouldStickToBottomRef.current = true;
+    requestAnimationFrame(() => scrollToBottom());
+  }, [open, panelMode, isEmployeeDashboardRoute]);
+
+  const messageKey = getLastMessageKey();
+  useEffect(() => {
+    if (!open) return;
+    const hasNewMessage = messageKey !== lastMessageKeyRef.current;
+    lastMessageKeyRef.current = messageKey;
+    if (!hasNewMessage || !shouldStickToBottomRef.current) return;
+    requestAnimationFrame(() => scrollToBottom());
+  }, [open, messageKey]);
 
   const parseApiError = async (response: Response, fallback: string) => {
     const contentType = response.headers.get("content-type") || "";
@@ -236,18 +313,35 @@ const ChatWidget = () => {
   };
 
   useEffect(() => {
-    if (!open || !user || !session?.access_token || isEmployeeDashboardRoute || isMessageShortcutOnlyRoute) return;
+    if (
+      !isLivePanelOpen ||
+      !user ||
+      !session?.access_token ||
+      isEmployeeDashboardRoute ||
+      isMessageShortcutOnlyRoute
+    ) {
+      return;
+    }
+
     void loadLiveConversation();
-  }, [open, user?.id, session?.access_token, isEmployeeDashboardRoute, isMessageShortcutOnlyRoute]);
+  }, [isLivePanelOpen, user?.id, session?.access_token, isEmployeeDashboardRoute, isMessageShortcutOnlyRoute]);
 
   useEffect(() => {
-    if (!open || !user || !session?.access_token || isEmployeeDashboardRoute || isMessageShortcutOnlyRoute) return;
+    if (
+      !isLivePanelOpen ||
+      !user ||
+      !session?.access_token ||
+      isEmployeeDashboardRoute ||
+      isMessageShortcutOnlyRoute
+    ) {
+      return;
+    }
 
     const timer = window.setInterval(() => {
       void loadLiveConversation(true);
     }, 7000);
     return () => window.clearInterval(timer);
-  }, [open, user?.id, session?.access_token, isEmployeeDashboardRoute, isMessageShortcutOnlyRoute]);
+  }, [isLivePanelOpen, user?.id, session?.access_token, isEmployeeDashboardRoute, isMessageShortcutOnlyRoute]);
 
   const handleLiveAttachmentUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -328,12 +422,7 @@ const ChatWidget = () => {
         },
         body: JSON.stringify({
           request_id: liveRequest?.id ?? null,
-          user_name: String(
-            user?.user_metadata?.full_name ??
-            user?.user_metadata?.name ??
-            user?.email ??
-            "Client"
-          ),
+          user_name: String(user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? "Client"),
           page_path: window.location.pathname,
           message_text: messageText || null,
           attachment_url: liveAttachment?.url ?? null,
@@ -367,6 +456,72 @@ const ChatWidget = () => {
       });
     } finally {
       setLiveSending(false);
+    }
+  };
+
+  const sendAiMessage = async () => {
+    if (!canSendAi) return;
+
+    setAiLoading(true);
+    const userMessage = aiInput.trim();
+    setAiInput("");
+
+    const newUserMsg: AiMessage = {
+      id: makeId(),
+      role: "user",
+      content: userMessage,
+      created_at: new Date().toISOString(),
+    };
+
+    const nextMessages = [...aiMessages, newUserMsg];
+    setAiMessages(nextMessages);
+
+    try {
+      const chatBase = ((import.meta as any).env?.VITE_CHAT_API_BASE_URL as string | undefined)
+        ?.trim()
+        .replace(/\/$/, "");
+      const chatUrl = chatBase ? `${chatBase}/api/chat` : "/api/chat";
+
+      const response = await fetch(chatUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage,
+          history: nextMessages.slice(-10).map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`AI API error ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      const aiResponse = data?.reply || "I couldn't generate a response right now.";
+      const aiMsg: AiMessage = {
+        id: makeId(),
+        role: "assistant",
+        content: aiResponse,
+        created_at: new Date().toISOString(),
+      };
+
+      setAiMessages((prev) => [...prev, aiMsg]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      const message =
+        (error as { message?: string })?.message ||
+        (typeof error === "string" ? error : "Failed to send message. Please try again.");
+
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -426,7 +581,10 @@ const ChatWidget = () => {
     return (
       <div className="fixed bottom-6 right-6 z-[9999]">
         {open && (
-          <div className="w-[320px] sm:w-[380px] h-[520px] glass-panel shadow-2xl border border-border/60 flex flex-col overflow-hidden mb-4">
+          <div
+            data-lenis-prevent
+            className="w-[320px] sm:w-[380px] h-[520px] glass-panel shadow-2xl border border-border/60 flex flex-col overflow-hidden min-h-0 mb-4"
+          >
             <div className="p-4 border-b border-border/60 flex items-center justify-between bg-background/70">
               <div>
                 <p className="text-sm text-muted-foreground">Private Chat</p>
@@ -454,7 +612,12 @@ const ChatWidget = () => {
               </div>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div
+              ref={scrollRef}
+              onScroll={handleMessageScroll}
+              className="flex-1 min-h-0 overflow-y-scroll overscroll-contain touch-pan-y p-4 space-y-3"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               {employeeLoading && employeeMessages.length === 0 ? (
                 <div className="max-w-[85%] px-4 py-3 rounded-2xl text-sm bg-secondary/70 text-foreground">
                   Loading...
@@ -562,7 +725,7 @@ const ChatWidget = () => {
       <div className="fixed bottom-6 right-6 z-[9999]">
         <button
           onClick={() =>
-            toast({ title: "Please sign in to chat", description: "Create an account to start live chat with us." })
+            toast({ title: "Please sign in to chat", description: "Create an account to start chatting with us." })
           }
           className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg flex items-center justify-center hover:scale-105 transition-transform"
           aria-label="Open chat"
@@ -576,35 +739,150 @@ const ChatWidget = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-[9999]">
-      {open && (
-        <div className="w-[320px] sm:w-[390px] h-[560px] glass-panel shadow-2xl border border-border/60 flex flex-col overflow-hidden mb-4">
-          <div className="p-4 border-b border-border/60 flex items-center justify-between bg-background/70">
+      {open && panelMode === "ai" && (
+        <div
+          data-lenis-prevent
+          className="w-[320px] sm:w-[390px] h-[560px] glass-panel shadow-2xl border border-border/60 flex flex-col overflow-hidden min-h-0 mb-4"
+        >
+          <div className="p-4 border-b border-border/60 flex items-start justify-between bg-background/70 gap-3">
+            <div>
+              <p className="text-sm text-muted-foreground">AI Support</p>
+              <h4 className="text-lg font-semibold text-foreground">NEMO</h4>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPanelMode("live");
+                  setOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-lg border border-border/60 text-xs font-medium hover:bg-secondary/60 transition-colors"
+              >
+                Live Chat
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-2 rounded-lg hover:bg-secondary/60 transition-colors"
+                aria-label="Close chat"
+                type="button"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div
+            ref={scrollRef}
+            onScroll={handleMessageScroll}
+            className="flex-1 min-h-0 overflow-y-scroll overscroll-contain touch-pan-y p-4 space-y-4"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {aiMessages.length === 0 && !aiLoading ? (
+              <div className="max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed bg-secondary/70 text-foreground">
+                Hi, I&apos;m NEMO. I can help with services, pricing, or project ideas. How can I help?
+              </div>
+            ) : (
+              aiMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                    message.role === "user"
+                      ? "ml-auto bg-primary text-primary-foreground"
+                      : "bg-secondary/70 text-foreground"
+                  }`}
+                >
+                  {message.role === "assistant" ? (
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  ) : (
+                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                  )}
+                </div>
+              ))
+            )}
+            {aiLoading && (
+              <div className="max-w-[85%] px-4 py-3 rounded-2xl bg-secondary/70 text-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 border-t border-border/60 bg-background/70">
+            <div className="flex items-center gap-2">
+              <input
+                value={aiInput}
+                onChange={(event) => setAiInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void sendAiMessage();
+                  }
+                }}
+                className="flex-1 bg-secondary/60 border border-border/60 rounded-xl px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60"
+                placeholder={aiPlaceholder}
+              />
+              <button
+                onClick={() => void sendAiMessage()}
+                className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
+                disabled={!canSendAi}
+                type="button"
+                title="Send message"
+              >
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLivePanelOpen && (
+        <div
+          data-lenis-prevent
+          className="w-[320px] sm:w-[390px] h-[560px] glass-panel shadow-2xl border border-border/60 flex flex-col overflow-hidden min-h-0 mb-4"
+        >
+          <div className="p-4 border-b border-border/60 flex items-start justify-between bg-background/70 gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Live Support</p>
               <h4 className="text-lg font-semibold text-foreground">DrawnDimension Team Chat</h4>
               <p className="text-[11px] text-muted-foreground mt-1">Status: {requestStatusLabel}</p>
               <p className="text-[11px] text-muted-foreground">
-                Support: {liveAiModeActive ? "AI Assistant" : "Human Joined"}
+                {liveAiModeActive ? "Support queue active" : "Human support joined"}
               </p>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="p-2 rounded-lg hover:bg-secondary/60 transition-colors"
-              aria-label="Close chat"
-              type="button"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPanelMode("ai");
+                  setOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-lg border border-border/60 text-xs font-medium hover:bg-secondary/60 transition-colors"
+              >
+                AI Assistant
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-2 rounded-lg hover:bg-secondary/60 transition-colors"
+                aria-label="Close chat"
+                type="button"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div
+            ref={scrollRef}
+            onScroll={handleMessageScroll}
+            className="flex-1 min-h-0 overflow-y-scroll overscroll-contain touch-pan-y p-4 space-y-4"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
             {liveLoading && liveMessages.length === 0 ? (
               <div className="max-w-[85%] px-4 py-3 rounded-2xl bg-secondary/70 text-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
             ) : liveMessages.length === 0 ? (
               <div className="max-w-[90%] px-4 py-3 rounded-2xl text-sm leading-relaxed bg-secondary/70 text-foreground">
-                I am NEMO AI assistant of DrawnDimension. Our team will reach you soon. Please tell us what service you are interested in
+                Start live chat here. Share your requirement and our support team will contact you shortly.
               </div>
             ) : (
               liveMessages.map((message) => {
@@ -707,7 +985,14 @@ const ChatWidget = () => {
       )}
 
       <button
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          setPanelMode("ai");
+          setOpen(true);
+        }}
         className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-glow-lg flex items-center justify-center hover:scale-105 transition-transform"
         aria-label="Open chat"
         type="button"
