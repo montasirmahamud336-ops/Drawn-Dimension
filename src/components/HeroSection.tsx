@@ -95,23 +95,24 @@ const HeroSection = () => {
 
           {/* RIGHT SIDE - Service Cards Grid */}
           <div className="grid grid-cols-2 gap-4 md:gap-5">
-            {services.map((service, index) => {
+            {services.map((service) => {
               const Icon = service.icon;
               return (
                 <div key={service.title}>
                   <Link to={service.link}>
-                    <div className="group relative h-full p-6 rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-lg hover:shadow-xl hover:border-primary/40 transition-all duration-300 cursor-pointer">
-                      {/* Glow effect on hover */}
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/0 to-primary/0 group-hover:from-primary/5 group-hover:to-primary/10 transition-all duration-300" />
+                    <div className="group relative h-full min-h-[200px] overflow-hidden p-6 rounded-2xl border border-border/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.94),rgba(255,255,255,0.9)_46%,rgba(239,68,68,0.12)_100%)] ring-1 ring-primary/10 shadow-[0_14px_34px_rgba(15,23,42,0.14)] hover:-translate-y-1.5 hover:border-primary/45 hover:ring-primary/20 hover:shadow-[0_24px_50px_rgba(239,68,68,0.18)] transition-all duration-300 cursor-pointer dark:border-white/10 dark:bg-[linear-gradient(155deg,rgba(18,18,22,0.95),rgba(12,12,16,0.9)_44%,rgba(110,20,20,0.42)_100%)] dark:ring-white/5 dark:shadow-[0_14px_34px_rgba(0,0,0,0.5)] dark:hover:border-primary/55 dark:hover:ring-primary/25 dark:hover:shadow-[0_24px_50px_rgba(239,68,68,0.3)]">
+                      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_82%_12%,rgba(239,68,68,0.18),transparent_46%)] opacity-90 dark:bg-[radial-gradient(circle_at_82%_12%,rgba(239,68,68,0.24),transparent_45%)] dark:opacity-80" />
+                      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent dark:via-primary/75" />
+                      <div className="pointer-events-none absolute -top-14 -right-8 h-32 w-32 rounded-full bg-primary/16 blur-2xl opacity-50 group-hover:opacity-80 transition-opacity duration-300 dark:bg-primary/20 dark:opacity-55 dark:group-hover:opacity-90" />
 
                       <div className="relative z-10">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary/15 group-hover:border-primary/30 transition-all duration-300">
+                        <div className="w-12 h-12 rounded-2xl bg-[linear-gradient(145deg,rgba(239,68,68,0.2),rgba(239,68,68,0.08))] border border-primary/35 flex items-center justify-center mb-4 shadow-[0_8px_18px_rgba(239,68,68,0.2)] group-hover:border-primary/55 group-hover:shadow-[0_12px_24px_rgba(239,68,68,0.3)] transition-all duration-300 dark:bg-[linear-gradient(145deg,rgba(239,68,68,0.26),rgba(239,68,68,0.1))] dark:border-primary/45 dark:shadow-[0_10px_24px_rgba(239,68,68,0.26)] dark:group-hover:border-primary/70 dark:group-hover:shadow-[0_14px_28px_rgba(239,68,68,0.34)]">
                           <Icon className="w-6 h-6 text-primary" />
                         </div>
-                        <h3 className="text-base font-semibold text-foreground mb-2 leading-tight">
+                        <h3 className="text-base md:text-lg font-semibold text-foreground mb-2 leading-tight tracking-tight">
                           {service.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground leading-snug">
+                        <p className="text-sm text-muted-foreground/95 leading-snug">
                           {service.description}
                         </p>
                       </div>

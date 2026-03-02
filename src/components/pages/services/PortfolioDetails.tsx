@@ -61,6 +61,33 @@ const asDisplayValue = (value: unknown) => {
 
 const isFallbackValue = (value: string) => value === "Not Available";
 
+const getDescriptionParagraphs = (value: unknown): string[] => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return ["No details available."];
+
+  const normalized = raw.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ").trim();
+  const withManualBreaks = normalized
+    .split(/\n{1,}/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (withManualBreaks.length > 1) return withManualBreaks;
+
+  const sentenceMatches = normalized.match(/[^.!?]+[.!?]?/g);
+  const sentences = (sentenceMatches ?? [])
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+  if (sentences.length <= 2) return [normalized];
+
+  const paragraphs: string[] = [];
+  for (let index = 0; index < sentences.length; index += 2) {
+    paragraphs.push(sentences.slice(index, index + 2).join(" "));
+  }
+
+  return paragraphs;
+};
+
 const PortfolioDetails = () => {
   const { id } = useParams();
   const { data: projects, loading } = useLiveData("projects");
@@ -83,6 +110,10 @@ const PortfolioDetails = () => {
   const currentMedia = media[mediaIndex];
   const hasManyMedia = media.length > 1;
   const category = normalizeCategory(project?.category);
+  const descriptionParagraphs = useMemo(
+    () => getDescriptionParagraphs(project?.description),
+    [project?.description]
+  );
   const createdBy = asDisplayValue(project?.creator);
   const clientName = asDisplayValue(project?.client_name ?? project?.client);
   const projectCost = asDisplayValue(project?.project_cost);
@@ -336,9 +367,11 @@ const PortfolioDetails = () => {
                         {category}
                       </span>
                       <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground leading-tight">{project.title}</h1>
-                      <p className="text-[15px] sm:text-base leading-7 text-muted-foreground max-w-4xl">
-                        {project.description || "No details available."}
-                      </p>
+                      <div className="max-w-4xl space-y-4 text-[15px] sm:text-base leading-7 text-muted-foreground">
+                        {descriptionParagraphs.map((paragraph, index) => (
+                          <p key={`${index}-${paragraph.slice(0, 32)}`}>{paragraph}</p>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="grid gap-3.5 sm:grid-cols-2 md:gap-4">

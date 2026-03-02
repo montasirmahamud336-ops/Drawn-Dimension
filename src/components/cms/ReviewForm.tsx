@@ -10,12 +10,14 @@ import { toast } from "sonner";
 import { getAdminToken } from "@/components/admin/adminAuth";
 import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
 import { SERVICES } from "@/data/servicesData";
+import { COUNTRY_OPTIONS } from "@/data/countryOptions";
 
 interface Review {
     id?: string;
     name: string;
     role: string;
     company?: string;
+    country?: string;
     content: string;
     rating: number;
     image_url?: string;
@@ -62,6 +64,7 @@ const ReviewForm = ({ initialData, onSave, onCancel }: ReviewFormProps) => {
         name: initialData?.name || "",
         role: initialData?.role || "",
         company: initialData?.company || "",
+        country: initialData?.country || "",
         content: initialData?.content || "",
         rating: initialData?.rating || 5,
         image_url: initialData?.image_url || "",
@@ -237,67 +240,84 @@ const ReviewForm = ({ initialData, onSave, onCancel }: ReviewFormProps) => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="project">Service / Project</Label>
-                            <Select value={formData.project || "__none__"} onValueChange={handleProjectChange}>
-                                <SelectTrigger id="project">
-                                    <SelectValue placeholder="Select a service/project" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="__none__">No specific service</SelectItem>
-                                    {serviceOptions.map((option) => (
-                                        <SelectItem key={option} value={option}>
-                                            {option}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <div className="flex gap-2">
-                                <Input
-                                    value={newServiceOption}
-                                    onChange={(e) => setNewServiceOption(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            handleAddServiceOption();
-                                        }
-                                    }}
-                                    placeholder="Add new service option"
-                                />
-                                <Button type="button" variant="outline" onClick={handleAddServiceOption}>
-                                    Add
-                                </Button>
-                            </div>
-                            {serviceOptions.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                    {serviceOptions.map((option) => (
-                                        <div
-                                            key={`service-chip-${option}`}
-                                            className={`inline-flex items-center rounded-full border px-2 py-1 text-xs ${
-                                                formData.project === option
-                                                    ? "border-primary text-primary"
-                                                    : "border-border text-muted-foreground"
-                                            }`}
-                                        >
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData((prev) => ({ ...prev, project: option }))}
-                                                className="px-1"
-                                            >
-                                                {option}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveServiceOption(option)}
-                                                className="ml-1 text-muted-foreground hover:text-destructive"
-                                                aria-label={`Remove ${option}`}
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            <Label htmlFor="country">Country (Optional)</Label>
+                            <Input
+                                id="country"
+                                name="country"
+                                list="review-country-options"
+                                value={formData.country || ""}
+                                onChange={handleChange}
+                                placeholder="e.g. Bangladesh"
+                            />
+                            <datalist id="review-country-options">
+                                {COUNTRY_OPTIONS.map((country) => (
+                                    <option key={country.code} value={country.name} />
+                                ))}
+                            </datalist>
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="project">Service / Project</Label>
+                        <Select value={formData.project || "__none__"} onValueChange={handleProjectChange}>
+                            <SelectTrigger id="project">
+                                <SelectValue placeholder="Select a service/project" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__none__">No specific service</SelectItem>
+                                {serviceOptions.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                        {option}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <div className="flex gap-2">
+                            <Input
+                                value={newServiceOption}
+                                onChange={(e) => setNewServiceOption(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleAddServiceOption();
+                                    }
+                                }}
+                                placeholder="Add new service option"
+                            />
+                            <Button type="button" variant="outline" onClick={handleAddServiceOption}>
+                                Add
+                            </Button>
+                        </div>
+                        {serviceOptions.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {serviceOptions.map((option) => (
+                                    <div
+                                        key={`service-chip-${option}`}
+                                        className={`inline-flex items-center rounded-full border px-2 py-1 text-xs ${
+                                            formData.project === option
+                                                ? "border-primary text-primary"
+                                                : "border-border text-muted-foreground"
+                                        }`}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData((prev) => ({ ...prev, project: option }))}
+                                            className="px-1"
+                                        >
+                                            {option}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveServiceOption(option)}
+                                            className="ml-1 text-muted-foreground hover:text-destructive"
+                                            aria-label={`Remove ${option}`}
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

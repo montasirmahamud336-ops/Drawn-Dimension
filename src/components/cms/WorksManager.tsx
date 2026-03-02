@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useDeferredValue } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,21 +8,27 @@ import { toast } from "sonner";
 import WorkForm from "./WorkForm";
 import { moveItemById } from "./reorderUtils";
 
+const INITIAL_VISIBLE_WORKS = 9;
+const WORKS_LOAD_MORE_STEP = 9;
+
 const WorksManager = () => {
     const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("live");
-    const [search, setSearch] = useState("");
+    const [searchInput, setSearchInput] = useState("");
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProject, setEditingProject] = useState<any | null>(null);
     const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
     const [hasOrderChange, setHasOrderChange] = useState(false);
     const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_WORKS);
     const projectsRef = useRef<any[]>([]);
+    const deferredSearch = useDeferredValue(searchInput);
 
     const apiBase = getApiBaseUrl();
     const token = getAdminToken();
-    const isReorderEnabled = search.trim().length === 0 && !isSavingOrder;
+    const searchQuery = deferredSearch.trim().toLowerCase();
+    const isReorderEnabled = searchQuery.length === 0 && !isSavingOrder;
 
     useEffect(() => {
         projectsRef.current = projects;
@@ -48,6 +54,10 @@ const WorksManager = () => {
     useEffect(() => {
         fetchProjects();
     }, [activeTab]);
+
+    useEffect(() => {
+        setVisibleCount(INITIAL_VISIBLE_WORKS);
+    }, [activeTab, searchQuery, projects.length]);
 
     const saveProjectOrder = async (orderedProjects: any[]) => {
         try {
@@ -159,10 +169,24 @@ const WorksManager = () => {
         }
     };
 
-    const filteredProjects = projects.filter(p =>
-        p.title.toLowerCase().includes(search.toLowerCase()) ||
-        p.category?.toLowerCase().includes(search.toLowerCase())
+    const filteredProjects = useMemo(
+        () =>
+            projects.filter((p) => {
+                if (!searchQuery) return true;
+                return (
+                    String(p.title || "").toLowerCase().includes(searchQuery) ||
+                    String(p.category || "").toLowerCase().includes(searchQuery)
+                );
+            }),
+        [projects, searchQuery]
     );
+
+    const visibleProjects = useMemo(
+        () => filteredProjects.slice(0, visibleCount),
+        [filteredProjects, visibleCount]
+    );
+
+    const canLoadMore = visibleCount < filteredProjects.length;
 
     return (
         <div className="space-y-6">
@@ -188,8 +212,8 @@ const WorksManager = () => {
                     <Input
                         placeholder="Search projects..."
                         className="pl-8"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
                     />
                 </div>
             </div>
@@ -205,112 +229,130 @@ const WorksManager = () => {
                     {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-96 bg-muted/20 animate-pulse rounded-2xl" />)}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.map((project) => (
-                        <div
-                            key={project.id}
-                            className={`group relative ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${draggingProjectId === project.id ? "opacity-70" : ""}`}
-                            draggable={isReorderEnabled}
-                            onDragStart={() => handleDragStart(project.id)}
-                            onDragEnter={() => handleDragEnter(project.id)}
-                            onDragOver={(event) => {
-                                if (isReorderEnabled) event.preventDefault();
-                            }}
-                            onDrop={(event) => event.preventDefault()}
-                            onDragEnd={handleDragEnd}
-                        >
-                            <div className="glass-card overflow-hidden h-full flex flex-col transition-all duration-300 hover:shadow-glow/50 border-border/50 bg-secondary/20">
-                                <div className="relative overflow-hidden aspect-video">
-                                    {project.image_url ? (
-                                        <img
-                                            src={project.image_url}
-                                            alt={project.title}
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                        />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full bg-muted/30 text-muted-foreground">
-                                            No Image
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
-
-                                    {/* Action Buttons Overlay */}
-                                    <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                                        <Button size="sm" variant="secondary" className="shadow-lg hover:scale-105 transition-transform" onClick={() => { setEditingProject(project); setIsFormOpen(true); }}>
-                                            <Edit className="w-4 h-4 mr-2" /> Edit
-                                        </Button>
-
-                                        {activeTab === 'draft' ? (
-                                            <>
-                                                <Button size="icon" className="bg-green-600 hover:bg-green-700 shadow-lg hover:scale-105 transition-transform" onClick={() => handleRestore(project.id)}>
-                                                    <RotateCcw className="w-4 h-4" />
-                                                </Button>
-                                                <Button size="icon" variant="destructive" className="shadow-lg hover:scale-105 transition-transform" onClick={() => handleDelete(project.id, true)}>
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            </>
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {visibleProjects.map((project) => (
+                            <div
+                                key={project.id}
+                                className={`group relative ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${draggingProjectId === project.id ? "opacity-70" : ""}`}
+                                draggable={isReorderEnabled}
+                                onDragStart={() => handleDragStart(project.id)}
+                                onDragEnter={() => handleDragEnter(project.id)}
+                                onDragOver={(event) => {
+                                    if (isReorderEnabled) event.preventDefault();
+                                }}
+                                onDrop={(event) => event.preventDefault()}
+                                onDragEnd={handleDragEnd}
+                                style={{ contentVisibility: "auto", containIntrinsicSize: "420px" }}
+                            >
+                                <div className="glass-card overflow-hidden h-full flex flex-col transition-shadow duration-200 hover:shadow-lg border-border/50 bg-secondary/20">
+                                    <div className="relative overflow-hidden aspect-video">
+                                        {project.image_url ? (
+                                            <img
+                                                src={project.image_url}
+                                                alt={project.title}
+                                                loading="lazy"
+                                                decoding="async"
+                                                width={640}
+                                                height={360}
+                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                                            />
                                         ) : (
-                                            <Button size="sm" variant="destructive" className="shadow-lg hover:scale-105 transition-transform" onClick={() => handleDelete(project.id, false)}>
-                                                <Trash2 className="w-4 h-4 mr-2" /> {activeTab === "live" ? "Draft" : "Delete"}
-                                            </Button>
+                                            <div className="flex items-center justify-center h-full bg-muted/30 text-muted-foreground">
+                                                No Image
+                                            </div>
                                         )}
-                                    </div>
+                                        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
 
-                                    {/* Badge */}
-                                    <div className="absolute top-4 left-4 z-10">
-                                        <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow backdrop-blur-md">
-                                            {project.category || "Uncategorized"}
-                                        </span>
-                                    </div>
+                                        {/* Action Buttons Overlay */}
+                                        <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+                                            <Button size="sm" variant="secondary" className="shadow-lg hover:scale-105 transition-transform" onClick={() => { setEditingProject(project); setIsFormOpen(true); }}>
+                                                <Edit className="w-4 h-4 mr-2" /> Edit
+                                            </Button>
 
-                                    {/* Status Badge for Drafts */}
-                                    {project.status === 'draft' && (
-                                        <div className="absolute top-4 right-4 z-10">
-                                            <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/90 text-black font-medium shadow-glow backdrop-blur-md">
-                                                Draft
+                                            {activeTab === 'draft' ? (
+                                                <>
+                                                    <Button size="icon" className="bg-green-600 hover:bg-green-700 shadow-lg hover:scale-105 transition-transform" onClick={() => handleRestore(project.id)}>
+                                                        <RotateCcw className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="destructive" className="shadow-lg hover:scale-105 transition-transform" onClick={() => handleDelete(project.id, true)}>
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <Button size="sm" variant="destructive" className="shadow-lg hover:scale-105 transition-transform" onClick={() => handleDelete(project.id, false)}>
+                                                    <Trash2 className="w-4 h-4 mr-2" /> {activeTab === "live" ? "Draft" : "Delete"}
+                                                </Button>
+                                            )}
+                                        </div>
+
+                                        {/* Badge */}
+                                        <div className="absolute top-4 left-4 z-10">
+                                            <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow backdrop-blur-md">
+                                                {project.category || "Uncategorized"}
                                             </span>
                                         </div>
-                                    )}
-                                </div>
 
-                                <div className="p-6 flex-grow flex flex-col justify-between relative z-10">
-                                    <div>
-                                        {isReorderEnabled && (
-                                            <div className="flex justify-end mb-2">
-                                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
-                                                    <GripVertical className="w-3.5 h-3.5" />
-                                                    Drag
+                                        {/* Status Badge for Drafts */}
+                                        {project.status === 'draft' && (
+                                            <div className="absolute top-4 right-4 z-10">
+                                                <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/90 text-black font-medium shadow-glow backdrop-blur-md">
+                                                    Draft
                                                 </span>
                                             </div>
                                         )}
-                                        <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                                            {project.title}
-                                        </h3>
-                                        <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
-                                            {project.description}
-                                        </p>
                                     </div>
 
-                                    {project.client && (
-                                        <div className="mt-auto pt-4 border-t border-border/50">
-                                            <p className="text-xs font-bold tracking-wider text-primary uppercase flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                                                CLIENT: <span className="text-foreground/80 font-normal normal-case">{project.client}</span>
+                                    <div className="p-6 flex-grow flex flex-col justify-between relative z-10">
+                                        <div>
+                                            {isReorderEnabled && (
+                                                <div className="flex justify-end mb-2">
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
+                                                        <GripVertical className="w-3.5 h-3.5" />
+                                                        Drag
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                                                {project.title}
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
+                                                {project.description}
                                             </p>
                                         </div>
-                                    )}
+
+                                        {project.client && (
+                                            <div className="mt-auto pt-4 border-t border-border/50">
+                                                <p className="text-xs font-bold tracking-wider text-primary uppercase flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                                    CLIENT: <span className="text-foreground/80 font-normal normal-case">{project.client}</span>
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                    {filteredProjects.length === 0 && (
-                        <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/5 rounded-3xl border border-dashed border-border/50">
-                            <MonitorPlay className="w-12 h-12 mb-4 opacity-20" />
-                            <p className="text-lg font-medium">No works found in {activeTab}.</p>
-                            <p className="text-sm opacity-60">Upload a new work to get started.</p>
+                        ))}
+                        {filteredProjects.length === 0 && (
+                            <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/5 rounded-3xl border border-dashed border-border/50">
+                                <MonitorPlay className="w-12 h-12 mb-4 opacity-20" />
+                                <p className="text-lg font-medium">No works found in {activeTab}.</p>
+                                <p className="text-sm opacity-60">Upload a new work to get started.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {canLoadMore && (
+                        <div className="flex justify-center">
+                            <Button
+                                variant="outline"
+                                onClick={() => setVisibleCount((prev) => prev + WORKS_LOAD_MORE_STEP)}
+                            >
+                                Load more works
+                            </Button>
                         </div>
                     )}
-                </div>
+                </>
             )}
 
             <WorkForm

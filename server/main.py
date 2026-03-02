@@ -98,6 +98,7 @@ class Review(BaseModel):
     name: str  # Client Name
     role: str  # Client Role
     company: Optional[str] = None
+    country: Optional[str] = None
     content: str
     rating: int = 5
     image_url: Optional[str] = None
@@ -127,6 +128,7 @@ def _map_testimonial_to_review(row: dict[str, Any]) -> dict[str, Any]:
         "name": row.get("name"),
         "role": row.get("role"),
         "company": row.get("company"),
+        "country": row.get("country"),
         "content": row.get("content") or row.get("review") or "",
         "rating": row.get("rating") or row.get("stars") or 5,
         "image_url": row.get("image_url") or row.get("avatar_url"),
@@ -146,6 +148,8 @@ def _build_testimonial_update_data(data: dict[str, Any], existing_row: dict[str,
         mapped["role"] = data["role"]
     if "company" in data and "company" in existing_row:
         mapped["company"] = data["company"]
+    if "country" in data and "country" in existing_row:
+        mapped["country"] = data["country"]
 
     if "content" in data:
         if "content" in existing_row:
@@ -189,6 +193,7 @@ def _build_testimonial_insert_variants(data: dict[str, Any]) -> list[dict[str, A
     base_rating = data.get("rating", 5)
     base_image = data.get("image_url")
     base_project = data.get("project")
+    base_country = data.get("country")
 
     variants: list[dict[str, Any]] = [
         {
@@ -198,6 +203,7 @@ def _build_testimonial_insert_variants(data: dict[str, Any]) -> list[dict[str, A
             "rating": base_rating,
             "image_url": base_image,
             "service_tag": base_project,
+            "country": base_country,
             "is_published": is_live,
         },
         {
@@ -207,6 +213,7 @@ def _build_testimonial_insert_variants(data: dict[str, Any]) -> list[dict[str, A
             "stars": base_rating,
             "avatar_url": base_image,
             "service_tag": base_project,
+            "country": base_country,
             "is_published": is_live,
         },
         {
@@ -216,6 +223,7 @@ def _build_testimonial_insert_variants(data: dict[str, Any]) -> list[dict[str, A
             "rating": base_rating,
             "image_url": base_image,
             "project": base_project,
+            "country": base_country,
             "status": "live" if is_live else "draft",
         },
         {
@@ -223,6 +231,7 @@ def _build_testimonial_insert_variants(data: dict[str, Any]) -> list[dict[str, A
             "role": base_role,
             "content": base_content,
             "rating": base_rating,
+            "country": base_country,
         },
     ]
 
@@ -373,33 +382,60 @@ async def chat(payload: ChatRequest) -> dict[str, str]:
 
     model = os.getenv("GROQ_MODEL") or "llama-3.3-70b-versatile"
 
+    company_knowledge = (
+        "Company profile:\n"
+        "- Brand: Drawn Dimension\n"
+        "- Positioning: Premium design and engineering services company\n"
+        "- Journey: Started with web design in 2022; expanded into engineering and product-focused services from 2024 onward\n"
+        "- Delivery standard: clean execution, accurate technical detail, and client-ready handover\n\n"
+        "Core services:\n"
+        "- Web Design & Development\n"
+        "- Graphic Design & Branding\n"
+        "- AutoCAD Technical Drawings\n"
+        "- 3D SolidWorks Modeling\n"
+        "- PFD & P&ID Diagrams\n"
+        "- HAZOP Study & Risk Analysis\n"
+        "- Small tools development and sales\n\n"
+        "Products and categories:\n"
+        "- Main product focus: ready-to-use digital solutions and tools\n"
+        "- Website product categories: WordPress Website, E-commerce Website, Portfolio Website, Realstate Website, Python Tools\n"
+        "- Products page: /products\n\n"
+        "Important website links:\n"
+        "- About page: /about\n"
+        "- Services page: /services\n"
+        "- Products page: /products\n"
+        "- Portfolio page: /portfolio\n"
+        "- Contact page: /contact\n\n"
+        "Official contact info:\n"
+        "- Email: drawndimensioninfo@gmail.com\n"
+        "- WhatsApp: +880 1775-119416 (https://wa.me/8801775119416)\n"
+        "- Location: Dhaka, Bangladesh (global service available)\n"
+        "- Business hours: 9:00 AM - 6:00 PM (Sunday to Thursday)\n"
+    )
+
     system_prompt = (
-        "You are a smart, friendly, professional chatbot agent for the DrawnDimension website.\n\n"
-        "Your personality:\n"
-        "- Natural, helpful, human-like responses (ChatGPT-style), not repetitive\n"
-        "- Use short lines, good spacing, and relevant emojis to make replies attractive\n"
-        "- If the user speaks Bangla, respond in Bangla; if they speak English, respond in English\n"
-        "- Ask follow-up questions to guide the conversation, but do not repeat full service lists repeatedly\n\n"
-        "Identity:\n"
-        "- Your name is \"DrawnDimension AI\" and introduce yourself naturally if asked\n\n"
-        "Behavior rules:\n"
-        "- Never store chat history across page refresh or navigation changes\n"
-        "- On page refresh or new session, clear memory of past chat\n"
-        "- When responding, assume fresh session unless user explicitly references past user input\n"
-        "- Keep replies friendly, clear, and conversational - avoid long paragraphs\n"
-        "- Provide short, useful summaries and ask what the user wants next\n\n"
-        "Service guidance:\n"
-        "- DrawnDimension provides Web Design & Development, AutoCAD technical drawings, 3D SolidWorks modeling, "
-        "PFD & P&ID diagrams, HAZOP safety studies, and graphic design & branding\n"
-        "- Only share full details when asked, and in a clear, spaced, emoji-friendly style\n\n"
-        "Formatting:\n"
-        "- Add line breaks between topics\n"
-        "- Use emojis to enhance but avoid overuse\n"
-        "- Ask direct questions to clarify user needs at the end of each answer\n\n"
-        "Example greeting:\n"
-        "\"Hi! 😊 I'm DrawnDimension AI. How can I help you today?\"\n\n"
-        "Example clarification:\n"
-        "\"Are you looking for a new website, or do you want to improve your existing one? 🤔\""
+        "You are NEMO AI assistant of Drawn Dimension.\n\n"
+        "Primary goal:\n"
+        "- Give professional, accurate, and helpful replies about the company, services, products, and contact process.\n\n"
+        "Language rules:\n"
+        "- If user writes Bangla, reply in Bangla.\n"
+        "- If user writes English, reply in English.\n"
+        "- If user mixes both, use the dominant language naturally.\n\n"
+        "Tone and style:\n"
+        "- Professional, respectful, concise, and human.\n"
+        "- No slang and no decorative emoji.\n"
+        "- Use short paragraphs or bullet points for clarity.\n"
+        "- End with one clear next-step question when useful.\n\n"
+        "Company knowledge to use:\n"
+        f"{company_knowledge}\n"
+        "Behavior instructions:\n"
+        "- If user asks about the company, provide the profile summary from the knowledge above.\n"
+        "- If user asks about services, list relevant services and briefly explain suitable options.\n"
+        "- If user asks about products, explain product focus and categories, then direct to /products.\n"
+        "- If user asks how to contact, provide email, WhatsApp, business hours, location, and /contact.\n"
+        "- If user asks to see previous work or examples, provide /portfolio.\n"
+        "- If user asks something unknown, say you can connect them to the human team via contact details.\n"
+        "- Never invent pricing, delivery promises, or capabilities that are not in the knowledge block.\n"
     )
 
     messages = [{"role": "system", "content": system_prompt}]
@@ -884,3 +920,4 @@ async def delete_review(review_id: str, request: Request):
         return []
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+

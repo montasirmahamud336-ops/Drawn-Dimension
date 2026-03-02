@@ -16,6 +16,7 @@ interface Review {
     name: string;
     role: string;
     company?: string;
+    country?: string;
     content: string;
     rating: number;
     image_url?: string;
@@ -244,7 +245,8 @@ const ReviewsManager = () => {
     const filteredReviews = reviews.filter(r =>
         r.name.toLowerCase().includes(search.toLowerCase()) ||
         r.content.toLowerCase().includes(search.toLowerCase()) ||
-        r.role.toLowerCase().includes(search.toLowerCase())
+        r.role.toLowerCase().includes(search.toLowerCase()) ||
+        (r.country || "").toLowerCase().includes(search.toLowerCase())
     );
 
     if (isEditing) {
@@ -343,7 +345,9 @@ const ReviewsManager = () => {
                                             )}
                                             <div>
                                                 <h3 className="font-semibold text-foreground line-clamp-1">{review.name}</h3>
-                                                <p className="text-xs text-muted-foreground line-clamp-1">{review.role}{review.company ? `, ${review.company}` : ''}</p>
+                                                <p className="text-xs text-muted-foreground line-clamp-1">
+                                                    {[review.role, review.company, review.country].filter(Boolean).join(", ")}
+                                                </p>
                                             </div>
                                         </div>
                                         <Badge variant={review.status === "live" ? "default" : "secondary"} className={review.status === "live" ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20" : "bg-yellow-500/10 text-yellow-500"}>

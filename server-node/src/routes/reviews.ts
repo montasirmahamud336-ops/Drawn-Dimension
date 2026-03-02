@@ -17,6 +17,12 @@ const isMissingDisplayOrderError = (error: unknown) => {
   return message.includes("display_order") && message.includes("does not exist");
 };
 
+const isMissingColumnError = (error: unknown, column: string) => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes(column.toLowerCase()) && message.includes("does not exist");
+};
+
 const normalizeDisplayOrder = (value: unknown): number | null => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
@@ -54,6 +60,7 @@ const mapTestimonialToReview = (row: any) => {
     name: row?.name ?? "Anonymous Client",
     role: row?.role ?? "Verified Client",
     company: row?.company ?? null,
+    country: row?.country ?? null,
     content: row?.content ?? row?.review ?? "",
     rating: normalizeRating(row?.rating ?? row?.stars),
     image_url: row?.image_url ?? row?.avatar_url ?? null,
@@ -99,6 +106,7 @@ router.post("/reviews", async (req, res) => {
     const payload = {
       name: req.body?.name ?? "Anonymous Client",
       role: req.body?.role ?? null,
+      country: req.body?.country ?? null,
       content: req.body?.content ?? "",
       rating: normalizeRating(req.body?.rating),
       image_url: req.body?.image_url ?? null,
@@ -107,17 +115,37 @@ router.post("/reviews", async (req, res) => {
       display_order: displayOrder
     };
 
-    let data: any;
-    try {
-      data = await insertRow("/testimonials", payload);
-    } catch (error) {
-      if (!isMissingDisplayOrderError(error)) {
-        throw error;
+    let data: any = null;
+    let insertPayload: Record<string, unknown> = { ...payload };
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        data = await insertRow("/testimonials", insertPayload);
+        break;
+      } catch (error) {
+        let adjusted = false;
+
+        if ("country" in insertPayload && isMissingColumnError(error, "country")) {
+          const withoutCountry = { ...insertPayload };
+          delete withoutCountry.country;
+          insertPayload = withoutCountry;
+          adjusted = true;
+        }
+
+        if ("display_order" in insertPayload && isMissingDisplayOrderError(error)) {
+          const withoutDisplayOrder = { ...insertPayload };
+          delete withoutDisplayOrder.display_order;
+          insertPayload = withoutDisplayOrder;
+          adjusted = true;
+        }
+
+        if (!adjusted || attempt === 2) {
+          throw error;
+        }
       }
-      const { display_order, ...legacyPayload } = payload;
-      data = await insertRow("/testimonials", legacyPayload);
     }
-    return res.status(201).json(mapTestimonialToReview(data?.[0] ?? payload));
+
+    return res.status(201).json(mapTestimonialToReview(data?.[0] ?? insertPayload));
   } catch (error: any) {
     return res.status(500).json({ message: error?.message || "Failed to create review" });
   }
@@ -156,6 +184,7 @@ router.patch("/reviews/:id", requireAuth, async (req, res) => {
 
     if ("name" in req.body) patch.name = req.body.name;
     if ("role" in req.body) patch.role = req.body.role;
+    if ("country" in req.body) patch.country = req.body.country ?? null;
     if ("content" in req.body) patch.content = req.body.content;
     if ("rating" in req.body) patch.rating = normalizeRating(req.body.rating);
     if ("image_url" in req.body) patch.image_url = req.body.image_url ?? null;
@@ -163,7 +192,19 @@ router.patch("/reviews/:id", requireAuth, async (req, res) => {
     if ("status" in req.body) patch.is_published = String(req.body.status).toLowerCase() === "live";
     if ("display_order" in req.body) patch.display_order = normalizeDisplayOrder(req.body.display_order) ?? 0;
 
-    const data = await updateRow(`/testimonials?id=eq.${encodeURIComponent(id)}`, patch);
+    let data: any;
+    try {
+      data = await updateRow(`/testimonials?id=eq.${encodeURIComponent(id)}`, patch);
+    } catch (error) {
+      if ("country" in patch && isMissingColumnError(error, "country")) {
+        const withoutCountry = { ...patch };
+        delete withoutCountry.country;
+        data = await updateRow(`/testimonials?id=eq.${encodeURIComponent(id)}`, withoutCountry);
+      } else {
+        throw error;
+      }
+    }
+
     if (!data || data.length === 0) {
       return res.status(404).json({ message: "Review not found" });
     }
