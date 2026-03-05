@@ -4,7 +4,7 @@ import asyncio
 import smtplib
 from email.message import EmailMessage
 
-from app.config import Settings
+from server.app.config import Settings
 
 
 class EmailDeliveryError(RuntimeError):
@@ -54,4 +54,3 @@ class SMTPEmailClient:
                 smtp.send_message(message)
         except Exception as exc:  # pragma: no cover - network interaction
             raise EmailDeliveryError(str(exc)) from exc
-

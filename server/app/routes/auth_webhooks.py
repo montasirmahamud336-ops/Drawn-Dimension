@@ -7,10 +7,10 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.config import settings
-from app.models.auth_events import parse_auth_user_created_webhook
-from app.security.webhook import verify_webhook_request
-from app.services.auth_notification_service import AuthNotificationService
+from server.app.config import settings
+from server.app.models.auth_events import parse_auth_user_created_webhook
+from server.app.security.webhook import verify_webhook_request
+from server.app.services.auth_notification_service import AuthNotificationService
 
 logger = logging.getLogger(__name__)
 

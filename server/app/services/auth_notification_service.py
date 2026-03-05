@@ -3,14 +3,14 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from app.config import Settings
-from app.models.auth_events import AuthUserCreatedEvent
-from app.services.email.client import SMTPEmailClient
-from app.services.email.templates import (
+from server.app.config import Settings
+from server.app.models.auth_events import AuthUserCreatedEvent
+from server.app.services.email.client import SMTPEmailClient
+from server.app.services.email.templates import (
     build_admin_notification_html,
     build_welcome_email_html,
 )
-from app.services.supabase_admin import get_supabase_admin_client
+from server.app.services.supabase_admin import get_supabase_admin_client
 
 logger = logging.getLogger(__name__)
 
@@ -130,4 +130,3 @@ class AuthNotificationService:
             admin_notification_sent=admin_notification_sent,
             skipped_as_duplicate=skipped,
         )
-

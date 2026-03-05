@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from app.routes.auth_webhooks import router as auth_webhooks_router
+from server.app.routes.auth_webhooks import router as auth_webhooks_router
 
 load_dotenv()
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"), override=False)
