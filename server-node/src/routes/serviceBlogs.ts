@@ -111,6 +111,22 @@ const sortBlogRows = (rows: NormalizedBlogRow[]) =>
     return bTime - aTime;
   });
 
+const filterLocalBlogRows = (
+  rows: NormalizedBlogRow[],
+  status: BlogStatus | "all",
+  serviceId: number | null,
+  slug: string,
+  limit: number
+) =>
+  sortBlogRows(rows)
+    .filter((row) => {
+      if (status !== "all" && row.status !== status) return false;
+      if (serviceId && row.service_id !== serviceId) return false;
+      if (slug && row.slug !== slug) return false;
+      return true;
+    })
+    .slice(0, limit);
+
 const readLocalBlogs = async (): Promise<NormalizedBlogRow[]> => {
   try {
     const raw = await fs.readFile(LOCAL_BLOGS_FILE, "utf8");
@@ -222,17 +238,17 @@ router.get("/service-blogs", async (req, res) => {
   try {
     const rows = await selectRows(`/service_blogs?${filters.join("&")}`);
     const items = Array.isArray(rows) ? rows : [];
-    return res.json(items.map((row) => normalizeBlogRow(row as RawBlogRow)));
+    const normalizedRows = items.map((row) => normalizeBlogRow(row as RawBlogRow));
+    if (normalizedRows.length > 0) {
+      return res.json(normalizedRows);
+    }
+
+    const localRows = await readLocalBlogs();
+    return res.json(filterLocalBlogRows(localRows, status, serviceId, slug, limit));
   } catch (error: unknown) {
     if (isSchemaError(error)) {
       const localRows = await readLocalBlogs();
-      const filteredRows = sortBlogRows(localRows).filter((row) => {
-        if (status !== "all" && row.status !== status) return false;
-        if (serviceId && row.service_id !== serviceId) return false;
-        if (slug && row.slug !== slug) return false;
-        return true;
-      });
-      return res.json(filteredRows.slice(0, limit));
+      return res.json(filterLocalBlogRows(localRows, status, serviceId, slug, limit));
     }
     return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to fetch blog posts",

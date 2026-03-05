@@ -83,6 +83,17 @@ const sortFaqRows = (rows: NormalizedFaqRow[]) =>
     return bTime - aTime;
   });
 
+const filterLocalFaqRows = (
+  rows: NormalizedFaqRow[],
+  status: FaqStatus | "all",
+  serviceId: number | null
+) =>
+  sortFaqRows(rows).filter((row) => {
+    if (status !== "all" && row.status !== status) return false;
+    if (serviceId && row.service_id !== serviceId) return false;
+    return true;
+  });
+
 const readLocalFaqs = async (): Promise<NormalizedFaqRow[]> => {
   try {
     const raw = await fs.readFile(LOCAL_FAQS_FILE, "utf8");
@@ -161,16 +172,17 @@ router.get("/service-faqs", async (req, res) => {
   try {
     const rows = await selectRows(`/service_faqs?${filters.join("&")}`);
     const items = Array.isArray(rows) ? rows : [];
-    return res.json(items.map((row) => normalizeFaqRow(row as RawFaqRow)));
+    const normalizedRows = items.map((row) => normalizeFaqRow(row as RawFaqRow));
+    if (normalizedRows.length > 0) {
+      return res.json(normalizedRows);
+    }
+
+    const localRows = await readLocalFaqs();
+    return res.json(filterLocalFaqRows(localRows, status, serviceId));
   } catch (error: unknown) {
     if (isSchemaError(error)) {
       const localRows = await readLocalFaqs();
-      const filteredRows = sortFaqRows(localRows).filter((row) => {
-        if (status !== "all" && row.status !== status) return false;
-        if (serviceId && row.service_id !== serviceId) return false;
-        return true;
-      });
-      return res.json(filteredRows);
+      return res.json(filterLocalFaqRows(localRows, status, serviceId));
     }
     return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to fetch FAQs",
