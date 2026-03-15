@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import FaqManager from "@/components/cms/FaqManager";
 import BlogManager from "@/components/cms/BlogManager";
+import HomePageManager from "@/components/cms/HomePageManager";
 import {
   buildDefaultServiceMetaDescription,
   buildDefaultServiceMetaTitle,
@@ -31,7 +32,7 @@ import {
 } from "@/components/shared/serviceCatalog";
 
 type ServiceStatus = "live" | "draft";
-type PageSection = "services" | "faq" | "blog";
+type PageSection = "home" | "services" | "faq" | "blog";
 
 type ServiceItem = ApiServiceRecord & {
   id: number;
@@ -530,11 +531,13 @@ const PagesManager = () => {
 
   const previewUrl = resolveServiceLink(form.name || "service", form.slug || null);
   const pageSections: Array<{ id: PageSection; label: string }> = [
+    { id: "home", label: "Home Page" },
     { id: "services", label: "Our Services" },
     { id: "faq", label: "FAQ" },
     { id: "blog", label: "Blog" },
   ];
   const sectionDescriptions: Record<PageSection, string> = {
+    home: "Edit the home page layout, reorder sections, and update key content.",
     services: "Create, edit, and publish service pages from CMS.",
     faq: "Manage page-wise FAQs for each live service with draft workflow.",
     blog: "Create and publish service-wise blog posts with draft workflow.",
@@ -572,7 +575,9 @@ const PagesManager = () => {
         </aside>
 
         <section className="space-y-4">
-          {activeSection === "services" ? (
+          {activeSection === "home" ? (
+            <HomePageManager />
+          ) : activeSection === "services" ? (
             <>
           <div className="glass-card p-4 border-border/60">
             <div className="flex flex-col xl:flex-row gap-3 xl:items-center">

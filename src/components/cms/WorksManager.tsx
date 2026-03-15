@@ -245,7 +245,7 @@ const WorksManager = () => {
                                 onDragEnd={handleDragEnd}
                                 style={{ contentVisibility: "auto", containIntrinsicSize: "420px" }}
                             >
-                                <div className="glass-card overflow-hidden h-full flex flex-col transition-shadow duration-200 hover:shadow-lg border-border/50 bg-secondary/20">
+                                <div className="glass-card cms-card-lite overflow-hidden h-full flex flex-col border-border/50 bg-secondary/10 transition-none">
                                     <div className="relative overflow-hidden aspect-video">
                                         {project.image_url ? (
                                             <img
@@ -255,14 +255,14 @@ const WorksManager = () => {
                                                 decoding="async"
                                                 width={640}
                                                 height={360}
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                                                className="w-full h-full object-cover"
                                             />
                                         ) : (
                                             <div className="flex items-center justify-center h-full bg-muted/30 text-muted-foreground">
                                                 No Image
                                             </div>
                                         )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-40" />
 
                                         {/* Action Buttons Overlay */}
                                         <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">

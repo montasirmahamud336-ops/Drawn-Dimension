@@ -26,6 +26,9 @@ const readErrorMessage = async (response: Response, fallback: string) => {
       if (message.includes("payment_amount") && message.includes("does not exist")) {
         return "Payment amount column missing in database. Please run latest Supabase migration.";
       }
+      if (message.includes("order_code") && message.includes("does not exist")) {
+        return "Order code column missing in database. Please run latest Supabase migration.";
+      }
       return message;
     }
   }
@@ -99,6 +102,17 @@ const formatPaymentAmount = (value: unknown): string => {
     maximumFractionDigits: 2,
   }).format(amount);
   return `BDT ${formatted}`;
+};
+
+const formatOrderCode = (assignment: Pick<WorkAssignmentItem, "id" | "order_code">): string => {
+  const directOrderCode = String(assignment.order_code ?? "").trim().toUpperCase();
+  if (directOrderCode) return directOrderCode;
+
+  const sanitized = String(assignment.id ?? "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase();
+  if (!sanitized) return "-";
+  return `ORD-${sanitized.slice(0, 8)}`;
 };
 
 const WorkAssignManager = () => {
@@ -303,7 +317,7 @@ const WorkAssignManager = () => {
 
   const filteredAssignments = assignments.filter((assignment) => {
     const target =
-      `${assignment.employee_name} ${assignment.employee_email} ${assignment.work_title} ${assignment.work_duration} ${assignment.payment_status} ${assignment.payment_amount ?? ""} ${assignment.countdown_end_at ?? ""} ${assignment.employee_submission_status ?? ""} ${assignment.employee_submission_note ?? ""} ${assignment.employee_submission_file_url ?? ""}`.toLowerCase();
+      `${assignment.employee_name} ${formatOrderCode(assignment)} ${assignment.work_title} ${assignment.work_duration} ${assignment.payment_status} ${assignment.payment_amount ?? ""} ${assignment.countdown_end_at ?? ""} ${assignment.employee_submission_status ?? ""} ${assignment.employee_submission_note ?? ""} ${assignment.employee_submission_file_url ?? ""}`.toLowerCase();
     return target.includes(search.toLowerCase());
   });
 
@@ -350,7 +364,7 @@ const WorkAssignManager = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Employee</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Order Code</TableHead>
               <TableHead>Work</TableHead>
               <TableHead>Duration</TableHead>
               <TableHead>Time Remaining</TableHead>
@@ -380,7 +394,7 @@ const WorkAssignManager = () => {
                   className={assignment.status === "done" ? "bg-green-500/10 hover:bg-green-500/15" : ""}
                 >
                   <TableCell className="font-medium">{assignment.employee_name}</TableCell>
-                  <TableCell>{assignment.employee_email}</TableCell>
+                  <TableCell className="font-mono text-xs sm:text-sm">{formatOrderCode(assignment)}</TableCell>
                   <TableCell>{assignment.work_title}</TableCell>
                   <TableCell>{assignment.work_duration}</TableCell>
                   <TableCell className={getTimeRemainingClass(assignment.countdown_end_at, assignment.status, nowTick)}>

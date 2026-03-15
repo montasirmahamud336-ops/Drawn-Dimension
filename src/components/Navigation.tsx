@@ -6,11 +6,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
 import { buildServiceNavItems, type ApiServiceRecord } from "@/components/shared/serviceCatalog";
+import {
+  DEFAULT_HEADER_LINKS,
+  isExternalHref,
+  normalizeHeaderFooterSettings,
+  type HeaderFooterLink,
+} from "@/components/shared/headerFooterSettings";
+
+type NavLinkItem = HeaderFooterLink & {
+  submenu?: Array<{ href: string; label: string }>;
+  external: boolean;
+};
 
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const [headerLinks, setHeaderLinks] = useState<HeaderFooterLink[]>(DEFAULT_HEADER_LINKS);
   const [liveServices, setLiveServices] = useState<ApiServiceRecord[]>([]);
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [servicesLoadFailed, setServicesLoadFailed] = useState(false);
@@ -83,6 +95,36 @@ const Navigation = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+    const apiBase = getApiBaseUrl();
+
+    const loadHeaderLinks = async () => {
+      try {
+        const res = await fetch(`${apiBase}/header-footer-settings`, { signal: controller.signal });
+        if (!res.ok) {
+          throw new Error("Failed to fetch header links");
+        }
+
+        const data = await res.json();
+        if (!mounted) return;
+        const normalized = normalizeHeaderFooterSettings(data);
+        setHeaderLinks(normalized.header_links);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Failed to load header links", error);
+      }
+    };
+
+    loadHeaderLinks();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, []);
+
   const serviceSubmenu = useMemo(() => {
     if (liveServices.length > 0) {
       return buildServiceNavItems(liveServices).slice(0, 12);
@@ -102,25 +144,29 @@ const Navigation = () => {
     return [];
   }, [liveServices, servicesLoadFailed, servicesLoaded]);
 
-  const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/about", label: "About" },
-    {
-      href: "/services",
-      label: "Services",
-      submenu: serviceSubmenu
-    },
-    { href: "/products", label: "Products" },
-    { href: "/portfolio", label: "Our Works" },
-    { href: "/testimonials", label: "Reviews" },
-    { href: "/faq", label: "FAQ" },
-    { href: "/blog", label: "Blog" },
-    { href: "/contact", label: "Contact" },
-  ];
+  const navLinks = useMemo<NavLinkItem[]>(
+    () =>
+      headerLinks.map((link) => {
+        const external = isExternalHref(link.href);
+        if (!external && link.href === "/services") {
+          return { ...link, submenu: serviceSubmenu, external };
+        }
+        return { ...link, external };
+      }),
+    [headerLinks, serviceSubmenu]
+  );
 
   const isLinkActive = (href: string) => {
+    if (isExternalHref(href)) return false;
+    if (href === "/") return location.pathname === "/";
     if (href === "/blog") return location.pathname === "/blog" || location.pathname.startsWith("/blog/");
-    return location.pathname === href;
+    if (href === "/services") return location.pathname === "/services" || location.pathname.startsWith("/services/");
+    if (href === "/portfolio") return location.pathname === "/portfolio" || location.pathname.startsWith("/portfolio/");
+    if (href === "/products") return location.pathname === "/products" || location.pathname.startsWith("/products/");
+    if (href === "/testimonials") {
+      return location.pathname === "/testimonials" || location.pathname.startsWith("/testimonials/");
+    }
+    return location.pathname === href || location.pathname.startsWith(`${href}/`);
   };
 
   const openLiveChat = () => {
@@ -142,13 +188,13 @@ const Navigation = () => {
         : "bg-transparent"
         }`}
     >
-      <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14 2xl:px-20">
-        <div className="relative flex h-20 items-center justify-between">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-14">
+        <div className="relative flex h-20 items-center">
           {/* Left: Logo */}
-          <motion.div whileHover={{ scale: 1.02 }} className="z-20">
+          <motion.div whileHover={{ scale: 1.02 }} className="z-20 shrink-0">
             <Link
               to="/"
-              className="flex items-center gap-3"
+              className="flex items-center gap-2.5 xl:gap-3"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
               <img
@@ -161,67 +207,79 @@ const Navigation = () => {
                 decoding="async"
                 className="w-12 h-12 object-contain"
               />
-              <span className="text-xl font-bold text-foreground">
+              <span className="text-lg xl:text-xl font-bold text-foreground">
                 Drawn<span className="text-primary">Dimension</span>
               </span>
             </Link>
           </motion.div>
 
           {/* Center: Navigation Links */}
-          <div className="hidden lg:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
-            {navLinks.map((link) => (
-              <div key={link.href} className="relative group">
-                {link.submenu ? (
-                  <>
-                    <Link
-                      to={link.href}
-                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors duration-300 text-sm font-medium py-2"
-                    >
-                      {link.label}
-                      <ChevronDown className="w-4 h-4" />
-                    </Link>
-                    <div className="absolute top-full left-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
-                      <div className="bg-card/95 backdrop-blur-xl border border-border rounded-xl p-2 min-w-[220px] shadow-lg">
-                        <Link
-                          to={link.href}
-                          className="block px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                        >
-                          All Services
-                        </Link>
-                        <div className="border-t border-border my-2" />
-                        {link.submenu.map((sublink) => (
+          <div className="hidden lg:flex flex-1 min-w-0 items-center justify-center px-3 xl:px-4">
+            <div className="flex items-center gap-3 xl:gap-4 2xl:gap-6 whitespace-nowrap">
+              {navLinks.map((link) => (
+                <div key={link.id} className="relative group">
+                  {link.submenu ? (
+                    <>
+                      <Link
+                        to={link.href}
+                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors duration-300 text-[13px] xl:text-sm font-medium py-2"
+                      >
+                        {link.label}
+                        <ChevronDown className="w-4 h-4" />
+                      </Link>
+                      <div className="absolute top-full left-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                        <div className="bg-card/95 backdrop-blur-xl border border-border rounded-xl p-2 min-w-[220px] shadow-lg">
                           <Link
-                            key={sublink.href}
-                            to={sublink.href}
+                            to={link.href}
                             className="block px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                           >
-                            {sublink.label}
+                            All Services
                           </Link>
-                        ))}
+                          <div className="border-t border-border my-2" />
+                          {link.submenu.map((sublink) => (
+                            <Link
+                              key={sublink.href}
+                              to={sublink.href}
+                              className="block px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                            >
+                              {sublink.label}
+                            </Link>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </>
-                ) : (
-                  <motion.div whileHover={{ y: -2 }}>
-                    <Link
-                      to={link.href}
-                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className={`text-sm font-medium transition-colors duration-300 ${isLinkActive(link.href)
-                        ? "text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                        }`}
-                    >
-                      {link.label}
-                    </Link>
-                  </motion.div>
-                )}
-              </div>
-            ))}
+                    </>
+                  ) : (
+                    <motion.div whileHover={{ y: -2 }}>
+                      {link.external ? (
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[13px] xl:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-300"
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          to={link.href}
+                          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                          className={`text-[13px] xl:text-sm font-medium transition-colors duration-300 ${
+                            isLinkActive(link.href) ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {link.label}
+                        </Link>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Right: Theme Toggle + Auth */}
-          <div className="hidden lg:flex items-center gap-3 ml-auto z-20">
+          <div className="hidden xl:flex items-center gap-2.5 2xl:gap-3 ml-auto z-20 shrink-0">
             <ThemeToggle />
             {isSignedIn ? (
               <div className="flex items-center gap-2.5">
@@ -249,14 +307,14 @@ const Navigation = () => {
             ) : (
               <div className="flex items-center gap-2">
                 <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-                  <Link to="/contact" className="btn-outline h-10 min-w-[132px] px-5 py-2 text-sm rounded-lg">
+                  <Link to="/contact" className="btn-outline h-10 min-w-[118px] px-4 py-2 text-sm rounded-lg">
                     Get Started
                   </Link>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
                   <Link
                     to="/auth?mode=signup"
-                    className="btn-primary h-10 min-w-[132px] px-5 py-2 text-sm rounded-lg"
+                    className="btn-primary h-10 min-w-[118px] px-4 py-2 text-sm rounded-lg"
                   >
                     Sign Up
                   </Link>
@@ -265,8 +323,28 @@ const Navigation = () => {
             )}
           </div>
 
+          {/* Tablet/Laptop Compact Controls */}
+          <div className="hidden lg:flex xl:hidden items-center gap-2 ml-3 z-20 shrink-0">
+            <ThemeToggle />
+            {isSignedIn ? (
+              <Link
+                to="/dashboard"
+                className="h-9 px-3 rounded-lg inline-flex items-center justify-center text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                to="/auth?mode=signup"
+                className="h-9 px-3 rounded-lg inline-flex items-center justify-center text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Sign Up
+              </Link>
+            )}
+          </div>
+
           {/* Mobile Controls */}
-          <div className="lg:hidden flex items-center gap-2">
+          <div className="lg:hidden flex items-center gap-2 ml-auto">
             <ThemeToggle />
             <button
               className="text-foreground p-2"
@@ -289,7 +367,7 @@ const Navigation = () => {
           >
             <div className="container-narrow py-6 flex flex-col gap-2">
               {navLinks.map((link) => (
-                <div key={link.href}>
+                <div key={link.id}>
                   {link.submenu ? (
                     <>
                       <div className="flex items-center justify-between">
@@ -335,16 +413,29 @@ const Navigation = () => {
                       </AnimatePresence>
                     </>
                   ) : (
-                    <Link
-                      to={link.href}
-                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className={`block py-3 text-lg transition-colors ${isLinkActive(link.href)
-                        ? "text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                        }`}
-                    >
-                      {link.label}
-                    </Link>
+                    <>
+                      {link.external ? (
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="block py-3 text-lg text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          to={link.href}
+                          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                          className={`block py-3 text-lg transition-colors ${
+                            isLinkActive(link.href) ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {link.label}
+                        </Link>
+                      )}
+                    </>
                   )}
                 </div>
               ))}

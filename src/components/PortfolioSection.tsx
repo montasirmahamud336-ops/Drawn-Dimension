@@ -4,6 +4,7 @@ import { useLiveData } from "@/hooks/useLiveData";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import { buildCardImageSources } from "@/components/shared/mediaUrl";
+import { DEFAULT_HOME_PAGE_SETTINGS, type HomePortfolioSection } from "@/components/shared/homePageSettings";
 
 interface Project {
   id: string;
@@ -63,12 +64,16 @@ const PortfolioCardImage = ({
   );
 };
 
-const PortfolioSection = () => {
+interface PortfolioSectionProps {
+  data?: HomePortfolioSection;
+}
+
+const PortfolioSection = ({ data }: PortfolioSectionProps) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [activeCategory, setActiveCategory] = useState("All");
   const navigate = useNavigate();
-  const whatsappUrl = "https://wa.me/8801775119416";
+  const content = data ?? DEFAULT_HOME_PAGE_SETTINGS.sections.portfolio;
 
   const { data: projects, loading } = useLiveData("projects", {
     cacheTimeMs: 120_000,
@@ -107,15 +112,14 @@ const PortfolioSection = () => {
           className="text-center max-w-3xl mx-auto mb-12"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
-            Our Portfolio
+            {content.badge}
           </span>
           <h2 className="text-4xl md:text-5xl font-bold mt-4 mb-6 text-foreground">
-            Projects That
-            <span className="text-gradient-primary">Speak Excellence</span>
+            {content.title}
+            <span className="text-gradient-primary">{content.title_highlight}</span>
           </h2>
           <p className="text-muted-foreground text-lg">
-            Explore our diverse portfolio showcasing engineering precision, creative
-            innovation, and technical expertise across multiple disciplines.
+            {content.description}
           </p>
         </motion.div>
 
@@ -203,20 +207,20 @@ const PortfolioSection = () => {
         >
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Link
-              to="/portfolio"
+              to={content.primary_href}
               className="inline-flex min-w-40 items-center justify-center rounded-full border border-primary/55 bg-primary/10 px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-primary transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_24px_rgba(239,68,68,0.35)]"
             >
-              View More
+              {content.primary_label}
             </Link>
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <a
-              href={whatsappUrl}
+              href={content.secondary_href}
               target="_blank"
               rel="noreferrer"
               className="inline-flex min-w-[250px] whitespace-nowrap items-center justify-center gap-2 rounded-full border border-emerald-600/50 dark:border-emerald-500/40 bg-emerald-500/16 dark:bg-emerald-500/12 px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-emerald-700 dark:text-emerald-300 shadow-[0_8px_20px_rgba(16,185,129,0.16)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/60"
             >
-              Message on WhatsApp
+              {content.secondary_label}
               <MessageCircle className="w-4 h-4" />
             </a>
           </motion.div>

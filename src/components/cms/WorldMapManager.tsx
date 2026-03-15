@@ -200,6 +200,7 @@ const WorldMapManager = () => {
                     color="hsl(var(--primary))"
                     size={720}
                     frame={false}
+                    containerClassName="worldmap__wrapper worldmap-centered"
                     borderColor="hsl(var(--border))"
                     backgroundColor="transparent"
                     valueSuffix=" completed projects"

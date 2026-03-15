@@ -3,50 +3,25 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import { Check, Zap, Clock, HeadphonesIcon, Shield, TrendingUp, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { DEFAULT_HOME_PAGE_SETTINGS, type HomeWhyChooseSection } from "@/components/shared/homePageSettings";
 
-const WhyChooseUsSection = () => {
+const iconMap = {
+  zap: Zap,
+  clock: Clock,
+  headphones: HeadphonesIcon,
+  shield: Shield,
+  "trending-up": TrendingUp,
+  check: Check,
+} as const;
+
+interface WhyChooseUsSectionProps {
+  data?: HomeWhyChooseSection;
+}
+
+const WhyChooseUsSection = ({ data }: WhyChooseUsSectionProps) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const whatsappUrl = "https://wa.me/8801775119416";
-
-  const reasons = [
-    {
-      icon: Zap,
-      title: "Cutting-Edge Technology",
-      description:
-        "We leverage the latest tools and technologies to deliver innovative solutions that keep you ahead of the competition.",
-    },
-    {
-      icon: Clock,
-      title: "On-Time Delivery",
-      description:
-        "We respect your timelines. Our streamlined processes ensure projects are completed on schedule without compromising quality.",
-    },
-    {
-      icon: HeadphonesIcon,
-      title: "Dedicated Support",
-      description:
-        "Our team provides ongoing support and consultation, ensuring your success long after project completion.",
-    },
-    {
-      icon: Shield,
-      title: "Quality Assurance",
-      description:
-        "Rigorous quality checks at every stage guarantee deliverables that meet the highest industry standards.",
-    },
-    {
-      icon: TrendingUp,
-      title: "Scalable Solutions",
-      description:
-        "Our solutions grow with your business, designed to adapt and scale as your needs evolve.",
-    },
-    {
-      icon: Check,
-      title: "Proven Track Record",
-      description:
-        "With 500+ successful projects and a 98% client satisfaction rate, our results speak for themselves.",
-    },
-  ];
+  const content = data ?? DEFAULT_HOME_PAGE_SETTINGS.sections["why-choose-us"];
 
   return (
     <section id="why-us" className="relative overflow-hidden py-14 md:py-16 lg:py-20">
@@ -63,9 +38,11 @@ const WhyChooseUsSection = () => {
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             className="grid sm:grid-cols-2 gap-6"
           >
-            {reasons.map((reason, index) => (
+            {content.reasons.map((reason, index) => {
+              const Icon = iconMap[reason.icon as keyof typeof iconMap] ?? Zap;
+              return (
               <motion.div
-                key={reason.title}
+                key={reason.id}
                 initial={{ opacity: 0, y: 30 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
@@ -73,7 +50,7 @@ const WhyChooseUsSection = () => {
               >
                 <div className="glass-card p-5 bg-gradient-to-br from-background via-background to-primary/[0.05] border-border/60 hover:border-primary/45 transition-all duration-500 flex items-start gap-4 h-full">
                   <div className="w-12 h-12 bg-primary/12 border border-primary/25 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors duration-500">
-                    <reason.icon className="w-6 h-6 text-primary" />
+                    <Icon className="w-6 h-6 text-primary" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground mb-2 tracking-tight">{reason.title}</h3>
@@ -81,7 +58,7 @@ const WhyChooseUsSection = () => {
                   </div>
                 </div>
               </motion.div>
-            ))}
+            )})}
           </motion.div>
 
           <motion.div
@@ -91,49 +68,41 @@ const WhyChooseUsSection = () => {
             className="lg:pl-8"
           >
             <span className="text-primary font-semibold text-sm uppercase tracking-wider">
-              Why Choose Us
+              {content.badge}
             </span>
             <h2 className="text-4xl md:text-5xl font-bold mt-4 mb-6 text-foreground">
-              Your Success Is
-              <span className="text-gradient-primary block">Our Priority</span>
+              {content.title}
+              <span className="text-gradient-primary block">{content.title_highlight}</span>
             </h2>
             <p className="text-muted-foreground/95 text-lg leading-relaxed mb-8">
-              We do not just deliver projects - we build partnerships. Our commitment to
-              excellence, combined with deep technical expertise and genuine care for your
-              success, sets us apart in the industry.
+              {content.description}
             </p>
 
             <div className="glass-card p-6 mb-8 border-primary/20 bg-gradient-to-br from-background to-primary/[0.06]">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-primary">ISO</div>
-                  <div className="text-xs text-muted-foreground">Certified</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-primary">24/7</div>
-                  <div className="text-xs text-muted-foreground">Support</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-primary">100%</div>
-                  <div className="text-xs text-muted-foreground">Secure</div>
-                </div>
+                {content.stats.map((stat) => (
+                  <div key={stat.id}>
+                    <div className="text-2xl font-bold text-primary">{stat.value}</div>
+                    <div className="text-xs text-muted-foreground">{stat.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-start gap-3 w-full">
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Link to="/contact" className="btn-primary gap-2 whitespace-nowrap w-full sm:w-auto sm:min-w-[280px]">
-                  Start Your Project Today
+                <Link to={content.primary_href} className="btn-primary gap-2 whitespace-nowrap w-full sm:w-auto sm:min-w-[280px]">
+                  {content.primary_label}
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <a
-                  href={whatsappUrl}
+                  href={content.secondary_href}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center justify-center gap-2 h-[48px] w-full sm:w-auto sm:min-w-[280px] whitespace-nowrap px-8 rounded-xl border border-emerald-600/50 dark:border-emerald-500/35 bg-emerald-500/16 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/55 shadow-[0_8px_20px_rgba(16,185,129,0.16)] transition-all duration-300"
                 >
-                  Message Us on WhatsApp
+                  {content.secondary_label}
                   <MessageCircle className="w-4 h-4" />
                 </a>
               </motion.div>

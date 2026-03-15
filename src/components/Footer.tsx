@@ -1,30 +1,120 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Linkedin, Facebook, Instagram, ArrowUp } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import {
+  DEFAULT_FOOTER_LINKS,
+  DEFAULT_FOOTER_SERVICE_LINKS,
+  isExternalHref,
+  normalizeHeaderFooterSettings,
+  type HeaderFooterLink,
+} from "@/components/shared/headerFooterSettings";
+import { resolveServiceLink, type ApiServiceRecord } from "@/components/shared/serviceCatalog";
+
+type FooterServiceItem = HeaderFooterLink & {
+  serviceId: number;
+};
+
+const buildOrderedFooterServices = (services: ApiServiceRecord[], savedOrder: number[]): FooterServiceItem[] => {
+  const cleanedServices = services.filter(
+    (service) => Number.isInteger(Number(service.id)) && Number(service.id) > 0 && String(service.name ?? "").trim()
+  );
+
+  const rank = new Map<number, number>();
+  savedOrder.forEach((serviceId, index) => {
+    rank.set(serviceId, index);
+  });
+
+  const mapped = cleanedServices.map((service, index) => {
+    const serviceId = Number(service.id);
+    const label = String(service.name ?? "").trim();
+    return {
+      id: `service-${serviceId}`,
+      serviceId,
+      label,
+      href: resolveServiceLink(label, service.slug),
+      fallbackIndex: index,
+    };
+  });
+
+  mapped.sort((a, b) => {
+    const aRank = rank.get(a.serviceId);
+    const bRank = rank.get(b.serviceId);
+    if (typeof aRank === "number" && typeof bRank === "number") return aRank - bRank;
+    if (typeof aRank === "number") return -1;
+    if (typeof bRank === "number") return 1;
+    return a.fallbackIndex - b.fallbackIndex;
+  });
+
+  return mapped.map(({ fallbackIndex: _fallbackIndex, ...item }) => item);
+};
 
 const Footer = () => {
+  const [footerMenuLinks, setFooterMenuLinks] = useState<HeaderFooterLink[]>(DEFAULT_FOOTER_LINKS);
+  const [footerServiceLinks, setFooterServiceLinks] = useState<FooterServiceItem[]>(
+    DEFAULT_FOOTER_SERVICE_LINKS.map((item, index) => ({ ...item, serviceId: index + 1 }))
+  );
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+    const apiBase = getApiBaseUrl();
+
+    const loadFooterData = async () => {
+      try {
+        const [settingsResult, servicesResult] = await Promise.allSettled([
+          fetch(`${apiBase}/header-footer-settings`, { signal: controller.signal }),
+          fetch(`${apiBase}/services?status=live`, { signal: controller.signal }),
+        ]);
+
+        if (!mounted) return;
+        let savedOrder: number[] = [];
+
+        if (settingsResult.status === "fulfilled") {
+          if (settingsResult.value.ok) {
+            const settingsData = await settingsResult.value.json();
+            const normalized = normalizeHeaderFooterSettings(settingsData);
+            setFooterMenuLinks(normalized.footer_links);
+            savedOrder = normalized.footer_service_order;
+          } else {
+            console.error("Failed to fetch footer links");
+          }
+        }
+
+        if (servicesResult.status === "fulfilled") {
+          if (!servicesResult.value.ok) {
+            console.error("Failed to fetch live services for footer");
+            return;
+          }
+          const servicesData = (await servicesResult.value.json()) as ApiServiceRecord[];
+          const liveServices = Array.isArray(servicesData) ? servicesData : [];
+          setFooterServiceLinks(buildOrderedFooterServices(liveServices, savedOrder));
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Failed to load footer data", error);
+      }
+    };
+
+    loadFooterData();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, []);
+
   const footerLinks = {
-    services: [
-      { label: "Web Development", href: "/services/web-design" },
-      { label: "AutoCAD Drawings", href: "/services/autocad" },
-      { label: "3D SolidWorks", href: "/services/solidworks" },
-      { label: "P&ID Diagrams", href: "/services/pfd-pid" },
-      { label: "HAZOP Studies", href: "/services/hazop" },
-      { label: "Graphic Design", href: "/services/graphic-design" },
-    ],
-    company: [
-      { label: "About Us", href: "/about" },
-      { label: "Our Portfolio", href: "/portfolio" },
-      { label: "Testimonials", href: "/testimonials" },
-      { label: "Contact", href: "/contact" },
-    ],
+    services: footerServiceLinks,
+    company: footerMenuLinks,
     legal: [
-      { label: "Privacy Policy", href: "/privacy-policy" },
-      { label: "Terms of Service", href: "/terms-of-service" },
+      { id: "privacy-policy", label: "Privacy Policy", href: "/privacy-policy" },
+      { id: "terms-of-service", label: "Terms of Service", href: "/terms-of-service" },
     ],
   };
 
@@ -36,12 +126,10 @@ const Footer = () => {
 
   return (
     <footer className="relative overflow-hidden border-t border-border/50">
-      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-t from-secondary/50 to-transparent" />
 
       <div className="container-narrow relative z-10 py-16">
         <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
-          {/* Brand */}
           <div className="lg:col-span-2">
             <motion.div whileHover={{ scale: 1.02 }}>
               <Link to="/" className="flex items-center gap-3 mb-6">
@@ -60,8 +148,8 @@ const Footer = () => {
               </Link>
             </motion.div>
             <p className="text-muted-foreground mb-6 max-w-sm">
-              Engineering excellence meets digital innovation. We transform complex
-              challenges into elegant solutions that drive your business forward.
+              Engineering excellence meets digital innovation. We transform complex challenges into elegant solutions
+              that drive your business forward.
             </p>
             <div className="flex gap-4">
               {socialLinks.map((social) => (
@@ -79,50 +167,56 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Services */}
           <div>
             <h3 className="font-semibold text-foreground mb-4">Services</h3>
             <ul className="space-y-3">
-              {footerLinks.services.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    to={link.href}
-                    className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {footerLinks.services.length === 0 ? (
+                <li className="text-muted-foreground/80 text-sm">No live services yet.</li>
+              ) : (
+                footerLinks.services.map((link) => (
+                  <li key={link.id}>
+                    <Link
+                      to={link.href}
+                      className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))
+              )}
             </ul>
           </div>
 
-          {/* Company */}
           <div>
             <h3 className="font-semibold text-foreground mb-4">Company</h3>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    to={link.href}
-                    className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                  >
-                    {link.label}
-                  </Link>
+                <li key={link.id}>
+                  {isExternalHref(link.href) ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link to={link.href} className="text-muted-foreground hover:text-primary transition-colors text-sm">
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Legal */}
           <div>
             <h3 className="font-semibold text-foreground mb-4">Legal</h3>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    to={link.href}
-                    className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                  >
+                <li key={link.id}>
+                  <Link to={link.href} className="text-muted-foreground hover:text-primary transition-colors text-sm">
                     {link.label}
                   </Link>
                 </li>
@@ -131,10 +225,9 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom Bar */}
         <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-muted-foreground text-sm">
-            © {new Date().getFullYear()} Drawn Dimension. All rights reserved.
+            (c) {new Date().getFullYear()} Drawn Dimension. All rights reserved.
           </p>
           <motion.button
             onClick={scrollToTop}

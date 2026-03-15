@@ -4,6 +4,7 @@ import { Globe2, Loader2, MapPin } from "lucide-react";
 import WorldMap from "react-svg-worldmap";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
 import { getCountryName } from "@/data/countryOptions";
+import { DEFAULT_HOME_PAGE_SETTINGS, type HomeGlobalReachSection } from "@/components/shared/homePageSettings";
 
 interface WorldMapSettingsResponse {
   country_codes?: string[];
@@ -32,11 +33,16 @@ const sanitizeCountryCodes = (value: unknown): string[] => {
   return Array.from(unique).sort((a, b) => a.localeCompare(b));
 };
 
-const GlobalReachSection = () => {
+interface GlobalReachSectionProps {
+  data?: HomeGlobalReachSection;
+}
+
+const GlobalReachSection = ({ data }: GlobalReachSectionProps) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [countryCodes, setCountryCodes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const content = data ?? DEFAULT_HOME_PAGE_SETTINGS.sections["global-reach"];
 
   useEffect(() => {
     let isMounted = true;
@@ -92,13 +98,13 @@ const GlobalReachSection = () => {
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="text-center max-w-3xl mx-auto mb-10"
         >
-          <span className="text-primary font-semibold text-sm uppercase tracking-wider">Global Footprint</span>
+          <span className="text-primary font-semibold text-sm uppercase tracking-wider">{content.badge}</span>
           <h2 className="text-4xl md:text-5xl font-bold mt-4 mb-6 text-foreground">
-            Countries Where We
-            <span className="text-gradient-primary block">Delivered Projects</span>
+            {content.title}
+            <span className="text-gradient-primary block">{content.title_highlight}</span>
           </h2>
           <p className="text-muted-foreground/95 text-lg leading-relaxed">
-            A live map of regions where our engineering and digital teams have completed client work.
+            {content.description}
           </p>
         </motion.div>
 
@@ -116,8 +122,8 @@ const GlobalReachSection = () => {
           ) : countryCodes.length === 0 ? (
             <div className="h-[320px] flex flex-col items-center justify-center text-muted-foreground text-center">
               <Globe2 className="w-10 h-10 mb-3 text-primary/65" />
-              <p className="text-base font-medium text-foreground">No countries marked yet</p>
-              <p className="text-sm">Add countries from CMS to highlight them here.</p>
+              <p className="text-base font-medium text-foreground">{content.empty_title}</p>
+              <p className="text-sm">{content.empty_description}</p>
             </div>
           ) : (
             <>
@@ -128,6 +134,7 @@ const GlobalReachSection = () => {
                     color="hsl(var(--primary))"
                     size={780}
                     frame={false}
+                    containerClassName="worldmap__wrapper worldmap-centered"
                     borderColor="hsl(var(--border))"
                     backgroundColor="transparent"
                     valueSuffix=" completed projects"

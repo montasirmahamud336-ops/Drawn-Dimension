@@ -159,6 +159,20 @@ const normalizePaymentAmount = (value: unknown): number | null => {
   return Number(numeric.toFixed(2));
 };
 
+const normalizeOrderCode = (value: unknown): string => {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, "")
+    .slice(0, 32);
+};
+
+const buildAutoOrderCode = (): string => {
+  const now = Date.now().toString(36).toUpperCase().slice(-6);
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `ORD-${now}${random}`;
+};
+
 const parseDurationDays = (value: unknown): number | null => {
   const raw = String(value ?? "").trim();
   const match = raw.match(/\d+/);
@@ -204,6 +218,7 @@ router.post("/work-assignments", requireAuth, async (req, res) => {
     const parsedDays = parseDurationDays(req.body?.work_duration);
     const countdownEndAt = req.body?.countdown_end_at ?? (parsedDays ? buildCountdownEndAt(parsedDays) : null);
     const paymentAmount = normalizePaymentAmount(req.body?.payment_amount);
+    const orderCode = normalizeOrderCode(req.body?.order_code) || buildAutoOrderCode();
 
     if (paymentAmount === null || paymentAmount <= 0) {
       return res.status(400).json({
@@ -215,6 +230,7 @@ router.post("/work-assignments", requireAuth, async (req, res) => {
       employee_id: req.body?.employee_id,
       employee_name: req.body?.employee_name,
       employee_email: req.body?.employee_email,
+      order_code: orderCode,
       work_title: req.body?.work_title,
       work_details: req.body?.work_details ?? null,
       work_duration: req.body?.work_duration,
@@ -286,6 +302,16 @@ router.patch("/work-assignments/:id", requireAuth, async (req, res) => {
         });
       }
       patch.payment_amount = paymentAmount;
+    }
+
+    if ("order_code" in patch) {
+      const orderCode = normalizeOrderCode(patch.order_code);
+      if (!orderCode) {
+        return res.status(400).json({
+          message: "Order code is required"
+        });
+      }
+      patch.order_code = orderCode;
     }
 
     if ("work_duration" in patch && !("countdown_end_at" in patch)) {

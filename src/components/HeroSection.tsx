@@ -1,33 +1,20 @@
 import { ArrowRight, Play, Code, Ruler, Box, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
+import { DEFAULT_HOME_PAGE_SETTINGS, type HomeHeroSection } from "@/components/shared/homePageSettings";
 
-const HeroSection = () => {
-  const services = [
-    {
-      icon: FileText,
-      title: "PFD & P&ID Diagrams",
-      description: "Process flow documentation",
-      link: "/services/pfd-pid"
-    },
-    {
-      icon: Box,
-      title: "3D SolidWorks Modeling",
-      description: "Advanced 3D modeling solutions",
-      link: "/services/solidworks"
-    },
-    {
-      icon: Ruler,
-      title: "AutoCAD Technical Drawings",
-      description: "Precision engineering drawings",
-      link: "/services/autocad"
-    },
-    {
-      icon: Code,
-      title: "Web Design & Development",
-      description: "Modern, responsive websites",
-      link: "/services/web-design"
-    }
-  ];
+const iconMap = {
+  "file-text": FileText,
+  box: Box,
+  ruler: Ruler,
+  code: Code,
+} as const;
+
+interface HeroSectionProps {
+  data?: HomeHeroSection;
+}
+
+const HeroSection = ({ data }: HeroSectionProps) => {
+  const content = data ?? DEFAULT_HOME_PAGE_SETTINGS.sections.hero;
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden py-20 md:py-24">
@@ -57,37 +44,37 @@ const HeroSection = () => {
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/12 border border-primary/35 backdrop-blur-sm mb-6 shadow-[0_0_24px_rgba(239,68,68,0.2)]">
                 <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-primary">Engineering Excellence Redefined</span>
+                <span className="text-sm font-medium text-primary">{content.badge}</span>
               </div>
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight mb-6">
-              <span className="text-foreground">Drawn</span>
+              <span className="text-foreground">{content.title_line_1}</span>
               <br />
-              <span className="text-gradient-primary">Dimension</span>
+              <span className="text-gradient-primary">{content.title_line_2}</span>
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground/95 mb-8 leading-relaxed max-w-xl">
-              Where precision engineering meets digital innovation. We transform complex challenges into elegant solutions.
+              {content.description}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <div>
                 <Link
-                  to="/contact"
+                  to={content.primary_href}
                   className="btn-primary inline-flex items-center justify-center gap-2 group min-w-[210px] shadow-[0_12px_30px_rgba(239,68,68,0.35)]"
                 >
-                  Start Your Project
+                  {content.primary_label}
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
               <div>
                 <Link
-                  to="/portfolio"
+                  to={content.secondary_href}
                   className="btn-outline inline-flex items-center justify-center gap-2 min-w-[210px] border-primary/25 bg-background/40 backdrop-blur-sm"
                 >
                   <Play className="w-5 h-5" />
-                  View Our Work
+                  {content.secondary_label}
                 </Link>
               </div>
             </div>
@@ -95,10 +82,10 @@ const HeroSection = () => {
 
           {/* RIGHT SIDE - Service Cards Grid */}
           <div className="grid grid-cols-2 gap-4 md:gap-5">
-            {services.map((service) => {
-              const Icon = service.icon;
+            {content.cards.map((service) => {
+              const Icon = iconMap[service.icon as keyof typeof iconMap] ?? FileText;
               return (
-                <div key={service.title}>
+                <div key={service.id}>
                   <Link to={service.link}>
                     <div className="group relative h-full min-h-[200px] overflow-hidden p-6 rounded-2xl border border-border/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.94),rgba(255,255,255,0.9)_46%,rgba(239,68,68,0.12)_100%)] ring-1 ring-primary/10 shadow-[0_14px_34px_rgba(15,23,42,0.14)] hover:-translate-y-1.5 hover:border-primary/45 hover:ring-primary/20 hover:shadow-[0_24px_50px_rgba(239,68,68,0.18)] transition-all duration-300 cursor-pointer dark:border-white/10 dark:bg-[linear-gradient(155deg,rgba(18,18,22,0.95),rgba(12,12,16,0.9)_44%,rgba(110,20,20,0.42)_100%)] dark:ring-white/5 dark:shadow-[0_14px_34px_rgba(0,0,0,0.5)] dark:hover:border-primary/55 dark:hover:ring-primary/25 dark:hover:shadow-[0_24px_50px_rgba(239,68,68,0.3)]">
                       <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_82%_12%,rgba(239,68,68,0.18),transparent_46%)] opacity-90 dark:bg-[radial-gradient(circle_at_82%_12%,rgba(239,68,68,0.24),transparent_45%)] dark:opacity-80" />

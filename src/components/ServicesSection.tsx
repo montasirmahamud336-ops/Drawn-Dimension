@@ -6,20 +6,25 @@ import {
   Wrench, ArrowRight, ArrowUpRight, MessageCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { DEFAULT_HOME_PAGE_SETTINGS, type HomeServicesSection } from "@/components/shared/homePageSettings";
 
-const ServicesSection = () => {
+const iconMap = {
+  globe: Globe,
+  "pen-tool": PenTool,
+  box: Box,
+  "git-branch": GitBranch,
+  "shield-check": ShieldCheck,
+  palette: Palette,
+} as const;
+
+interface ServicesSectionProps {
+  data?: HomeServicesSection;
+}
+
+const ServicesSection = ({ data }: ServicesSectionProps) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const whatsappUrl = "https://wa.me/8801775119416";
-
-  const services = [
-    { icon: Globe, title: "Web Design & Development", description: "Stunning, responsive websites built with modern technologies. From landing pages to complex web applications.", features: ["Custom Design", "React/Next.js", "E-commerce", "CMS Integration"], link: "/services/web-design" },
-    { icon: PenTool, title: "AutoCAD Technical Drawings", description: "Precise 2D technical drawings and documentation for engineering, architecture, and manufacturing projects.", features: ["2D Drafting", "As-Built Drawings", "Shop Drawings", "Detail Plans"], link: "/services/autocad" },
-    { icon: Box, title: "3D SolidWorks Modeling", description: "Advanced 3D modeling and simulation for product design, prototyping, and mechanical engineering.", features: ["3D Modeling", "Assembly Design", "FEA Analysis", "Rendering"], link: "/services/solidworks" },
-    { icon: GitBranch, title: "PFD & P&ID Diagrams", description: "Comprehensive process flow diagrams and piping & instrumentation diagrams for industrial applications.", features: ["Process Design", "P&ID Standards", "Equipment Specs", "Control Systems"], link: "/services/pfd-pid" },
-    { icon: ShieldCheck, title: "HAZOP Study & Risk Analysis", description: "Thorough hazard and operability studies to ensure safety and compliance in industrial processes.", features: ["Risk Assessment", "Safety Analysis", "Compliance", "Documentation"], link: "/services/hazop" },
-    { icon: Palette, title: "Graphic Design & Branding", description: "Creative visual solutions from marketing materials to complete brand identities that captivate audiences.", features: ["Brand Identity", "Marketing Materials", "Social Media", "Print Design"], link: "/services/graphic-design" },
-  ];
+  const content = data ?? DEFAULT_HOME_PAGE_SETTINGS.sections.services;
 
   return (
     <section id="services" className="relative overflow-hidden bg-secondary/30 py-14 md:py-16 lg:py-20">
@@ -31,20 +36,22 @@ const ServicesSection = () => {
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
-          <span className="text-primary font-semibold text-sm uppercase tracking-wider">Our Services</span>
+          <span className="text-primary font-semibold text-sm uppercase tracking-wider">{content.badge}</span>
           <h2 className="text-4xl md:text-5xl font-bold mt-4 mb-6 text-foreground">
-            Comprehensive Solutions for
-            <span className="text-gradient-primary block">Every Challenge</span>
+            {content.title}
+            <span className="text-gradient-primary block">{content.title_highlight}</span>
           </h2>
           <p className="text-muted-foreground/95 text-lg leading-relaxed">
-            From concept to completion, we provide end-to-end services that combine engineering precision with creative innovation.
+            {content.description}
           </p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service, index) => (
+          {content.items.map((service, index) => {
+            const Icon = iconMap[service.icon as keyof typeof iconMap] ?? Globe;
+            return (
             <motion.div
-              key={service.title}
+              key={service.id}
               initial={{ opacity: 0, y: 50 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.7, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
@@ -54,7 +61,7 @@ const ServicesSection = () => {
                 <div className="pointer-events-none absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                 <div className="flex items-start justify-between mb-6">
                   <div className="w-14 h-14 bg-primary/12 border border-primary/25 rounded-2xl flex items-center justify-center group-hover:bg-primary/20 transition-all duration-500 ease-out">
-                    <service.icon className="w-7 h-7 text-primary" />
+                    <Icon className="w-7 h-7 text-primary" />
                   </div>
                 </div>
 
@@ -82,7 +89,7 @@ const ServicesSection = () => {
                 </Link>
               </div>
             </motion.div>
-          ))}
+          )})}
         </div>
 
         <motion.div
@@ -93,26 +100,26 @@ const ServicesSection = () => {
         >
           <div className="flex items-center justify-center gap-3 mb-4">
             <Wrench className="w-6 h-6 text-primary" />
-            <h3 className="text-xl font-semibold text-foreground">And Many More Engineering Services</h3>
+            <h3 className="text-xl font-semibold text-foreground">{content.cta_title}</h3>
           </div>
           <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
-            We offer a wide range of additional engineering and digital services tailored to your specific needs.
+            {content.cta_description}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Link to="/services" className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto sm:min-w-[280px]">
-                View All Services
+              <Link to={content.primary_href} className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto sm:min-w-[280px]">
+                {content.primary_label}
                 <ArrowUpRight className="w-4 h-4" />
               </Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <a
-                href={whatsappUrl}
+                href={content.secondary_href}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center justify-center gap-2 h-[48px] w-full sm:w-auto sm:min-w-[280px] whitespace-nowrap px-8 rounded-xl border border-emerald-600/50 dark:border-emerald-500/35 bg-emerald-500/16 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/55 shadow-[0_8px_20px_rgba(16,185,129,0.16)] transition-all duration-300"
               >
-                Message Us on WhatsApp
+                {content.secondary_label}
                 <MessageCircle className="w-4 h-4" />
               </a>
             </motion.div>

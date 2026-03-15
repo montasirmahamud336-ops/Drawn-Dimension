@@ -3,34 +3,23 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import { Target, Lightbulb, Users, Award, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { DEFAULT_HOME_PAGE_SETTINGS, type HomeAboutSection } from "@/components/shared/homePageSettings";
 
-const AboutSection = () => {
+const iconMap = {
+  target: Target,
+  lightbulb: Lightbulb,
+  users: Users,
+  award: Award,
+} as const;
+
+interface AboutSectionProps {
+  data?: HomeAboutSection;
+}
+
+const AboutSection = ({ data }: AboutSectionProps) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const whatsappUrl = "https://wa.me/8801775119416";
-
-  const values = [
-    {
-      icon: Target,
-      title: "Precision",
-      description: "Every detail matters. We deliver accuracy that exceeds industry standards.",
-    },
-    {
-      icon: Lightbulb,
-      title: "Innovation",
-      description: "Pioneering solutions that push boundaries and redefine possibilities.",
-    },
-    {
-      icon: Users,
-      title: "Collaboration",
-      description: "Your vision, our expertise. Together we create extraordinary results.",
-    },
-    {
-      icon: Award,
-      title: "Excellence",
-      description: "Committed to delivering nothing less than exceptional quality.",
-    },
-  ];
+  const content = data ?? DEFAULT_HOME_PAGE_SETTINGS.sections.about;
 
   return (
     <section id="about" className="section-no-blend relative py-14 md:py-16 lg:py-20">
@@ -46,36 +35,32 @@ const AboutSection = () => {
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="text-primary font-semibold text-sm uppercase tracking-wider">
-              About Us
+              {content.badge}
             </span>
             <h2 className="text-4xl md:text-5xl font-bold leading-[1.12] mt-4 mb-6 pb-1 text-foreground">
-              Building Tomorrow's
-              <span className="text-gradient-primary block leading-[1.12] pb-1">Engineering Legacy</span>
+              {content.title}
+              <span className="text-gradient-primary block leading-[1.12] pb-1">{content.title_highlight}</span>
             </h2>
             <p className="text-muted-foreground/95 text-lg leading-relaxed mb-8">
-              At Drawn Dimension, we blend decades of technical expertise with cutting-edge
-              digital innovation. Our multidisciplinary team transforms complex engineering
-              challenges into streamlined, elegant solutions that drive your business forward.
+              {content.description}
             </p>
             <p className="text-muted-foreground leading-relaxed mb-8">
-              From intricate AutoCAD technical drawings to sophisticated 3D modeling, from
-              comprehensive HAZOP studies to stunning web experiences - we deliver excellence
-              across every discipline we touch.
+              {content.description_secondary}
             </p>
             <div className="flex flex-col sm:flex-row items-start gap-3 w-full">
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Link to="/about" className="btn-primary inline-flex items-center gap-2 whitespace-nowrap w-full sm:w-auto sm:min-w-[280px]">
-                  Learn More About Us
+                <Link to={content.primary_href} className="btn-primary inline-flex items-center gap-2 whitespace-nowrap w-full sm:w-auto sm:min-w-[280px]">
+                  {content.primary_label}
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <a
-                  href={whatsappUrl}
+                  href={content.secondary_href}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center justify-center gap-2 h-[48px] w-full sm:w-auto sm:min-w-[280px] whitespace-nowrap px-8 rounded-xl border border-emerald-600/50 dark:border-emerald-500/35 bg-emerald-500/16 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/55 shadow-[0_8px_20px_rgba(16,185,129,0.16)] transition-all duration-300"
                 >
-                  Message Us on WhatsApp
+                  {content.secondary_label}
                   <MessageCircle className="w-4 h-4" />
                 </a>
               </motion.div>
@@ -88,21 +73,23 @@ const AboutSection = () => {
             transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             className="grid grid-cols-2 gap-4"
           >
-            {values.map((value, index) => (
+            {content.values.map((value, index) => {
+              const Icon = iconMap[value.icon as keyof typeof iconMap] ?? Target;
+              return (
               <motion.div
-                key={value.title}
+                key={value.id}
                 initial={{ opacity: 0, y: 30 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.6, delay: 0.3 + index * 0.1, ease: [0.22, 1, 0.36, 1] }}
                 className="glass-card p-6 group hover:border-primary/50 transition-all duration-500 bg-gradient-to-br from-background via-background to-primary/[0.04] border-border/60"
               >
                 <div className="w-12 h-12 bg-primary/10 border border-primary/25 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <value.icon className="w-6 h-6 text-primary" />
+                  <Icon className="w-6 h-6 text-primary" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2 tracking-tight">{value.title}</h3>
                 <p className="text-sm text-muted-foreground/95 leading-relaxed">{value.description}</p>
               </motion.div>
-            ))}
+            )})}
           </motion.div>
         </div>
       </div>

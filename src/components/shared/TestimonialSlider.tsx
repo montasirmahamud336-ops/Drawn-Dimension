@@ -6,9 +6,11 @@ import type { Review } from "@/components/shared/reviews";
 interface TestimonialSliderProps {
   testimonials: Review[];
   sectionClassName?: string;
+  sectionBadge?: string;
+  sectionTitle?: string;
 }
 
-const TestimonialSlider = ({ testimonials, sectionClassName }: TestimonialSliderProps) => {
+const TestimonialSlider = ({ testimonials, sectionClassName, sectionBadge, sectionTitle }: TestimonialSliderProps) => {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -50,10 +52,10 @@ const TestimonialSlider = ({ testimonials, sectionClassName }: TestimonialSlider
           className="text-center mb-8 md:mb-10"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
-            Featured Reviews
+            {sectionBadge ?? "Featured Reviews"}
           </span>
           <h2 className="text-2xl md:text-4xl font-bold mt-3 text-foreground">
-            What Our Clients Say
+            {sectionTitle ?? "What Our Clients Say"}
           </h2>
         </motion.div>
 

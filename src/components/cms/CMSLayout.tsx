@@ -29,6 +29,7 @@ const baseMenuItems = [
     { label: "Work Assign To", to: "/cms/work-assign", icon: ClipboardCheck },
     { label: "World Map", to: "/cms/world-map", icon: Globe2 },
     { label: "Pages", to: "/cms/pages", icon: FileText },
+    { label: "Header and Footer", to: "/cms/header-footer", icon: FileText },
     { label: "Form Massage", to: "/cms/form-massage", icon: Inbox },
     { label: "Live Chat", to: "/cms/live-chat", icon: MessageSquareText },
     { label: "Chat", to: "/cms/chat", icon: MessageCircleMore },

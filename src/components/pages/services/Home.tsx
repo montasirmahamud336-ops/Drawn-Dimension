@@ -5,9 +5,15 @@ import Footer from "@/components/Footer";
 import DeferredSection from "@/components/shared/DeferredSection";
 import PremiumBackground from "@/components/shared/PremiumBackground";
 import { fetchPublishedReviews, subscribeToPublishedReviews } from "@/components/shared/reviews";
+import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import {
+  DEFAULT_HOME_PAGE_SETTINGS,
+  normalizeHomePageSettings,
+  type HomeSectionId,
+} from "@/components/shared/homePageSettings";
 import { warmLiveData } from "@/hooks/useLiveData";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Fragment, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 
 const ServicesSection = lazy(() => import("@/components/ServicesSection"));
 const PortfolioSection = lazy(() => import("@/components/PortfolioSection"));
@@ -22,6 +28,7 @@ const HOME_REVIEWS_QUERY_KEY = ["home", "testimonials", "published"];
 const Home = () => {
   const queryClient = useQueryClient();
   const [shouldLoadTestimonials, setShouldLoadTestimonials] = useState(false);
+  const [homeSettings, setHomeSettings] = useState(DEFAULT_HOME_PAGE_SETTINGS);
 
   useEffect(() => {
     const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
@@ -56,6 +63,35 @@ const Home = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+
+    const loadSettings = async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/home-page-settings`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          throw new Error("Failed to load home page settings");
+        }
+        const payload = await res.json();
+        if (!mounted) return;
+        setHomeSettings(normalizeHomePageSettings(payload));
+      } catch (error) {
+        if (!mounted || controller.signal.aborted) return;
+        setHomeSettings(DEFAULT_HOME_PAGE_SETTINGS);
+      }
+    };
+
+    void loadSettings();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, []);
+
   const { data: testimonials = [] } = useQuery({
     queryKey: HOME_REVIEWS_QUERY_KEY,
     queryFn: fetchPublishedReviews,
@@ -77,56 +113,85 @@ const Home = () => {
     return unsubscribe;
   }, [queryClient, shouldLoadTestimonials]);
 
+  const orderedSections = homeSettings.section_order.filter(
+    (id) => homeSettings.sections[id].enabled
+  );
+
+  const sectionNodes: Record<HomeSectionId, ReactNode> = {
+    hero: <HeroSection data={homeSettings.sections.hero} />,
+    services: (
+      <DeferredSection minHeight={860}>
+        <Suspense fallback={<div className="min-h-[860px]" />}>
+          <ServicesSection data={homeSettings.sections.services} />
+        </Suspense>
+      </DeferredSection>
+    ),
+    portfolio: (
+      <DeferredSection minHeight={760}>
+        <Suspense fallback={<div className="min-h-[760px]" />}>
+          <PortfolioSection data={homeSettings.sections.portfolio} />
+        </Suspense>
+      </DeferredSection>
+    ),
+    "global-reach": (
+      <DeferredSection minHeight={620}>
+        <Suspense fallback={<div className="min-h-[620px]" />}>
+          <GlobalReachSection data={homeSettings.sections["global-reach"]} />
+        </Suspense>
+      </DeferredSection>
+    ),
+    testimonials: (
+      <DeferredSection minHeight={420} onVisible={() => setShouldLoadTestimonials(true)}>
+        <Suspense fallback={<div className="min-h-[420px]" />}>
+          <TestimonialSlider
+            testimonials={testimonials}
+            sectionClassName="py-14 md:py-16 lg:py-20"
+            sectionBadge={homeSettings.sections.testimonials.badge}
+            sectionTitle={homeSettings.sections.testimonials.title}
+          />
+        </Suspense>
+      </DeferredSection>
+    ),
+    about: (
+      <DeferredSection minHeight={720}>
+        <Suspense fallback={<div className="min-h-[720px]" />}>
+          <AboutSection data={homeSettings.sections.about} />
+        </Suspense>
+      </DeferredSection>
+    ),
+    "why-choose-us": (
+      <DeferredSection minHeight={760}>
+        <Suspense fallback={<div className="min-h-[760px]" />}>
+          <WhyChooseUsSection data={homeSettings.sections["why-choose-us"]} />
+        </Suspense>
+      </DeferredSection>
+    ),
+    cta: (
+      <DeferredSection minHeight={420}>
+        <Suspense fallback={<div className="min-h-[420px]" />}>
+          <CTASection
+            compact={homeSettings.sections.cta.compact}
+            titlePrefix={homeSettings.sections.cta.title_prefix}
+            titleHighlight={homeSettings.sections.cta.title_highlight}
+            description={homeSettings.sections.cta.description}
+            primaryLabel={homeSettings.sections.cta.primary_label}
+            primaryHref={homeSettings.sections.cta.primary_href}
+            secondaryLabel={homeSettings.sections.cta.secondary_label}
+            secondaryHref={homeSettings.sections.cta.secondary_href}
+          />
+        </Suspense>
+      </DeferredSection>
+    ),
+  };
+
   return (
     <PageTransition>
       <PremiumBackground>
         <Navigation />
         <main className="relative z-10">
-          <HeroSection />
-          <DeferredSection minHeight={860}>
-            <Suspense fallback={<div className="min-h-[860px]" />}>
-              <ServicesSection />
-            </Suspense>
-          </DeferredSection>
-
-          <DeferredSection minHeight={760}>
-            <Suspense fallback={<div className="min-h-[760px]" />}>
-              <PortfolioSection />
-            </Suspense>
-          </DeferredSection>
-
-          <DeferredSection minHeight={620}>
-            <Suspense fallback={<div className="min-h-[620px]" />}>
-              <GlobalReachSection />
-            </Suspense>
-          </DeferredSection>
-
-          <DeferredSection minHeight={420} onVisible={() => setShouldLoadTestimonials(true)}>
-            <Suspense fallback={<div className="min-h-[420px]" />}>
-              <TestimonialSlider
-                testimonials={testimonials}
-                sectionClassName="py-14 md:py-16 lg:py-20"
-              />
-            </Suspense>
-          </DeferredSection>
-
-          <DeferredSection minHeight={720}>
-            <Suspense fallback={<div className="min-h-[720px]" />}>
-              <AboutSection />
-            </Suspense>
-          </DeferredSection>
-
-          <DeferredSection minHeight={760}>
-            <Suspense fallback={<div className="min-h-[760px]" />}>
-              <WhyChooseUsSection />
-            </Suspense>
-          </DeferredSection>
-
-          <DeferredSection minHeight={420}>
-            <Suspense fallback={<div className="min-h-[420px]" />}>
-              <CTASection />
-            </Suspense>
-          </DeferredSection>
+          {orderedSections.map((sectionId) => (
+            <Fragment key={sectionId}>{sectionNodes[sectionId]}</Fragment>
+          ))}
         </main>
         <Footer />
       </PremiumBackground>

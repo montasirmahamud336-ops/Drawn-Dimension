@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ExternalLink, PencilLine, Plus, RotateCcw, Save, Search, Trash2, X } from "lucide-react";
+import { ExternalLink, Loader2, PencilLine, Plus, RotateCcw, Save, Search, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import RichTextEditor from "@/components/cms/RichTextEditor";
+import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
 import {
   slugifyText,
   type ContentStatus,
@@ -27,6 +28,8 @@ type BlogForm = {
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
+const MAX_BLOG_IMAGE_BYTES = 2 * 1024 * 1024;
+
 const createForm = (serviceId: number | null = null, status: ContentStatus = "draft"): BlogForm => ({
   service_id: serviceId,
   title: "",
@@ -45,10 +48,12 @@ const BlogManager = () => {
   const [blogs, setBlogs] = useState<ServiceBlogRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [form, setForm] = useState<BlogForm>(createForm());
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
 
   const requireToken = () => {
     const token = getAdminToken();
@@ -146,6 +151,47 @@ const BlogManager = () => {
 
   const setField = <K extends keyof BlogForm>(key: K, value: BlogForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleCoverImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      if (coverFileInputRef.current) {
+        coverFileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    if (file.size > MAX_BLOG_IMAGE_BYTES) {
+      toast.error("Image size must be 2MB or less");
+      if (coverFileInputRef.current) {
+        coverFileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    const token = requireToken();
+    if (!token) return;
+
+    setUploadingCover(true);
+    try {
+      await ensureCmsBucket();
+      const extension = (file.name.split(".").pop() || "jpg").replace(/[^a-zA-Z0-9]/g, "") || "jpg";
+      const path = `blogs/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+      const publicUrl = await uploadCmsFile(file, path);
+      setField("cover_image_url", publicUrl);
+      toast.success("Cover image uploaded");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to upload cover image"));
+    } finally {
+      setUploadingCover(false);
+      if (coverFileInputRef.current) {
+        coverFileInputRef.current.value = "";
+      }
+    }
+  };
 
   const saveBlog = async () => {
     const token = requireToken();
@@ -353,11 +399,59 @@ const BlogManager = () => {
               onChange={(e) => setField("slug", slugifyText(e.target.value))}
               placeholder="blog-slug"
             />
-            <Input
-              value={form.cover_image_url}
-              onChange={(e) => setField("cover_image_url", e.target.value)}
-              placeholder="Cover image URL (optional)"
-            />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Cover Image (optional)</p>
+              <div className="rounded-md border border-border/70 bg-background/40 p-3 space-y-3">
+                <input
+                  ref={coverFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverImageSelect}
+                  className="hidden"
+                />
+
+                {form.cover_image_url ? (
+                  <div className="relative w-full max-w-xs rounded-lg overflow-hidden border border-border">
+                    <img
+                      src={form.cover_image_url}
+                      alt="Blog cover preview"
+                      className="w-full h-40 object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground">
+                    No cover image uploaded
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => coverFileInputRef.current?.click()}
+                    disabled={uploadingCover}
+                    className="gap-2"
+                  >
+                    {uploadingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {form.cover_image_url ? "Change Image" : "Upload Image"}
+                  </Button>
+                  {form.cover_image_url ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setField("cover_image_url", "")}
+                      disabled={uploadingCover}
+                      className="gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+
+                <p className="text-xs text-muted-foreground">Max file size: 2MB</p>
+              </div>
+            </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Meta Description (SEO)</p>
               <Textarea
@@ -376,7 +470,7 @@ const BlogManager = () => {
               />
             </div>
 
-            <Button onClick={saveBlog} disabled={submitting} className="gap-2">
+            <Button onClick={saveBlog} disabled={submitting || uploadingCover} className="gap-2">
               <Save className="w-4 h-4" />
               Save Blog
             </Button>

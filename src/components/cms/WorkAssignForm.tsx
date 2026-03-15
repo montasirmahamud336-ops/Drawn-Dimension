@@ -15,6 +15,7 @@ export interface WorkAssignmentItem {
   employee_id: string;
   employee_name: string;
   employee_email: string;
+  order_code?: string | null;
   work_title: string;
   work_details: string | null;
   work_duration: string;
@@ -42,24 +43,13 @@ type AssignDraft = {
   employee_id: string;
   employee_name: string;
   employee_email: string;
+  order_code: string;
   work_title: string;
   work_details: string;
   work_duration: string;
   revision_due_at: string;
   payment_amount: string;
   payment_status: "unpaid" | "paid";
-};
-
-const defaultDraft: AssignDraft = {
-  employee_id: "",
-  employee_name: "",
-  employee_email: "",
-  work_title: "",
-  work_details: "",
-  work_duration: "",
-  revision_due_at: "",
-  payment_amount: "",
-  payment_status: "unpaid",
 };
 
 const DURATION_OPTIONS = Array.from({ length: 15 }, (_, index) => {
@@ -131,8 +121,42 @@ const formatPaymentPreview = (value: unknown): string => {
   return `BDT ${formatted}`;
 };
 
+const sanitizeOrderCode = (value: unknown): string =>
+  String(value ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, "")
+    .slice(0, 32);
+
+const buildFallbackOrderCodeFromId = (assignmentId: string | null | undefined): string => {
+  const sanitized = String(assignmentId ?? "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase();
+
+  if (!sanitized) return "";
+  return `ORD-${sanitized.slice(0, 8)}`;
+};
+
+const generateOrderCode = (): string => {
+  const now = Date.now().toString(36).toUpperCase().slice(-6);
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `ORD-${now}${random}`;
+};
+
+const createDefaultDraft = (): AssignDraft => ({
+  employee_id: "",
+  employee_name: "",
+  employee_email: "",
+  order_code: generateOrderCode(),
+  work_title: "",
+  work_details: "",
+  work_duration: "",
+  revision_due_at: "",
+  payment_amount: "",
+  payment_status: "unpaid",
+});
+
 const WorkAssignForm = ({ open, onOpenChange, assignment, employees, onSuccess }: WorkAssignFormProps) => {
-  const [draft, setDraft] = useState<AssignDraft>(defaultDraft);
+  const [draft, setDraft] = useState<AssignDraft>(() => createDefaultDraft());
   const [saving, setSaving] = useState(false);
   const paymentPreview = useMemo(
     () => formatPaymentPreview(draft.payment_amount),
@@ -161,6 +185,7 @@ const WorkAssignForm = ({ open, onOpenChange, assignment, employees, onSuccess }
         employee_id: assignment.employee_id ?? "",
         employee_name: assignment.employee_name ?? "",
         employee_email: assignment.employee_email ?? "",
+        order_code: sanitizeOrderCode(assignment.order_code) || buildFallbackOrderCodeFromId(assignment.id) || generateOrderCode(),
         work_title: assignment.work_title ?? "",
         work_details: assignment.work_details ?? "",
         work_duration: parseDurationDays(assignment.work_duration),
@@ -171,7 +196,7 @@ const WorkAssignForm = ({ open, onOpenChange, assignment, employees, onSuccess }
       return;
     }
 
-    setDraft(defaultDraft);
+    setDraft(createDefaultDraft());
   }, [open, assignment]);
 
   const handleEmployeeChange = (employeeId: string) => {
@@ -188,6 +213,13 @@ const WorkAssignForm = ({ open, onOpenChange, assignment, employees, onSuccess }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    const orderCode = sanitizeOrderCode(draft.order_code);
+
+    if (!orderCode) {
+      toast.error("Order number is required");
+      return;
+    }
 
     if (!draft.employee_id || !draft.work_title.trim() || !draft.work_duration.trim()) {
       toast.error("Employee, work title, and duration are required");
@@ -234,6 +266,7 @@ const WorkAssignForm = ({ open, onOpenChange, assignment, employees, onSuccess }
         employee_id: draft.employee_id,
         employee_name: draft.employee_name,
         employee_email: draft.employee_email,
+        order_code: orderCode,
         work_title: draft.work_title.trim(),
         work_details: draft.work_details.trim() || null,
         work_duration: durationLabel,
@@ -270,6 +303,9 @@ const WorkAssignForm = ({ open, onOpenChange, assignment, employees, onSuccess }
         }
         if (message.includes("payment_amount") && message.includes("does not exist")) {
           message = "Payment amount column missing in database. Please run latest Supabase migration.";
+        }
+        if (message.includes("order_code") && message.includes("does not exist")) {
+          message = "Order code column missing in database. Please run latest Supabase migration.";
         }
 
         throw new Error(message);
@@ -321,8 +357,19 @@ const WorkAssignForm = ({ open, onOpenChange, assignment, employees, onSuccess }
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="assign-email">Employee Email</Label>
-              <Input id="assign-email" value={draft.employee_email} readOnly />
+              <Label htmlFor="assign-order-code">Order Number</Label>
+              <Input
+                id="assign-order-code"
+                value={draft.order_code}
+                onChange={(event) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    order_code: sanitizeOrderCode(event.target.value),
+                  }))
+                }
+                placeholder="ORD-0001"
+              />
+              <p className="text-xs text-muted-foreground">Auto generated, you can edit this.</p>
             </div>
             <div className="grid gap-2">
               <Label>Work Duration</Label>

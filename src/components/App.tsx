@@ -28,6 +28,7 @@ const WorkAssignManager = lazy(() => import("@/components/cms/WorkAssignManager"
 const EmployeeChatManager = lazy(() => import("@/components/cms/EmployeeChatManager"));
 const WorldMapManager = lazy(() => import("@/components/cms/WorldMapManager"));
 const PagesManager = lazy(() => import("@/components/cms/PagesManager"));
+const HeaderFooterManager = lazy(() => import("@/components/cms/HeaderFooterManager"));
 const FormMessagesManager = lazy(() => import("@/components/cms/FormMessagesManager"));
 const LiveChatManager = lazy(() => import("@/components/cms/LiveChatManager"));
 const GiveAccessManager = lazy(() => import("@/components/cms/GiveAccessManager"));
@@ -158,6 +159,7 @@ const App = () => {
                     <Route path="work-assign" element={<WorkAssignManager />} />
                     <Route path="world-map" element={<WorldMapManager />} />
                     <Route path="pages" element={<PagesManager />} />
+                    <Route path="header-footer" element={<HeaderFooterManager />} />
                     <Route path="form-massage" element={<FormMessagesManager />} />
                     <Route path="live-chat" element={<LiveChatManager />} />
                     <Route path="chat" element={<EmployeeChatManager />} />
@@ -181,6 +183,7 @@ const App = () => {
                     <Route path="work-assign" element={<WorkAssignManager />} />
                     <Route path="world-map" element={<WorldMapManager />} />
                     <Route path="pages" element={<PagesManager />} />
+                    <Route path="header-footer" element={<HeaderFooterManager />} />
                     <Route path="form-massage" element={<FormMessagesManager />} />
                     <Route path="live-chat" element={<LiveChatManager />} />
                     <Route path="chat" element={<EmployeeChatManager />} />
