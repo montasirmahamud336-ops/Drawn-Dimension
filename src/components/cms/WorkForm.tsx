@@ -8,9 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
-import { Loader2, Upload, X } from "lucide-react";
+import { FileText, Loader2, Upload, X } from "lucide-react";
 import { SERVICES } from "@/data/servicesData";
 import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
+import {
+    getProjectPdfDocument,
+    getProjectPrimaryImageUrl,
+    getProjectVisualMedia,
+    type ProjectMediaItem,
+} from "@/components/shared/projectMedia";
 
 interface WorkFormProps {
     open: boolean;
@@ -21,35 +27,47 @@ interface WorkFormProps {
 
 type MediaItem = {
     url: string;
-    type: "image" | "video";
+    type: ProjectMediaItem["type"];
+    name?: string | null;
 };
 
 type PendingMedia = {
     id: string;
     file: File;
     url: string;
-    type: "image" | "video";
+    type: ProjectMediaItem["type"];
+    name?: string | null;
 };
 
-const detectMediaType = (value: string) => {
-    const v = value.toLowerCase();
-    if (v.includes(".mp4") || v.includes(".mov") || v.includes(".webm")) return "video";
-    return "image";
+const normalizeCategoryOption = (value: unknown) => String(value ?? "").trim().replace(/\s+/g, " ");
+
+const mergeUniqueCategoryOptions = (...groups: (Array<string | undefined | null> | undefined)[]) => {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+
+    groups.forEach((group) => {
+        (group || []).forEach((raw) => {
+            const normalized = normalizeCategoryOption(raw);
+            if (!normalized || seen.has(normalized)) return;
+            seen.add(normalized);
+            merged.push(normalized);
+        });
+    });
+
+    return merged;
 };
 
-const normalizeMedia = (item: any): MediaItem[] => {
-    if (Array.isArray(item?.media) && item.media.length > 0) {
-        return item.media
-            .filter((m: any) => typeof m?.url === "string" && m.url.length > 0)
-            .map((m: any) => ({
-                url: m.url,
-                type: m.type === "video" ? "video" : "image",
-            }));
+const buildFallbackCategoryOptions = (category?: unknown) =>
+    mergeUniqueCategoryOptions([...SERVICES], [typeof category === "string" ? category : undefined]);
+
+const getFallbackFileName = (url: string) => {
+    try {
+        const parsed = new URL(url);
+        const lastSegment = parsed.pathname.split("/").filter(Boolean).pop();
+        return lastSegment ? decodeURIComponent(lastSegment) : "document.pdf";
+    } catch {
+        return "document.pdf";
     }
-    if (item?.image_url) {
-        return [{ url: item.image_url, type: detectMediaType(item.image_url) }];
-    }
-    return [];
 };
 
 const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => {
@@ -57,11 +75,21 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
     const [loading, setLoading] = useState(false);
     const [existingMedia, setExistingMedia] = useState<MediaItem[]>([]);
     const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
+    const [existingDocument, setExistingDocument] = useState<MediaItem | null>(null);
+    const [pendingDocument, setPendingDocument] = useState<PendingMedia | null>(null);
+    const [categoryOptions, setCategoryOptions] = useState<string[]>(() => buildFallbackCategoryOptions(project?.category));
+    const [categoryOptionsLoading, setCategoryOptionsLoading] = useState(false);
 
-    const clearPendingMedia = () => {
+    const clearPendingAssets = () => {
         setPendingMedia((prev) => {
-            prev.forEach((m) => URL.revokeObjectURL(m.url));
+            prev.forEach((item) => URL.revokeObjectURL(item.url));
             return [];
+        });
+        setPendingDocument((prev) => {
+            if (prev?.url) {
+                URL.revokeObjectURL(prev.url);
+            }
+            return null;
         });
     };
 
@@ -79,17 +107,65 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
             setValue("tags", project.tags ? project.tags.join(", ") : "");
             setValue("live_link", project.live_link);
             setValue("github_link", project.github_link);
-            setExistingMedia(normalizeMedia(project));
+            setExistingMedia(getProjectVisualMedia(project));
+            setExistingDocument(getProjectPdfDocument(project));
         } else {
             reset();
             setExistingMedia([]);
+            setExistingDocument(null);
         }
-        clearPendingMedia();
+        clearPendingAssets();
     }, [project, open, reset, setValue]);
 
     useEffect(() => {
+        const fallbackOptions = buildFallbackCategoryOptions(project?.category);
+        setCategoryOptions(fallbackOptions);
+
+        if (!open) return;
+
+        let cancelled = false;
+        const apiBase = getApiBaseUrl();
+
+        const loadServiceOptions = async () => {
+            setCategoryOptionsLoading(true);
+            try {
+                const response = await fetch(`${apiBase}/services?status=all`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load services (${response.status})`);
+                }
+
+                const payload = await response.json();
+                const liveServiceNames = Array.isArray(payload)
+                    ? payload
+                        .map((item) => normalizeCategoryOption(item?.name))
+                        .filter(Boolean)
+                    : [];
+
+                if (!cancelled) {
+                    setCategoryOptions(mergeUniqueCategoryOptions(liveServiceNames, fallbackOptions));
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setCategoryOptions(fallbackOptions);
+                }
+                console.error("Failed to load work categories from services", error);
+            } finally {
+                if (!cancelled) {
+                    setCategoryOptionsLoading(false);
+                }
+            }
+        };
+
+        void loadServiceOptions();
+
         return () => {
-            clearPendingMedia();
+            cancelled = true;
+        };
+    }, [open, project?.category]);
+
+    useEffect(() => {
+        return () => {
+            clearPendingAssets();
         };
     }, []);
 
@@ -101,8 +177,35 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
             file,
             url: URL.createObjectURL(file),
             type: file.type.startsWith("video/") ? "video" : "image",
+            name: file.name,
         }));
         setPendingMedia((prev) => [...prev, ...next]);
+        e.target.value = "";
+    };
+
+    const handlePdfChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        if (!isPdf) {
+            toast.error("Please select a PDF file");
+            e.target.value = "";
+            return;
+        }
+
+        setPendingDocument((prev) => {
+            if (prev?.url) {
+                URL.revokeObjectURL(prev.url);
+            }
+            return {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                file,
+                url: URL.createObjectURL(file),
+                type: "pdf",
+                name: file.name,
+            };
+        });
         e.target.value = "";
     };
 
@@ -118,6 +221,19 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
         });
     };
 
+    const removeExistingDocument = () => {
+        setExistingDocument(null);
+    };
+
+    const removePendingDocument = () => {
+        setPendingDocument((prev) => {
+            if (prev?.url) {
+                URL.revokeObjectURL(prev.url);
+            }
+            return null;
+        });
+    };
+
     const onSubmit = async (data: any) => {
         setLoading(true);
         const apiBase = getApiBaseUrl();
@@ -130,6 +246,7 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
 
         try {
             let uploadedMedia: MediaItem[] = [];
+            let uploadedDocument: MediaItem | null = null;
 
             if (pendingMedia.length > 0) {
                 await ensureCmsBucket();
@@ -138,14 +255,30 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
                         const fileExt = item.file.name.split(".").pop() || "bin";
                         const fileName = `works/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
                         const publicUrl = await uploadCmsFile(item.file, fileName);
-                        return { url: publicUrl, type: item.type };
+                        return { url: publicUrl, type: item.type, name: item.name };
                     })
                 );
             }
 
-            const finalMedia = [...existingMedia, ...uploadedMedia];
+            if (pendingDocument) {
+                await ensureCmsBucket();
+                const fileExt = pendingDocument.file.name.split(".").pop() || "pdf";
+                const fileName = `works/documents/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+                const publicUrl = await uploadCmsFile(pendingDocument.file, fileName);
+                uploadedDocument = {
+                    url: publicUrl,
+                    type: "pdf",
+                    name: pendingDocument.file.name,
+                };
+            }
+
+            const finalMedia = [
+                ...existingMedia,
+                ...uploadedMedia,
+                ...(uploadedDocument ? [uploadedDocument] : existingDocument ? [existingDocument] : []),
+            ];
             if (!project && finalMedia.length === 0) {
-                throw new Error("Please upload at least one image or video");
+                throw new Error("Please upload at least one image, video, or PDF");
             }
 
             const rawTags = typeof data.tags === "string" ? data.tags : "";
@@ -162,7 +295,7 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
                 live_link: data.live_link,
                 github_link: data.github_link,
                 media: finalMedia,
-                image_url: finalMedia[0]?.url || null,
+                image_url: getProjectPrimaryImageUrl(finalMedia),
                 status: project?.status || "live",
             };
 
@@ -192,7 +325,7 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
             }
 
             toast.success(project ? "Project updated" : "Project created");
-            clearPendingMedia();
+            clearPendingAssets();
             onSuccess();
             onOpenChange(false);
         } catch (error: any) {
@@ -211,7 +344,7 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="work-media-upload">Project Media (Images/Videos)</Label>
+                        <Label htmlFor="work-media-upload">Project Media (Images/Videos, Optional)</Label>
                         <div className="flex flex-wrap gap-3">
                             {existingMedia.map((media, index) => (
                                 <div key={`existing-${index}`} className="relative w-28 h-20 rounded-lg overflow-hidden border border-border">
@@ -259,7 +392,68 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
                                 className="hidden"
                                 onChange={handleMediaChange}
                             />
-                            <p className="text-xs text-muted-foreground mt-2">You can add images and videos. Remove any item before saving.</p>
+                            <p className="text-xs text-muted-foreground mt-2">You can add images and videos here. PDF-only works are also supported from the PDF field below.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="work-pdf-upload">Project PDF</Label>
+                        <div className="flex flex-wrap gap-3">
+                            {existingDocument && (
+                                <div className="relative flex min-w-[220px] max-w-full items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3 pr-12">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                        <FileText className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium">
+                                            {existingDocument.name || getFallbackFileName(existingDocument.url)}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">Existing PDF document</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={removeExistingDocument}
+                                        className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white"
+                                        aria-label="Remove existing PDF"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+
+                            {pendingDocument && (
+                                <div className="relative flex min-w-[220px] max-w-full items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3 pr-12">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                        <FileText className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium">{pendingDocument.name || pendingDocument.file.name}</p>
+                                        <p className="text-xs text-muted-foreground">Ready to upload</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={removePendingDocument}
+                                        className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white"
+                                        aria-label="Remove selected PDF"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <Label htmlFor="work-pdf-upload" className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-input rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
+                                <FileText className="w-4 h-4" />
+                                Select PDF Document
+                            </Label>
+                            <Input
+                                id="work-pdf-upload"
+                                type="file"
+                                accept=".pdf,application/pdf"
+                                className="hidden"
+                                onChange={handlePdfChange}
+                            />
+                            <p className="text-xs text-muted-foreground mt-2">Upload one PDF for a PDF-based work. The work card will use the first page as its preview and visitors can scroll the full document on the detail page.</p>
                         </div>
                     </div>
 
@@ -309,10 +503,10 @@ const WorkForm = ({ open, onOpenChange, project, onSuccess }: WorkFormProps) => 
                                 onValueChange={(value) => setValue("category", value)}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a service" />
+                                    <SelectValue placeholder={categoryOptionsLoading ? "Loading services..." : "Select a service"} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {SERVICES.map((service) => (
+                                    {categoryOptions.map((service) => (
                                         <SelectItem key={service} value={service}>
                                             {service}
                                         </SelectItem>

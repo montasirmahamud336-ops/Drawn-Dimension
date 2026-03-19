@@ -2,11 +2,13 @@ import { DragEvent, Suspense, lazy, memo, useCallback, useDeferredValue, useEffe
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Edit, GripVertical, MonitorPlay, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { Edit, FileText, GripVertical, MonitorPlay, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import { moveItemById } from "./reorderUtils";
 import { buildCardImageSources } from "@/components/shared/mediaUrl";
+import { getProjectPdfDocument, getProjectPrimaryCardMedia } from "@/components/shared/projectMedia";
+import PdfPreview from "@/components/shared/PdfPreview";
 
 const INITIAL_VISIBLE_WORKS = 9;
 const WORKS_LOAD_MORE_STEP = 9;
@@ -25,6 +27,7 @@ type ProjectRecord = {
   title: string;
   description?: string | null;
   image_url?: string | null;
+  media?: Array<{ url?: string; type?: string; name?: string | null }> | null;
   category?: string | null;
   status?: string | null;
   client?: string | null;
@@ -85,12 +88,14 @@ const WorkCard = memo(({
   onRestore,
   project,
 }: WorkCardProps) => {
-  const imageSrc = project.imageSources?.src ?? project.image_url ?? "";
-  const [isImageReady, setIsImageReady] = useState(!imageSrc);
+  const previewMedia = useMemo(() => getProjectPrimaryCardMedia(project), [project]);
+  const imageSrc = previewMedia?.type === "image" ? (project.imageSources?.src ?? previewMedia.url) : "";
+  const hasPdf = Boolean(getProjectPdfDocument(project));
+  const [isImageReady, setIsImageReady] = useState(previewMedia?.type !== "image");
 
   useEffect(() => {
-    setIsImageReady(!imageSrc);
-  }, [imageSrc]);
+    setIsImageReady(previewMedia?.type !== "image");
+  }, [previewMedia?.type, imageSrc]);
 
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     if (isReorderEnabled) {
@@ -114,7 +119,16 @@ const WorkCard = memo(({
     >
       <div className="glass-card cms-card-lite overflow-hidden h-full flex flex-col border-border/50 bg-secondary/10 transition-none">
         <div className="relative overflow-hidden aspect-video bg-muted/10">
-          {imageSrc ? (
+          {previewMedia?.type === "video" ? (
+            <video
+              src={previewMedia.url}
+              className="w-full h-full object-cover"
+              muted
+              playsInline
+            />
+          ) : previewMedia?.type === "pdf" ? (
+            <PdfPreview url={previewMedia.url} title={project.title} loading={eagerImage ? "eager" : "lazy"} />
+          ) : imageSrc ? (
             <>
               <div
                 className={`absolute inset-0 bg-muted/30 transition-opacity duration-200 ${isImageReady ? "opacity-0" : "opacity-100"}`}
@@ -187,6 +201,15 @@ const WorkCard = memo(({
               {project.category || "Uncategorized"}
             </span>
           </div>
+
+          {hasPdf && (
+            <div className="absolute bottom-4 left-4 z-10">
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
+                <FileText className="h-3.5 w-3.5" />
+                PDF
+              </span>
+            </div>
+          )}
 
           {project.status === "draft" && (
             <div className="absolute top-4 right-4 z-10">

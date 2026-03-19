@@ -171,7 +171,7 @@ const WorldMapManager = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr,1fr]">
+      <div className="grid items-start gap-6 xl:grid-cols-[1.15fr,1fr]">
         <Card className="border-border/50 bg-card/60 backdrop-blur">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
@@ -239,7 +239,7 @@ const WorldMapManager = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 bg-card/60 backdrop-blur">
+        <Card className="border-border/50 bg-card/60 backdrop-blur xl:self-start">
           <CardHeader className="pb-3">
             <CardTitle>Select Countries</CardTitle>
             <div className="relative mt-2">
@@ -253,7 +253,7 @@ const WorldMapManager = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[540px] pr-3" data-lenis-prevent>
+            <ScrollArea className="h-[68vh] max-h-[540px] min-h-[360px] pr-3" data-lenis-prevent>
               <div className="grid gap-2 sm:grid-cols-2">
                 {filteredCountries.map((country) => {
                   const isSelected = selectedSet.has(country.code);

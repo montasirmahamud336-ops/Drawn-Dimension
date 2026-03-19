@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, Briefcase, ShoppingBag, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getAdminToken, getApiBaseUrl, getAdminProfile, refreshAdminProfileFromApi } from "@/components/admin/adminAuth";
+import CMSWorkspaceCard from "./CMSWorkspaceCard";
 
 interface DashboardStats {
     views: number;
@@ -113,6 +114,11 @@ const Dashboard = () => {
                     )}
                 </div>
             </div>
+
+            <CMSWorkspaceCard
+                adminDisplayName={adminProfile?.fullName || adminProfile?.username || "Admin"}
+                adminMeta={isMainAdmin ? "Owner" : "Manager"}
+            />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard

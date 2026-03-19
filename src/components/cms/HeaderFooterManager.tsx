@@ -8,7 +8,6 @@ import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { moveItemById } from "./reorderUtils";
 import {
   DEFAULT_FOOTER_LINKS,
-  DEFAULT_FOOTER_SERVICE_LINKS,
   DEFAULT_HEADER_LINKS,
   normalizeHeaderFooterSettings,
   type HeaderFooterLink,
@@ -18,7 +17,9 @@ import { resolveServiceLink, type ApiServiceRecord } from "@/components/shared/s
 
 type MenuSection = "header" | "footer";
 
-type FooterServiceItem = HeaderFooterLink & {
+type AutoServiceSection = "header" | "footer";
+
+type AutoServiceItem = HeaderFooterLink & {
   serviceId: number;
   fallbackIndex?: number;
 };
@@ -49,7 +50,7 @@ const createItemId = (label: string, section: MenuSection, existingItems: Header
   return nextId;
 };
 
-const sortFooterServiceItems = (items: FooterServiceItem[], orderIds: number[]): FooterServiceItem[] => {
+const sortAutoServiceItems = (items: AutoServiceItem[], orderIds: number[]): AutoServiceItem[] => {
   const rank = new Map<number, number>();
   orderIds.forEach((id, index) => rank.set(id, index));
 
@@ -69,13 +70,9 @@ const HeaderFooterManager = () => {
   const apiBase = getApiBaseUrl();
   const [headerLinks, setHeaderLinks] = useState<HeaderFooterLink[]>(DEFAULT_HEADER_LINKS);
   const [footerLinks, setFooterLinks] = useState<HeaderFooterLink[]>(DEFAULT_FOOTER_LINKS);
-  const [footerServiceLinks, setFooterServiceLinks] = useState<FooterServiceItem[]>(
-    DEFAULT_FOOTER_SERVICE_LINKS.map((item, index) => ({
-      ...item,
-      serviceId: index + 1,
-      fallbackIndex: index,
-    }))
-  );
+  const [headerServiceLinks, setHeaderServiceLinks] = useState<AutoServiceItem[]>([]);
+  const [footerServiceLinks, setFooterServiceLinks] = useState<AutoServiceItem[]>([]);
+  const [headerServiceOrder, setHeaderServiceOrder] = useState<number[]>([]);
   const [footerServiceOrder, setFooterServiceOrder] = useState<number[]>([]);
   const [activeSection, setActiveSection] = useState<MenuSection>("header");
   const [formSection, setFormSection] = useState<MenuSection>("header");
@@ -84,7 +81,8 @@ const HeaderFooterManager = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [draggingSection, setDraggingSection] = useState<MenuSection | null>(null);
-  const [draggingServiceId, setDraggingServiceId] = useState<string | null>(null);
+  const [draggingAutoServiceId, setDraggingAutoServiceId] = useState<string | null>(null);
+  const [draggingAutoSection, setDraggingAutoSection] = useState<AutoServiceSection | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -98,6 +96,7 @@ const HeaderFooterManager = () => {
   const applySettings = (settings: HeaderFooterSettings) => {
     setHeaderLinks(settings.header_links);
     setFooterLinks(settings.footer_links);
+    setHeaderServiceOrder(settings.header_service_order);
     setFooterServiceOrder(settings.footer_service_order);
     setUpdatedAt(settings.updated_at);
     setDirty(false);
@@ -122,7 +121,13 @@ const HeaderFooterManager = () => {
     }
   };
 
-  const loadLiveFooterServices = async (orderIds: number[] = footerServiceOrder) => {
+  const loadLiveServiceLinks = async ({
+    headerOrderIds = headerServiceOrder,
+    footerOrderIds = footerServiceOrder,
+  }: {
+    headerOrderIds?: number[];
+    footerOrderIds?: number[];
+  } = {}) => {
     try {
       const res = await fetch(`${apiBase}/services?status=live`);
       if (!res.ok) {
@@ -145,12 +150,16 @@ const HeaderFooterManager = () => {
             label,
             href: resolveServiceLink(label, service.slug),
             fallbackIndex: index,
-          } satisfies FooterServiceItem;
+          } satisfies AutoServiceItem;
         });
 
-      const sorted = sortFooterServiceItems(mapped, orderIds);
-      setFooterServiceLinks(sorted);
-      setFooterServiceOrder(sorted.map((item) => item.serviceId));
+      const sortedHeader = sortAutoServiceItems(mapped, headerOrderIds);
+      const sortedFooter = sortAutoServiceItems(mapped, footerOrderIds);
+
+      setHeaderServiceLinks(sortedHeader);
+      setHeaderServiceOrder(sortedHeader.map((item) => item.serviceId));
+      setFooterServiceLinks(sortedFooter);
+      setFooterServiceOrder(sortedFooter.map((item) => item.serviceId));
     } catch {
       // keep previous list
     }
@@ -159,7 +168,10 @@ const HeaderFooterManager = () => {
   useEffect(() => {
     const init = async () => {
       const settings = await loadSettings();
-      await loadLiveFooterServices(settings?.footer_service_order ?? []);
+      await loadLiveServiceLinks({
+        headerOrderIds: settings?.header_service_order ?? [],
+        footerOrderIds: settings?.footer_service_order ?? [],
+      });
     };
     void init();
   }, []);
@@ -262,7 +274,6 @@ const HeaderFooterManager = () => {
   const handleDragEnter = (section: MenuSection, targetId: string) => {
     if (!draggingId || !draggingSection || draggingSection !== section || draggingId === targetId) return;
     updateSectionLinks(section, (prev) => moveItemById(prev, draggingId, targetId));
-    setDraggingId(targetId);
   };
 
   const handleDragEnd = () => {
@@ -270,25 +281,40 @@ const HeaderFooterManager = () => {
     setDraggingSection(null);
   };
 
-  const handleFooterServiceDragStart = (id: string) => {
-    setDraggingServiceId(id);
+  const handleAutoServiceDragStart = (section: AutoServiceSection, id: string) => {
+    setDraggingAutoSection(section);
+    setDraggingAutoServiceId(id);
   };
 
-  const handleFooterServiceDragEnter = (targetId: string) => {
-    if (!draggingServiceId || draggingServiceId === targetId) return;
-    setFooterServiceLinks((prev) => {
-      const next = moveItemById(prev, draggingServiceId, targetId);
+  const handleAutoServiceDragEnter = (section: AutoServiceSection, targetId: string) => {
+    if (!draggingAutoServiceId || !draggingAutoSection || draggingAutoSection !== section) return;
+    if (draggingAutoServiceId === targetId) return;
+
+    const updater = (prev: AutoServiceItem[]) => {
+      const next = moveItemById(prev, draggingAutoServiceId, targetId);
       if (next !== prev) {
-        setFooterServiceOrder(next.map((item) => item.serviceId));
+        const nextOrder = next.map((item) => item.serviceId);
+        if (section === "header") {
+          setHeaderServiceOrder(nextOrder);
+        } else {
+          setFooterServiceOrder(nextOrder);
+        }
         setDirty(true);
       }
       return next;
-    });
-    setDraggingServiceId(targetId);
+    };
+
+    if (section === "header") {
+      setHeaderServiceLinks(updater);
+      return;
+    }
+
+    setFooterServiceLinks(updater);
   };
 
-  const handleFooterServiceDragEnd = () => {
-    setDraggingServiceId(null);
+  const handleAutoServiceDragEnd = () => {
+    setDraggingAutoServiceId(null);
+    setDraggingAutoSection(null);
   };
 
   const saveSettings = async () => {
@@ -299,6 +325,7 @@ const HeaderFooterManager = () => {
       const payload = {
         header_links: headerLinks,
         footer_links: footerLinks,
+        header_service_order: headerServiceOrder,
         footer_service_order: footerServiceOrder,
       };
       const res = await fetch(`${apiBase}/header-footer-settings`, {
@@ -317,7 +344,10 @@ const HeaderFooterManager = () => {
       const data = await res.json();
       const normalized = normalizeHeaderFooterSettings(data);
       applySettings(normalized);
-      await loadLiveFooterServices(normalized.footer_service_order);
+      await loadLiveServiceLinks({
+        headerOrderIds: normalized.header_service_order,
+        footerOrderIds: normalized.footer_service_order,
+      });
       toast.success("Header and footer updated");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save settings");
@@ -346,7 +376,10 @@ const HeaderFooterManager = () => {
             onClick={() => {
               void (async () => {
                 const settings = await loadSettings();
-                await loadLiveFooterServices(settings?.footer_service_order ?? footerServiceOrder);
+                await loadLiveServiceLinks({
+                  headerOrderIds: settings?.header_service_order ?? headerServiceOrder,
+                  footerOrderIds: settings?.footer_service_order ?? footerServiceOrder,
+                });
               })();
             }}
             disabled={loading || saving}
@@ -467,26 +500,68 @@ const HeaderFooterManager = () => {
       </div>
 
       <div className="glass-card border-border/60 p-4 space-y-3">
+        <h3 className="text-lg font-semibold">Header Services Dropdown (Auto)</h3>
+        <p className="text-xs text-muted-foreground">
+          These live service pages appear under the header <span className="font-medium">Services</span> menu. Drag to
+          reorder, then save to update the live navbar.
+        </p>
+        <div className="space-y-2">
+          {headerServiceLinks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {loading ? "Loading live services..." : "No live services found."}
+            </p>
+          ) : (
+            headerServiceLinks.map((item) => (
+              <div
+                key={item.id}
+                className={`flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2 transition-colors ${
+                  draggingAutoSection === "header" && draggingAutoServiceId === item.id
+                    ? "bg-primary/10 border-primary/35"
+                    : "bg-card/40"
+                }`}
+                draggable
+                onDragStart={() => handleAutoServiceDragStart("header", item.id)}
+                onDragEnter={() => handleAutoServiceDragEnter("header", item.id)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => event.preventDefault()}
+                onDragEnd={handleAutoServiceDragEnd}
+              >
+                <div className="min-w-0 flex items-center gap-3">
+                  <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <p className="text-sm truncate">{item.label}</p>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{item.href}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="glass-card border-border/60 p-4 space-y-3">
         <h3 className="text-lg font-semibold">Footer Services (Auto)</h3>
         <p className="text-xs text-muted-foreground">
           Drag and drop to set order. New live services are auto-added and deleted services are auto-removed.
         </p>
         <div className="space-y-2">
           {footerServiceLinks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No live services found.</p>
+            <p className="text-sm text-muted-foreground">
+              {loading ? "Loading live services..." : "No live services found."}
+            </p>
           ) : (
             footerServiceLinks.map((item) => (
               <div
                 key={item.id}
                 className={`flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2 transition-colors ${
-                  draggingServiceId === item.id ? "bg-primary/10 border-primary/35" : "bg-card/40"
+                  draggingAutoSection === "footer" && draggingAutoServiceId === item.id
+                    ? "bg-primary/10 border-primary/35"
+                    : "bg-card/40"
                 }`}
                 draggable
-                onDragStart={() => handleFooterServiceDragStart(item.id)}
-                onDragEnter={() => handleFooterServiceDragEnter(item.id)}
+                onDragStart={() => handleAutoServiceDragStart("footer", item.id)}
+                onDragEnter={() => handleAutoServiceDragEnter("footer", item.id)}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => event.preventDefault()}
-                onDragEnd={handleFooterServiceDragEnd}
+                onDragEnd={handleAutoServiceDragEnd}
               >
                 <div className="min-w-0 flex items-center gap-3">
                   <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />

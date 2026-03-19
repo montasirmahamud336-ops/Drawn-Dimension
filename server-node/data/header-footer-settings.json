@@ -68,5 +68,25 @@
       "href": "/contact"
     }
   ],
-  "updated_at": "2026-03-08T03:51:54.789Z"
+  "header_service_order": [
+    8,
+    4,
+    7,
+    3,
+    9,
+    5,
+    1,
+    6
+  ],
+  "footer_service_order": [
+    8,
+    4,
+    7,
+    3,
+    9,
+    5,
+    1,
+    6
+  ],
+  "updated_at": "2026-03-19T21:10:45.384Z"
 }

@@ -64,6 +64,27 @@ const RouteFallback = () => (
   </div>
 );
 
+const renderCMSRoutes = () => (
+  <>
+    <Route index element={<DashboardStats />} />
+    <Route path="dashboard" element={<DashboardStats />} />
+    <Route path="works" element={<WorksManager />} />
+    <Route path="upload" element={<WorksManager />} />
+    <Route path="products" element={<ProductsManager />} />
+    <Route path="team" element={<TeamManager />} />
+    <Route path="reviews" element={<ReviewsManager />} />
+    <Route path="employees" element={<EmployeesManager />} />
+    <Route path="work-assign" element={<WorkAssignManager />} />
+    <Route path="world-map" element={<WorldMapManager />} />
+    <Route path="pages" element={<PagesManager />} />
+    <Route path="header-footer" element={<HeaderFooterManager />} />
+    <Route path="form-massage" element={<FormMessagesManager />} />
+    <Route path="live-chat" element={<LiveChatManager />} />
+    <Route path="chat" element={<EmployeeChatManager />} />
+    <Route path="give-access" element={<GiveAccessManager />} />
+  </>
+);
+
 const isAdminRoute = (pathname: string) =>
   pathname === "/cms"
   || pathname.startsWith("/cms/")
@@ -158,22 +179,7 @@ const AppShell = () => {
                 </AdminProtectedRoute>
               }
             >
-              <Route index element={<DashboardStats />} />
-              <Route path="dashboard" element={<DashboardStats />} />
-              <Route path="works" element={<WorksManager />} />
-              <Route path="upload" element={<WorksManager />} />
-              <Route path="products" element={<ProductsManager />} />
-              <Route path="team" element={<TeamManager />} />
-              <Route path="reviews" element={<ReviewsManager />} />
-              <Route path="employees" element={<EmployeesManager />} />
-              <Route path="work-assign" element={<WorkAssignManager />} />
-              <Route path="world-map" element={<WorldMapManager />} />
-              <Route path="pages" element={<PagesManager />} />
-              <Route path="header-footer" element={<HeaderFooterManager />} />
-              <Route path="form-massage" element={<FormMessagesManager />} />
-              <Route path="live-chat" element={<LiveChatManager />} />
-              <Route path="chat" element={<EmployeeChatManager />} />
-              <Route path="give-access" element={<GiveAccessManager />} />
+              {renderCMSRoutes()}
             </Route>
 
             <Route
@@ -184,20 +190,7 @@ const AppShell = () => {
                 </AdminProtectedRoute>
               }
             >
-              <Route index element={<DashboardStats />} />
-              <Route path="works" element={<WorksManager />} />
-              <Route path="products" element={<ProductsManager />} />
-              <Route path="team" element={<TeamManager />} />
-              <Route path="reviews" element={<ReviewsManager />} />
-              <Route path="employees" element={<EmployeesManager />} />
-              <Route path="work-assign" element={<WorkAssignManager />} />
-              <Route path="world-map" element={<WorldMapManager />} />
-              <Route path="pages" element={<PagesManager />} />
-              <Route path="header-footer" element={<HeaderFooterManager />} />
-              <Route path="form-massage" element={<FormMessagesManager />} />
-              <Route path="live-chat" element={<LiveChatManager />} />
-              <Route path="chat" element={<EmployeeChatManager />} />
-              <Route path="give-access" element={<GiveAccessManager />} />
+              {renderCMSRoutes()}
             </Route>
 
             <Route path="*" element={<NotFound />} />

@@ -5,34 +5,13 @@ import PageTransition from "@/components/shared/PageTransition";
 import PageHero from "@/components/shared/PageHero";
 import { motion } from "framer-motion";
 import { MouseEvent, useEffect, useMemo, useState } from "react";
-import { ExternalLink, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ExternalLink, Loader2, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import PremiumBackground from "@/components/shared/PremiumBackground";
 import { useLiveData } from "@/hooks/useLiveData";
 import { useNavigate } from "react-router-dom";
 import { buildCardImageSources } from "@/components/shared/mediaUrl";
-
-type MediaItem = {
-  url: string;
-  type: "image" | "video";
-};
-
-const detectMediaType = (value: string) => {
-  const v = value.toLowerCase();
-  if (v.includes(".mp4") || v.includes(".mov") || v.includes(".webm")) return "video";
-  return "image";
-};
-
-const getMediaList = (item: any): MediaItem[] => {
-  if (Array.isArray(item?.media) && item.media.length > 0) {
-    return item.media
-      .filter((m: any) => typeof m?.url === "string" && m.url.length > 0)
-      .map((m: any) => ({ url: m.url, type: m.type === "video" ? "video" : "image" }));
-  }
-  if (item?.image_url) {
-    return [{ url: item.image_url, type: detectMediaType(item.image_url) }];
-  }
-  return [{ url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&h=600&fit=crop", type: "image" }];
-};
+import { getProjectMediaList, getProjectPdfDocument, getProjectVisualMedia, type ProjectMediaItem } from "@/components/shared/projectMedia";
+import PdfPreview from "@/components/shared/PdfPreview";
 
 const DESCRIPTION_PREVIEW_LIMIT = 135;
 
@@ -51,16 +30,24 @@ const getDescriptionPreview = (value: unknown) => {
 };
 
 const PortfolioMedia = ({ project, cardIndex }: { project: any; cardIndex: number }) => {
-  const media = getMediaList(project);
+  const visualMedia = getProjectVisualMedia(project);
+  const media = visualMedia.length > 0
+    ? visualMedia
+    : getProjectMediaList(project);
+  const fallbackMedia: ProjectMediaItem = {
+    url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&h=600&fit=crop",
+    type: "image",
+  };
   const [index, setIndex] = useState(0);
-  const current = media[index];
+  const current = media[index] ?? fallbackMedia;
   const hasMany = media.length > 1;
+  const hasPdf = Boolean(getProjectPdfDocument(project));
   const imageSources = current.type === "image" ? buildCardImageSources(current.url) : null;
   const [isImageReady, setIsImageReady] = useState(current.type === "video");
   const eagerImage = cardIndex < 3;
 
   useEffect(() => {
-    setIsImageReady(current.type === "video");
+    setIsImageReady(current.type !== "image");
   }, [current.type, current.url]);
 
   const prev = (e: MouseEvent<HTMLButtonElement>) => {
@@ -87,6 +74,8 @@ const PortfolioMedia = ({ project, cardIndex }: { project: any; cardIndex: numbe
           playsInline
           preload="none"
         />
+      ) : current.type === "pdf" ? (
+        <PdfPreview url={current.url} title={project.title} loading={eagerImage ? "eager" : "lazy"} />
       ) : (
         <>
           <div
@@ -120,6 +109,14 @@ const PortfolioMedia = ({ project, cardIndex }: { project: any; cardIndex: numbe
           <ExternalLink className="w-5 h-5 text-primary-foreground" />
         </div>
       </div>
+      {hasPdf && (
+        <div className="absolute bottom-4 left-4">
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
+            <FileText className="h-3.5 w-3.5" />
+            PDF Available
+          </span>
+        </div>
+      )}
       {hasMany && (
         <>
           <button

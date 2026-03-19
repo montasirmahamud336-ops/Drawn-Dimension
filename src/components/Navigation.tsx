@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
 import { getPreferredDashboardPath } from "@/components/shared/dashboardPath";
-import { buildServiceNavItems, type ApiServiceRecord } from "@/components/shared/serviceCatalog";
+import { resolveServiceLink, type ApiServiceRecord } from "@/components/shared/serviceCatalog";
 import {
   DEFAULT_HEADER_LINKS,
   isExternalHref,
@@ -19,11 +19,48 @@ type NavLinkItem = HeaderFooterLink & {
   external: boolean;
 };
 
+const FALLBACK_SERVICE_SUBMENU = [
+  { href: "/services/web-design", label: "Web Design & Development" },
+  { href: "/services/autocad", label: "AutoCAD Drawings" },
+  { href: "/services/solidworks", label: "3D SolidWorks" },
+  { href: "/services/pfd-pid", label: "PFD & P&ID" },
+  { href: "/services/hazop", label: "HAZOP Study" },
+  { href: "/services/graphic-design", label: "Graphic Design" },
+];
+
+const buildOrderedServiceNavItems = (services: ApiServiceRecord[], savedOrder: number[]) => {
+  const rank = new Map<number, number>();
+  savedOrder.forEach((serviceId, index) => {
+    rank.set(serviceId, index);
+  });
+
+  return services
+    .filter(
+      (service) => Number.isInteger(Number(service.id)) && Number(service.id) > 0 && String(service.name ?? "").trim()
+    )
+    .map((service, index) => ({
+      serviceId: Number(service.id),
+      fallbackIndex: index,
+      href: resolveServiceLink(String(service.name ?? "").trim(), service.slug),
+      label: String(service.name ?? "").trim(),
+    }))
+    .sort((a, b) => {
+      const aRank = rank.get(a.serviceId);
+      const bRank = rank.get(b.serviceId);
+      if (typeof aRank === "number" && typeof bRank === "number") return aRank - bRank;
+      if (typeof aRank === "number") return -1;
+      if (typeof bRank === "number") return 1;
+      return a.fallbackIndex - b.fallbackIndex;
+    })
+    .map(({ serviceId: _serviceId, fallbackIndex: _fallbackIndex, ...item }) => item);
+};
+
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [headerLinks, setHeaderLinks] = useState<HeaderFooterLink[]>(DEFAULT_HEADER_LINKS);
+  const [headerServiceOrder, setHeaderServiceOrder] = useState<number[]>([]);
   const [liveServices, setLiveServices] = useState<ApiServiceRecord[]>([]);
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [servicesLoadFailed, setServicesLoadFailed] = useState(false);
@@ -113,6 +150,7 @@ const Navigation = () => {
         if (!mounted) return;
         const normalized = normalizeHeaderFooterSettings(data);
         setHeaderLinks(normalized.header_links);
+        setHeaderServiceOrder(normalized.header_service_order);
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error("Failed to load header links", error);
@@ -129,22 +167,15 @@ const Navigation = () => {
 
   const serviceSubmenu = useMemo(() => {
     if (liveServices.length > 0) {
-      return buildServiceNavItems(liveServices).slice(0, 12);
+      return buildOrderedServiceNavItems(liveServices, headerServiceOrder);
     }
 
     if (servicesLoadFailed || !servicesLoaded) {
-      return [
-        { href: "/services/web-design", label: "Web Design & Development" },
-        { href: "/services/autocad", label: "AutoCAD Drawings" },
-        { href: "/services/solidworks", label: "3D SolidWorks" },
-        { href: "/services/pfd-pid", label: "PFD & P&ID" },
-        { href: "/services/hazop", label: "HAZOP Study" },
-        { href: "/services/graphic-design", label: "Graphic Design" },
-      ];
+      return FALLBACK_SERVICE_SUBMENU;
     }
 
     return [];
-  }, [liveServices, servicesLoadFailed, servicesLoaded]);
+  }, [headerServiceOrder, liveServices, servicesLoadFailed, servicesLoaded]);
 
   const navLinks = useMemo<NavLinkItem[]>(
     () =>

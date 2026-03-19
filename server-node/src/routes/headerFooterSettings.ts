@@ -13,6 +13,7 @@ type HeaderFooterLink = {
 type HeaderFooterSettings = {
   header_links: HeaderFooterLink[];
   footer_links: HeaderFooterLink[];
+  header_service_order: number[];
   footer_service_order: number[];
   updated_at: string | null;
   needs_migration?: boolean;
@@ -22,6 +23,7 @@ type RawSettingsRow = {
   id?: unknown;
   header_links?: unknown;
   footer_links?: unknown;
+  header_service_order?: unknown;
   footer_service_order?: unknown;
   updated_at?: unknown;
   created_at?: unknown;
@@ -114,6 +116,7 @@ const normalizeLinks = (
 const normalizeSettings = (row: Partial<RawSettingsRow> | null | undefined): HeaderFooterSettings => ({
   header_links: normalizeLinks(row?.header_links, DEFAULT_HEADER_LINKS, "header"),
   footer_links: normalizeLinks(row?.footer_links, DEFAULT_FOOTER_LINKS, "footer"),
+  header_service_order: normalizeOrderList(row?.header_service_order),
   footer_service_order: normalizeOrderList(row?.footer_service_order),
   updated_at: typeof row?.updated_at === "string" ? row.updated_at : null,
 });
@@ -126,7 +129,8 @@ const isSchemaError = (error: unknown) => {
       (message.includes("pgrst205") ||
         message.includes("could not find the table") ||
         message.includes("does not exist"))) ||
-    (message.includes("footer_service_order") && message.includes("column"))
+    ((message.includes("footer_service_order") || message.includes("header_service_order")) &&
+      message.includes("column"))
   );
 };
 
@@ -151,6 +155,7 @@ const writeLocalSettings = async (settings: HeaderFooterSettings) => {
   const payload = {
     header_links: settings.header_links,
     footer_links: settings.footer_links,
+    header_service_order: settings.header_service_order,
     footer_service_order: settings.footer_service_order,
     updated_at: settings.updated_at,
   };
@@ -160,7 +165,7 @@ const writeLocalSettings = async (settings: HeaderFooterSettings) => {
 
 const getDbSettings = async (): Promise<HeaderFooterSettings | null> => {
   const rows = await selectRows(
-    "/header_footer_settings?select=id,header_links,footer_links,footer_service_order,updated_at&id=eq.1&limit=1"
+    "/header_footer_settings?select=id,header_links,footer_links,header_service_order,footer_service_order,updated_at&id=eq.1&limit=1"
   );
 
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -172,7 +177,9 @@ const getDbSettings = async (): Promise<HeaderFooterSettings | null> => {
 
 const buildPatch = (body: unknown) => {
   const source = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const patch: Partial<Pick<HeaderFooterSettings, "header_links" | "footer_links" | "footer_service_order">> = {};
+  const patch: Partial<
+    Pick<HeaderFooterSettings, "header_links" | "footer_links" | "header_service_order" | "footer_service_order">
+  > = {};
 
   if ("header_links" in source) {
     patch.header_links = normalizeLinks(source.header_links, DEFAULT_HEADER_LINKS, "header");
@@ -182,11 +189,20 @@ const buildPatch = (body: unknown) => {
     patch.footer_links = normalizeLinks(source.footer_links, DEFAULT_FOOTER_LINKS, "footer");
   }
 
+  if ("header_service_order" in source) {
+    patch.header_service_order = normalizeOrderList(source.header_service_order);
+  }
+
   if ("footer_service_order" in source) {
     patch.footer_service_order = normalizeOrderList(source.footer_service_order);
   }
 
-  if (!("header_links" in patch) && !("footer_links" in patch) && !("footer_service_order" in patch)) {
+  if (
+    !("header_links" in patch) &&
+    !("footer_links" in patch) &&
+    !("header_service_order" in patch) &&
+    !("footer_service_order" in patch)
+  ) {
     return { error: "No valid fields provided" as const };
   }
 
@@ -229,6 +245,7 @@ router.patch("/header-footer-settings", requireAuth, async (req, res) => {
     const merged = normalizeSettings({
       header_links: patch.header_links ?? base.header_links,
       footer_links: patch.footer_links ?? base.footer_links,
+      header_service_order: patch.header_service_order ?? base.header_service_order,
       footer_service_order: patch.footer_service_order ?? base.footer_service_order,
       updated_at: now,
     });
@@ -239,6 +256,7 @@ router.patch("/header-footer-settings", requireAuth, async (req, res) => {
       const updatedRows = await updateRow("/header_footer_settings?id=eq.1", {
         header_links: merged.header_links,
         footer_links: merged.footer_links,
+        header_service_order: merged.header_service_order,
         footer_service_order: merged.footer_service_order,
         updated_at: now,
       });
@@ -250,6 +268,7 @@ router.patch("/header-footer-settings", requireAuth, async (req, res) => {
         id: 1,
         header_links: merged.header_links,
         footer_links: merged.footer_links,
+        header_service_order: merged.header_service_order,
         footer_service_order: merged.footer_service_order,
         created_at: now,
         updated_at: now,
@@ -266,6 +285,7 @@ router.patch("/header-footer-settings", requireAuth, async (req, res) => {
       const merged = normalizeSettings({
         header_links: patch.header_links ?? localCurrent.header_links,
         footer_links: patch.footer_links ?? localCurrent.footer_links,
+        header_service_order: patch.header_service_order ?? localCurrent.header_service_order,
         footer_service_order: patch.footer_service_order ?? localCurrent.footer_service_order,
         updated_at: now,
       });

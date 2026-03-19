@@ -2,9 +2,11 @@ import { motion, useInView } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveData } from "@/hooks/useLiveData";
 import { Link, useNavigate } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
+import { FileText, MessageCircle } from "lucide-react";
 import { buildCardImageSources } from "@/components/shared/mediaUrl";
 import { DEFAULT_HOME_PAGE_SETTINGS, type HomePortfolioSection } from "@/components/shared/homePageSettings";
+import { getProjectPdfDocument, getProjectPrimaryCardMedia } from "@/components/shared/projectMedia";
+import PdfPreview from "@/components/shared/PdfPreview";
 
 interface Project {
   id: string;
@@ -13,53 +15,83 @@ interface Project {
   description: string;
   client?: string;
   image_url?: string | null;
+  media?: Array<{ url?: string; type?: string; name?: string | null }> | null;
 }
 
 const PortfolioCardImage = ({
-  imageUrl,
+  project,
   title,
   category,
   index,
 }: {
-  imageUrl: string;
+  project: Project;
   title: string;
   category: string;
   index: number;
 }) => {
-  const imageSources = useMemo(() => buildCardImageSources(imageUrl), [imageUrl]);
-  const [isImageReady, setIsImageReady] = useState(false);
+  const previewMedia = useMemo(() => getProjectPrimaryCardMedia(project), [project]);
+  const imageUrl = previewMedia?.type === "image" ? previewMedia.url : "";
+  const imageSources = useMemo(() => (imageUrl ? buildCardImageSources(imageUrl) : null), [imageUrl]);
+  const hasPdf = Boolean(getProjectPdfDocument(project));
+  const [isImageReady, setIsImageReady] = useState(previewMedia?.type !== "image");
   const eagerImage = index < 3;
 
   useEffect(() => {
-    setIsImageReady(false);
-  }, [imageSources.src]);
+    setIsImageReady(previewMedia?.type !== "image");
+  }, [previewMedia?.type, imageUrl]);
 
   return (
     <div className="relative overflow-hidden aspect-video">
-      <div
-        className={`absolute inset-0 bg-muted/35 transition-opacity duration-300 ${isImageReady ? "opacity-0" : "opacity-100"}`}
-        aria-hidden="true"
-      />
-      <img
-        src={imageSources.src}
-        srcSet={imageSources.srcSet}
-        alt={title}
-        width={600}
-        height={400}
-        loading={eagerImage ? "eager" : "lazy"}
-        fetchPriority={eagerImage ? "high" : "low"}
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-        decoding="async"
-        onLoad={() => setIsImageReady(true)}
-        onError={() => setIsImageReady(true)}
-        className={`w-full h-full object-cover transition-[transform,opacity] duration-300 group-hover:scale-[1.02] ${isImageReady ? "opacity-100" : "opacity-0"}`}
-      />
+      {previewMedia?.type === "video" ? (
+        <video
+          src={previewMedia.url}
+          className="w-full h-full object-cover"
+          muted
+          playsInline
+          preload="none"
+        />
+      ) : previewMedia?.type === "pdf" ? (
+        <PdfPreview url={previewMedia.url} title={title} loading={eagerImage ? "eager" : "lazy"} />
+      ) : imageSources ? (
+        <>
+          <div
+            className={`absolute inset-0 bg-muted/35 transition-opacity duration-300 ${isImageReady ? "opacity-0" : "opacity-100"}`}
+            aria-hidden="true"
+          />
+          <img
+            src={imageSources.src}
+            srcSet={imageSources.srcSet}
+            alt={title}
+            width={600}
+            height={400}
+            loading={eagerImage ? "eager" : "lazy"}
+            fetchPriority={eagerImage ? "high" : "low"}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            decoding="async"
+            onLoad={() => setIsImageReady(true)}
+            onError={() => setIsImageReady(true)}
+            className={`w-full h-full object-cover transition-[transform,opacity] duration-300 group-hover:scale-[1.02] ${isImageReady ? "opacity-100" : "opacity-0"}`}
+          />
+        </>
+      ) : (
+        <div className="flex h-full items-center justify-center bg-muted/20 text-sm text-muted-foreground">
+          No Preview
+        </div>
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="absolute top-4 left-4">
         <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow">
           {category}
         </span>
       </div>
+      {hasPdf && (
+        <div className="absolute bottom-4 left-4">
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
+            <FileText className="h-3.5 w-3.5" />
+            PDF
+          </span>
+        </div>
+      )}
     </div>
   );
 };
@@ -154,10 +186,6 @@ const PortfolioSection = ({ data }: PortfolioSectionProps) => {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleProjects.map((project, index) => {
-              const imageUrl =
-                project.image_url ||
-                "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=400&fit=crop";
-
               return (
                 <div
                   key={project.id || index}
@@ -166,7 +194,7 @@ const PortfolioSection = ({ data }: PortfolioSectionProps) => {
                 >
                   <div className="glass-card dark:backdrop-blur-0 overflow-hidden h-full flex flex-col">
                     <PortfolioCardImage
-                      imageUrl={imageUrl}
+                      project={project}
                       title={project.title}
                       category={project.category || "Uncategorized"}
                       index={index}

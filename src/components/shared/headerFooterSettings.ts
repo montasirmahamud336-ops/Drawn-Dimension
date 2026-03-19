@@ -7,6 +7,7 @@ export type HeaderFooterLink = {
 export type HeaderFooterSettings = {
   header_links: HeaderFooterLink[];
   footer_links: HeaderFooterLink[];
+  header_service_order: number[];
   footer_service_order: number[];
   updated_at: string | null;
   needs_migration?: boolean;
@@ -108,6 +109,7 @@ export const normalizeHeaderFooterSettings = (value: unknown): HeaderFooterSetti
   return {
     header_links: normalizeLinks(source.header_links, DEFAULT_HEADER_LINKS, "header"),
     footer_links: normalizeLinks(source.footer_links, DEFAULT_FOOTER_LINKS, "footer"),
+    header_service_order: normalizeOrderList(source.header_service_order),
     footer_service_order: normalizeOrderList(source.footer_service_order),
     updated_at: typeof source.updated_at === "string" ? source.updated_at : null,
     needs_migration: Boolean(source.needs_migration),

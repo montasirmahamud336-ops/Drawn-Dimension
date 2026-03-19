@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
+  ExternalLink,
+  FileText,
   X,
   UserRound,
   Building2,
@@ -19,29 +21,8 @@ import {
   Timer,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-
-type MediaItem = {
-  url: string;
-  type: "image" | "video";
-};
-
-const detectMediaType = (value: string) => {
-  const v = value.toLowerCase();
-  if (v.includes(".mp4") || v.includes(".mov") || v.includes(".webm")) return "video";
-  return "image";
-};
-
-const getMediaList = (item: any): MediaItem[] => {
-  if (Array.isArray(item?.media) && item.media.length > 0) {
-    return item.media
-      .filter((m: any) => typeof m?.url === "string" && m.url.length > 0)
-      .map((m: any) => ({ url: m.url, type: m.type === "video" ? "video" : "image" }));
-  }
-  if (item?.image_url) {
-    return [{ url: item.image_url, type: detectMediaType(item.image_url) }];
-  }
-  return [{ url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&h=700&fit=crop", type: "image" }];
-};
+import { getProjectPdfDocument, getProjectMediaList, type ProjectMediaItem } from "@/components/shared/projectMedia";
+import PdfPreview from "@/components/shared/PdfPreview";
 
 const normalizeCategory = (raw?: string | null) => {
   if (!raw) return "Uncategorized";
@@ -106,9 +87,21 @@ const PortfolioDetails = () => {
     [projects, id]
   );
 
-  const media = project ? getMediaList(project) : [];
-  const currentMedia = media[mediaIndex];
-  const hasManyMedia = media.length > 1;
+  const fallbackMedia: ProjectMediaItem = useMemo(
+    () => ({
+      url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&h=700&fit=crop",
+      type: "image",
+    }),
+    []
+  );
+  const media = useMemo(
+    () => (project ? getProjectMediaList(project) : []),
+    [project]
+  );
+  const effectiveMedia = media.length > 0 ? media : [fallbackMedia];
+  const currentMedia = effectiveMedia[mediaIndex] ?? fallbackMedia;
+  const hasManyMedia = effectiveMedia.length > 1;
+  const pdfDocument = project ? getProjectPdfDocument(project) : null;
   const category = normalizeCategory(project?.category);
   const descriptionParagraphs = useMemo(
     () => getDescriptionParagraphs(project?.description),
@@ -128,6 +121,11 @@ const PortfolioDetails = () => {
     [createdBy, clientName, projectCost, projectDuration]
   );
 
+  useEffect(() => {
+    setMediaIndex(0);
+    setIsViewerOpen(false);
+  }, [project?.id]);
+
   const closeViewer = useCallback((fromWheel = false) => {
     reopenBlockUntilRef.current = Date.now() + 260;
     if (!fromWheel) {
@@ -140,14 +138,14 @@ const PortfolioDetails = () => {
   const showPrevMedia = useCallback(() => {
     if (!hasManyMedia) return;
     setDirection(-1);
-    setMediaIndex((i) => (i - 1 + media.length) % media.length);
-  }, [hasManyMedia, media.length]);
+    setMediaIndex((i) => (i - 1 + effectiveMedia.length) % effectiveMedia.length);
+  }, [effectiveMedia.length, hasManyMedia]);
 
   const showNextMedia = useCallback(() => {
     if (!hasManyMedia) return;
     setDirection(1);
-    setMediaIndex((i) => (i + 1) % media.length);
-  }, [hasManyMedia, media.length]);
+    setMediaIndex((i) => (i + 1) % effectiveMedia.length);
+  }, [effectiveMedia.length, hasManyMedia]);
 
   const selectMedia = useCallback(
     (index: number) => {
@@ -279,7 +277,7 @@ const PortfolioDetails = () => {
                   <div className="pointer-events-none absolute -left-24 top-[-32%] h-72 w-72 rounded-full bg-primary/14 blur-3xl opacity-30 dark:opacity-50" />
                   <div className="pointer-events-none absolute -right-20 bottom-[-36%] h-72 w-72 rounded-full bg-primary/10 blur-3xl opacity-25 dark:opacity-45" />
                   <div
-                    className="relative overflow-hidden aspect-video border-b border-slate-300/70 dark:border-border/60 bg-black/10 dark:bg-black/25 group"
+                    className={`relative overflow-hidden border-b border-slate-300/70 dark:border-border/60 bg-black/10 dark:bg-black/25 group ${currentMedia.type === "pdf" ? "h-[70vh] min-h-[560px]" : "aspect-video"}`}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
                   >
@@ -295,6 +293,34 @@ const PortfolioDetails = () => {
                       >
                         {currentMedia?.type === "video" ? (
                           <video src={currentMedia.url} className="w-full h-full object-cover" controls autoPlay muted loop playsInline />
+                        ) : currentMedia?.type === "pdf" ? (
+                          <div className="flex h-full w-full flex-col bg-white">
+                            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 text-slate-900">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                  <FileText className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold">{project.title} PDF</p>
+                                  <p className="text-xs text-slate-500">Scroll inside the document to read the full file.</p>
+                                </div>
+                              </div>
+                              <a
+                                href={currentMedia.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 transition-colors hover:border-primary hover:text-primary"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Open PDF
+                              </a>
+                            </div>
+                            <iframe
+                              src={`${currentMedia.url}#view=FitH`}
+                              title={`${project.title} PDF viewer`}
+                              className="h-full w-full bg-white"
+                            />
+                          </div>
                         ) : (
                           <img src={currentMedia?.url} alt={project.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.015]" />
                         )}
@@ -340,7 +366,7 @@ const PortfolioDetails = () => {
                   </div>
                   {hasManyMedia && (
                     <div className="flex gap-3 overflow-x-auto px-5 py-4 border-b border-slate-300/70 dark:border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_100%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0)_100%)] sm:px-6">
-                      {media.map((item, index) => (
+                      {effectiveMedia.map((item, index) => (
                         <button
                           key={`${item.url}-${index}`}
                           type="button"
@@ -352,6 +378,8 @@ const PortfolioDetails = () => {
                         >
                           {item.type === "video" ? (
                             <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                          ) : item.type === "pdf" ? (
+                            <PdfPreview url={item.url} title={`${project.title} thumbnail ${index + 1}`} />
                           ) : (
                             <img src={item.url} alt={`${project.title} thumbnail ${index + 1}`} className="w-full h-full object-cover" />
                           )}
@@ -412,6 +440,26 @@ const PortfolioDetails = () => {
                     </div>
 
                     <div className="border-t border-slate-300/80 dark:border-border/60 pt-6">
+                      {pdfDocument && (
+                        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-300/75 dark:border-border/60 bg-white/70 dark:bg-background/35 px-4 py-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-foreground">Attached project PDF available</p>
+                            <p className="text-xs text-muted-foreground">Open the document in a separate tab if you want a larger reading view.</p>
+                          </div>
+                          <a
+                            href={pdfDocument.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 rounded-full border border-primary/45 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-primary transition-all duration-300 hover:bg-primary hover:text-primary-foreground"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Open PDF
+                          </a>
+                        </div>
+                      )}
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm text-muted-foreground">
                           Need a similar execution plan for your project? Let&apos;s discuss your requirements.
@@ -530,7 +578,7 @@ const PortfolioDetails = () => {
 
                               <div className="pointer-events-auto border-t border-white/10 bg-black/55 px-4 py-3 sm:px-8 sm:py-4">
                                 <div className="mx-auto flex max-w-5xl gap-3 overflow-x-auto pb-1">
-                                  {media.map((item, index) => (
+                                  {effectiveMedia.map((item, index) => (
                                     <button
                                       key={`viewer-thumb-${item.url}-${index}`}
                                       type="button"
@@ -543,6 +591,8 @@ const PortfolioDetails = () => {
                                     >
                                       {item.type === "video" ? (
                                         <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                                      ) : item.type === "pdf" ? (
+                                        <PdfPreview url={item.url} title={`${project.title} gallery thumbnail ${index + 1}`} />
                                       ) : (
                                         <img src={item.url} alt={`${project.title} gallery thumbnail ${index + 1}`} className="w-full h-full object-cover" />
                                       )}
