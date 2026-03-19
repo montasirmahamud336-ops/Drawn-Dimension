@@ -128,12 +128,6 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (user) {
-      void loadData();
-    }
-  }, [loadData, user]);
-
   const loadData = useCallback(async () => {
     if (!user) return;
 
@@ -213,6 +207,12 @@ const Dashboard = () => {
     setLoadingEmployeeData(false);
     setLoading(false);
   }, [navigate, session?.access_token, toast, user]);
+
+  useEffect(() => {
+    if (user) {
+      void loadData();
+    }
+  }, [loadData, user]);
 
   const persistProfile = async (nextDraft: ProfileDraft, successMessage?: string) => {
     if (!user) return false;
