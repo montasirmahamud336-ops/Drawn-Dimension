@@ -11,6 +11,8 @@ import ScrollToTop from "@/components/shared/ScrollToTop";
 import SmoothScroll from "@/components/shared/SmoothScroll";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import Home from "./pages/services/Home";
+import Dashboard from "./pages/services/Dashboard";
+import AuthCallback from "./pages/services/AuthCallback";
 
 // Pages
 const ChatWidget = lazy(() => import("@/components/ChatWidget"));
@@ -48,7 +50,6 @@ const Contact = lazy(() => import("./pages/services/Contact"));
 const NotFound = lazy(() => import("./pages/services/NotFound"));
 const Auth = lazy(() => import("./pages/services/Auth"));
 const ResetPassword = lazy(() => import("./pages/services/ResetPassword"));
-const Dashboard = lazy(() => import("./pages/services/Dashboard"));
 const EmployeeDashboard = lazy(() => import("./pages/services/EmployeeDashboard"));
 const PrivacyPolicy = lazy(() => import("./pages/services/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/services/TermsOfService"));
@@ -161,6 +162,7 @@ const AppShell = () => {
             <Route path="/testimonials/all" element={<AllReviews />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/employee/dashboard" element={<EmployeeDashboard />} />

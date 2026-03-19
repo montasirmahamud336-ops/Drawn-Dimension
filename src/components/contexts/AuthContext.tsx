@@ -22,6 +22,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const OAUTH_POST_LOGIN_REDIRECT_KEY = "post_auth_redirect_path";
 
+export const getPendingOAuthRedirectPath = () => {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage.getItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+};
+
+export const clearPendingOAuthRedirectPath = () => {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+};
+
 const notifySignup = async (payload: {
   method: "email" | "google";
   email?: string | null;
@@ -121,9 +131,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const pendingOAuthRedirect = window.sessionStorage.getItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
       if (pendingOAuthRedirect) {
         if (window.location.pathname === pendingOAuthRedirect) {
-          window.sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+          clearPendingOAuthRedirectPath();
         } else if (window.location.pathname === "/" || window.location.pathname === "/auth") {
-          window.sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+          clearPendingOAuthRedirectPath();
           window.location.replace(pendingOAuthRedirect);
           return;
         }
@@ -210,10 +220,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     window.sessionStorage.setItem(OAUTH_POST_LOGIN_REDIRECT_KEY, safeRedirectPath);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}${safeRedirectPath}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) {
-      window.sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+      clearPendingOAuthRedirectPath();
     }
     return { error };
   };
