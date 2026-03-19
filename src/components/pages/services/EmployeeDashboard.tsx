@@ -12,9 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { EMPLOYEE_DASHBOARD_PATH, setPreferredDashboardPath } from "@/components/shared/dashboardPath";
 
 interface EmployeeProfile {
   id: string;
@@ -82,6 +83,11 @@ const parseApiError = async (response: Response, fallback: string) => {
   return fallback;
 };
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+};
+
 const formatTimeRemaining = (endAt: string | null | undefined, status: EmployeeAssignment["status"], nowMs: number) => {
   if (status === "done") return "Done";
   if (!endAt) return "-";
@@ -140,7 +146,13 @@ const EmployeeDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const showInboxFullView = location.hash.toLowerCase() === "#inbox-full";
+  const previewEmployeeId = useMemo(
+    () => new URLSearchParams(location.search).get("preview_employee_id")?.trim() ?? "",
+    [location.search]
+  );
+  const adminToken = useMemo(() => (previewEmployeeId ? getAdminToken() ?? "" : ""), [previewEmployeeId]);
+  const isAdminPreview = Boolean(previewEmployeeId && adminToken);
+  const showInboxFullView = !isAdminPreview && location.hash.toLowerCase() === "#inbox-full";
 
   const [employee, setEmployee] = useState<EmployeeProfile | null>(null);
   const [assignments, setAssignments] = useState<EmployeeAssignment[]>([]);
@@ -171,25 +183,77 @@ const EmployeeDashboard = () => {
   const completedFocusRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (isAdminPreview) return;
     if (!authLoading && !user) {
       navigate("/auth");
     }
-  }, [authLoading, user, navigate]);
+  }, [authLoading, isAdminPreview, user, navigate]);
+
+  useEffect(() => {
+    if (!isAdminPreview) {
+      setPreferredDashboardPath(EMPLOYEE_DASHBOARD_PATH);
+    }
+  }, [isAdminPreview]);
+
+  useEffect(() => {
+    if (!previewEmployeeId || adminToken) return;
+    navigate("/database/login", { replace: true });
+  }, [adminToken, navigate, previewEmployeeId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const loadEmployeeDashboard = useCallback(async () => {
-    if (!session?.access_token) {
-      setLoading(false);
-      return;
-    }
+  const applyDashboardPayload = useCallback((data: { employee?: EmployeeProfile | null; assignments?: EmployeeAssignment[] } | null) => {
+    const nextEmployee = (data?.employee ?? null) as EmployeeProfile | null;
+    const nextAssignments = Array.isArray(data?.assignments) ? (data.assignments as EmployeeAssignment[]) : [];
 
+    setEmployee(nextEmployee);
+    setAssignments(nextAssignments);
+    setProfileDraft({
+      mobile: nextEmployee?.mobile ?? "",
+      profile_image_url: nextEmployee?.profile_image_url ?? null,
+    });
+
+    const initialSubmissionDrafts: Record<string, SubmissionDraft> = {};
+    nextAssignments.forEach((assignment) => {
+      const id = String(assignment?.id ?? "").trim();
+      if (!id) return;
+      initialSubmissionDrafts[id] = {
+        note: assignment.employee_submission_note ?? "",
+        fileUrl: assignment.employee_submission_file_url ?? "",
+      };
+    });
+    setSubmissionDrafts(initialSubmissionDrafts);
+  }, []);
+
+  const loadEmployeeDashboard = useCallback(async () => {
     try {
       setLoading(true);
       const apiBase = getApiBaseUrl();
+      if (isAdminPreview) {
+        const response = await fetch(`${apiBase}/employees/${encodeURIComponent(previewEmployeeId)}/dashboard-preview`, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, "Failed to load employee preview"));
+        }
+
+        const data = await response.json();
+        applyDashboardPayload(data);
+        setChatMessages([]);
+        return;
+      }
+
+      if (!session?.access_token) {
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`${apiBase}/employee/dashboard`, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -201,40 +265,21 @@ const EmployeeDashboard = () => {
       }
 
       const data = await response.json();
-      const nextEmployee = (data?.employee ?? null) as EmployeeProfile | null;
-      const nextAssignments = Array.isArray(data?.assignments) ? (data.assignments as EmployeeAssignment[]) : [];
-
-      setEmployee(nextEmployee);
-      setAssignments(nextAssignments);
-      setProfileDraft({
-        mobile: nextEmployee?.mobile ?? "",
-        profile_image_url: nextEmployee?.profile_image_url ?? null,
-      });
-
-      const initialSubmissionDrafts: Record<string, SubmissionDraft> = {};
-      nextAssignments.forEach((assignment) => {
-        const id = String(assignment?.id ?? "").trim();
-        if (!id) return;
-        initialSubmissionDrafts[id] = {
-          note: assignment.employee_submission_note ?? "",
-          fileUrl: assignment.employee_submission_file_url ?? "",
-        };
-      });
-      setSubmissionDrafts(initialSubmissionDrafts);
-    } catch (error: any) {
+      applyDashboardPayload(data);
+    } catch (error: unknown) {
       console.error(error);
       setEmployee(null);
       setAssignments([]);
       setSubmissionDrafts({});
       toast({
         title: "Employee dashboard error",
-        description: error?.message || "Failed to load employee dashboard",
+        description: getErrorMessage(error, "Failed to load employee dashboard"),
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token, toast]);
+  }, [adminToken, applyDashboardPayload, isAdminPreview, previewEmployeeId, session?.access_token, toast]);
 
   useEffect(() => {
     loadEmployeeDashboard();
@@ -242,6 +287,11 @@ const EmployeeDashboard = () => {
 
   const loadEmployeeChat = useCallback(
     async (silent = false) => {
+      if (isAdminPreview) {
+        setChatMessages([]);
+        return;
+      }
+
       if (!session?.access_token) return;
 
       try {
@@ -260,11 +310,11 @@ const EmployeeDashboard = () => {
         const data = await response.json();
         const nextMessages = Array.isArray(data?.messages) ? (data.messages as EmployeeChatMessage[]) : [];
         setChatMessages(nextMessages);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (!silent) {
           toast({
             title: "Chat load failed",
-            description: error?.message || "Could not load chat messages",
+            description: getErrorMessage(error, "Could not load chat messages"),
             variant: "destructive",
           });
         }
@@ -272,7 +322,7 @@ const EmployeeDashboard = () => {
         if (!silent) setLoadingChat(false);
       }
     },
-    [session?.access_token, toast]
+    [isAdminPreview, session?.access_token, toast]
   );
 
   useEffect(() => {
@@ -281,12 +331,12 @@ const EmployeeDashboard = () => {
   }, [loadEmployeeChat, showInboxFullView]);
 
   useEffect(() => {
-    if (!session?.access_token || !showInboxFullView) return;
+    if (!session?.access_token || !showInboxFullView || isAdminPreview) return;
     const timer = window.setInterval(() => {
       loadEmployeeChat(true);
     }, 15000);
     return () => window.clearInterval(timer);
-  }, [loadEmployeeChat, session?.access_token, showInboxFullView]);
+  }, [isAdminPreview, loadEmployeeChat, session?.access_token, showInboxFullView]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -378,6 +428,7 @@ const EmployeeDashboard = () => {
   }, [employee, profileDraft.mobile, profileDraft.profile_image_url]);
 
   const handleAvatarUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (isAdminPreview) return;
     const file = event.target.files?.[0];
     event.target.value = "";
 
@@ -424,10 +475,10 @@ const EmployeeDashboard = () => {
         title: "Photo ready",
         description: "Click Save Profile to apply your new image.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Upload failed",
-        description: error?.message || "Could not upload profile image",
+        description: getErrorMessage(error, "Could not upload profile image"),
         variant: "destructive",
       });
     } finally {
@@ -436,6 +487,7 @@ const EmployeeDashboard = () => {
   };
 
   const handleSaveProfile = async () => {
+    if (isAdminPreview) return;
     if (!session?.access_token || !employee) return;
 
     setSavingProfile(true);
@@ -470,10 +522,10 @@ const EmployeeDashboard = () => {
         };
       });
       toast({ title: "Profile updated" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Save failed",
-        description: error?.message || "Could not update profile",
+        description: getErrorMessage(error, "Could not update profile"),
         variant: "destructive",
       });
     } finally {
@@ -492,6 +544,7 @@ const EmployeeDashboard = () => {
   };
 
   const handleSubmitAssignment = async (assignmentId: string) => {
+    if (isAdminPreview) return;
     if (!session?.access_token) return;
 
     const assignment = assignments.find((item) => item.id === assignmentId);
@@ -547,10 +600,10 @@ const EmployeeDashboard = () => {
 
       toast({ title: "Work submitted successfully" });
       await loadEmployeeDashboard();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Submission failed",
-        description: error?.message || "Could not submit assignment",
+        description: getErrorMessage(error, "Could not submit assignment"),
         variant: "destructive",
       });
     } finally {
@@ -559,6 +612,7 @@ const EmployeeDashboard = () => {
   };
 
   const handleChatAttachmentUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (isAdminPreview) return;
     const file = event.target.files?.[0];
     event.target.value = "";
 
@@ -596,10 +650,10 @@ const EmployeeDashboard = () => {
         mime: file.type || "application/octet-stream",
       });
       toast({ title: "Attachment ready" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Upload failed",
-        description: error?.message || "Could not upload file",
+        description: getErrorMessage(error, "Could not upload file"),
         variant: "destructive",
       });
     } finally {
@@ -608,6 +662,7 @@ const EmployeeDashboard = () => {
   };
 
   const handleSendChat = async () => {
+    if (isAdminPreview) return;
     if (!session?.access_token || !employee) return;
 
     const messageText = chatDraft.trim();
@@ -644,10 +699,10 @@ const EmployeeDashboard = () => {
       setChatDraft("");
       setChatAttachment(null);
       await loadEmployeeChat(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Send failed",
-        description: error?.message || "Could not send message",
+        description: getErrorMessage(error, "Could not send message"),
         variant: "destructive",
       });
     } finally {
@@ -658,11 +713,15 @@ const EmployeeDashboard = () => {
   const initials = (employee?.name || employee?.email || "E").trim().slice(0, 1).toUpperCase();
 
   const handleSignOut = async () => {
+    if (isAdminPreview) {
+      navigate("/database/employees");
+      return;
+    }
     await signOut();
     navigate("/");
   };
 
-  if (authLoading) {
+  if (authLoading && !isAdminPreview) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -694,12 +753,14 @@ const EmployeeDashboard = () => {
                   <h1 className="text-3xl md:text-4xl font-bold">Employee Dashboard</h1>
                   <p className="text-muted-foreground mt-2">
                     {employee
-                      ? `${employee.name} (${employee.profession})`
-                      : "No employee profile is linked with this login."}
+                      ? `${employee.name} (${employee.profession})${isAdminPreview ? " - Admin Preview" : ""}`
+                      : isAdminPreview
+                        ? "No employee profile is available for this preview."
+                        : "No employee profile is linked with this login."}
                   </p>
                 </div>
                 <Button variant="outline" onClick={handleSignOut}>
-                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                  <LogOut className="w-4 h-4 mr-2" /> {isAdminPreview ? "Back to Employee Manager" : "Sign Out"}
                 </Button>
               </div>
             </motion.section>
@@ -727,13 +788,13 @@ const EmployeeDashboard = () => {
                               initials
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => avatarInputRef.current?.click()}
-                            className="absolute -bottom-2 -right-2 h-8 w-8 rounded-xl border border-primary/30 bg-primary/15 text-primary flex items-center justify-center hover:bg-primary/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            disabled={uploadingAvatar || savingProfile}
-                            aria-label="Upload profile image"
-                          >
+                            <button
+                              type="button"
+                              onClick={() => avatarInputRef.current?.click()}
+                              className="absolute -bottom-2 -right-2 h-8 w-8 rounded-xl border border-primary/30 bg-primary/15 text-primary flex items-center justify-center hover:bg-primary/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              disabled={isAdminPreview || uploadingAvatar || savingProfile}
+                              aria-label="Upload profile image"
+                            >
                             {uploadingAvatar ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
                           </button>
                           <input
@@ -758,34 +819,41 @@ const EmployeeDashboard = () => {
                             setProfileDraft((prev) => ({ ...prev, mobile: event.target.value }))
                           }
                           placeholder="+880..."
+                          readOnly={isAdminPreview}
                         />
                       </div>
 
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleSaveProfile}
-                          disabled={savingProfile || uploadingAvatar || !hasProfileChanges}
-                        >
-                          {savingProfile ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Save className="w-4 h-4 mr-2" />
-                          )}
-                          Save
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            setProfileDraft({
-                              mobile: employee.mobile ?? "",
-                              profile_image_url: employee.profile_image_url ?? null,
-                            })
-                          }
-                          disabled={savingProfile || uploadingAvatar || !hasProfileChanges}
-                        >
-                          Reset
-                        </Button>
-                      </div>
+                      {isAdminPreview ? (
+                        <p className="text-xs text-muted-foreground">
+                          Admin preview is read-only. Employee profile editing stays available only inside the employee's own session.
+                        </p>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleSaveProfile}
+                            disabled={savingProfile || uploadingAvatar || !hasProfileChanges}
+                          >
+                            {savingProfile ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="w-4 h-4 mr-2" />
+                            )}
+                            Save
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              setProfileDraft({
+                                mobile: employee.mobile ?? "",
+                                profile_image_url: employee.profile_image_url ?? null,
+                              })
+                            }
+                            disabled={savingProfile || uploadingAvatar || !hasProfileChanges}
+                          >
+                            Reset
+                          </Button>
+                        </div>
+                      )}
                     </>
                   )}
                 </CardContent>
@@ -1140,7 +1208,7 @@ const EmployeeDashboard = () => {
                           </div>
                         )}
 
-                        {assignment.status !== "done" && (
+                        {assignment.status !== "done" && !isAdminPreview && (
                           <div className="mt-4 space-y-3 border-t border-border/50 pt-3">
                             <div className="grid gap-2">
                               <label className="text-sm font-medium">Submission Note</label>
@@ -1185,129 +1253,131 @@ const EmployeeDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card
-              id="employee-inbox-section"
-              className={`${showInboxFullView ? "block" : "hidden"} glass-card border-border/60 overflow-hidden scroll-mt-32`}
-            >
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-                <CardTitle>Inbox With Admin</CardTitle>
-                <Button type="button" variant="outline" size="sm" onClick={() => navigate("/employee/dashboard")}>
-                  Close Full View
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {!employee ? (
-                  <div className="py-6 text-sm text-muted-foreground">
-                    Chat will be available after your account is linked with an employee profile.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="h-[340px] overflow-y-auto rounded-xl border border-border/60 bg-background/35 p-3 space-y-3">
-                      {loadingChat ? (
-                        <div className="text-sm text-muted-foreground py-4">Loading chat...</div>
-                      ) : chatMessages.length === 0 ? (
-                        <div className="text-sm text-muted-foreground py-4">
-                          No messages yet. Start a conversation with admin.
-                        </div>
-                      ) : (
-                        chatMessages.map((message) => {
-                          const sentByEmployee = message.sender_type === "employee";
-                          return (
-                            <div
-                              key={message.id}
-                              className={`flex ${sentByEmployee ? "justify-end" : "justify-start"}`}
-                            >
-                              <div
-                                className={`max-w-[78%] rounded-xl border px-3 py-2 ${
-                                  sentByEmployee
-                                    ? "border-primary/35 bg-primary/15"
-                                    : "border-border/60 bg-card/70"
-                                }`}
-                              >
-                                {message.message_text && (
-                                  <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
-                                )}
-                                {message.attachment_url && (
-                                  <a
-                                    href={message.attachment_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-xs text-primary hover:underline inline-block mt-1 break-all"
-                                  >
-                                    {message.attachment_name || "Attachment"}
-                                  </a>
-                                )}
-                                <p className="text-[11px] text-muted-foreground mt-1">
-                                  {new Date(message.created_at).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                      <div ref={chatEndRef} />
+            {!isAdminPreview && (
+              <Card
+                id="employee-inbox-section"
+                className={`${showInboxFullView ? "block" : "hidden"} glass-card border-border/60 overflow-hidden scroll-mt-32`}
+              >
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+                  <CardTitle>Inbox With Admin</CardTitle>
+                  <Button type="button" variant="outline" size="sm" onClick={() => navigate("/employee/dashboard")}>
+                    Close Full View
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {!employee ? (
+                    <div className="py-6 text-sm text-muted-foreground">
+                      Chat will be available after your account is linked with an employee profile.
                     </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="h-[340px] overflow-y-auto rounded-xl border border-border/60 bg-background/35 p-3 space-y-3">
+                        {loadingChat ? (
+                          <div className="text-sm text-muted-foreground py-4">Loading chat...</div>
+                        ) : chatMessages.length === 0 ? (
+                          <div className="text-sm text-muted-foreground py-4">
+                            No messages yet. Start a conversation with admin.
+                          </div>
+                        ) : (
+                          chatMessages.map((message) => {
+                            const sentByEmployee = message.sender_type === "employee";
+                            return (
+                              <div
+                                key={message.id}
+                                className={`flex ${sentByEmployee ? "justify-end" : "justify-start"}`}
+                              >
+                                <div
+                                  className={`max-w-[78%] rounded-xl border px-3 py-2 ${
+                                    sentByEmployee
+                                      ? "border-primary/35 bg-primary/15"
+                                      : "border-border/60 bg-card/70"
+                                  }`}
+                                >
+                                  {message.message_text && (
+                                    <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
+                                  )}
+                                  {message.attachment_url && (
+                                    <a
+                                      href={message.attachment_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-xs text-primary hover:underline inline-block mt-1 break-all"
+                                    >
+                                      {message.attachment_name || "Attachment"}
+                                    </a>
+                                  )}
+                                  <p className="text-[11px] text-muted-foreground mt-1">
+                                    {new Date(message.created_at).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                        <div ref={chatEndRef} />
+                      </div>
 
-                    <div className="space-y-3">
-                      <Textarea
-                        id="employee-chat-composer"
-                        rows={3}
-                        value={chatDraft}
-                        onChange={(event) => setChatDraft(event.target.value)}
-                        placeholder="Write a message to admin..."
-                      />
-
-                      {chatAttachment && (
-                        <div className="text-xs text-muted-foreground">
-                          Attached: <span className="font-medium">{chatAttachment.name}</span>
-                          <button
-                            type="button"
-                            className="ml-2 text-primary hover:underline"
-                            onClick={() => setChatAttachment(null)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      )}
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => chatAttachmentInputRef.current?.click()}
-                          disabled={uploadingChatAttachment || sendingChat}
-                        >
-                          {uploadingChatAttachment ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Paperclip className="w-4 h-4 mr-2" />
-                          )}
-                          Attach File
-                        </Button>
-                        <input
-                          ref={chatAttachmentInputRef}
-                          type="file"
-                          onChange={handleChatAttachmentUpload}
-                          className="hidden"
+                      <div className="space-y-3">
+                        <Textarea
+                          id="employee-chat-composer"
+                          rows={3}
+                          value={chatDraft}
+                          onChange={(event) => setChatDraft(event.target.value)}
+                          placeholder="Write a message to admin..."
                         />
-                        <Button
-                          type="button"
-                          onClick={handleSendChat}
-                          disabled={sendingChat || uploadingChatAttachment}
-                        >
-                          {sendingChat ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Send className="w-4 h-4 mr-2" />
-                          )}
-                          Send
-                        </Button>
+
+                        {chatAttachment && (
+                          <div className="text-xs text-muted-foreground">
+                            Attached: <span className="font-medium">{chatAttachment.name}</span>
+                            <button
+                              type="button"
+                              className="ml-2 text-primary hover:underline"
+                              onClick={() => setChatAttachment(null)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => chatAttachmentInputRef.current?.click()}
+                            disabled={uploadingChatAttachment || sendingChat}
+                          >
+                            {uploadingChatAttachment ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Paperclip className="w-4 h-4 mr-2" />
+                            )}
+                            Attach File
+                          </Button>
+                          <input
+                            ref={chatAttachmentInputRef}
+                            type="file"
+                            onChange={handleChatAttachmentUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleSendChat}
+                            disabled={sendingChat || uploadingChatAttachment}
+                          >
+                            {sendingChat ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Send className="w-4 h-4 mr-2" />
+                            )}
+                            Send
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </main>
 

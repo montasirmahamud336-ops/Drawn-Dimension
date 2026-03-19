@@ -14,10 +14,11 @@ import {
   getFallbackServiceCards,
 } from "@/components/shared/serviceCatalog";
 
+const siteOrigin = "https://drawndimension.com";
+
 const toAbsoluteUrl = (path: string) => {
-  if (typeof window === "undefined") return path;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${window.location.origin}${path.startsWith("/") ? path : `/${path}`}`;
+  return `${siteOrigin}${path.startsWith("/") ? path : `/${path}`}`;
 };
 
 const Services = () => {
@@ -77,22 +78,25 @@ const Services = () => {
     [services]
   );
   const pageTitle =
-    "Engineering & Design Services | Web, AutoCAD, P&ID, SolidWorks | Drawn Dimension";
+    "Engineering Service Solutions | DrawnDimension";
   const pageDescription =
-    "Explore Drawn Dimension's global engineering and digital services: web design, AutoCAD technical drawing, PFD/P&ID diagrams, SolidWorks 3D modeling, HAZOP studies, and graphic design.";
+    "Explore DrawnDimension's engineering service solutions, including CRO, P&ID, PFD, architectural drafting, HAZOP, web development, graphic design, and SolidWorks.";
   const canonicalUrl = toAbsoluteUrl("/services");
   const ogImageUrl = toAbsoluteUrl("/images/logo.png");
   const pageKeywords = useMemo(() => {
     const baseKeywords = [
       "engineering services",
-      "digital services",
-      "web design services",
-      "AutoCAD technical drawing",
-      "PFD and P&ID services",
-      "SolidWorks 3D modeling",
-      "HAZOP risk analysis",
-      "graphic design services",
-      "global engineering solutions",
+      "technical service solutions",
+      "industrial engineering services",
+      "B2B engineering outsourcing",
+      "web development services for engineering firms",
+      "architectural drafting services",
+      "P&ID drawing services",
+      "process flow diagram services",
+      "SolidWorks modeling services",
+      "HAZOP study services",
+      "conversion rate optimization services",
+      "technical graphics design services",
     ];
 
     const serviceKeywords = seoServices.flatMap((service) => [
@@ -110,74 +114,40 @@ const Services = () => {
   const structuredData = useMemo(
     () => ({
       "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          name: "Drawn Dimension",
-          url: toAbsoluteUrl("/"),
-          logo: ogImageUrl,
-          description: pageDescription,
-        },
-        {
-          "@type": "WebPage",
-          name: "Services | Drawn Dimension",
-          url: canonicalUrl,
-          description: pageDescription,
-          inLanguage: "en",
-        },
-        {
-          "@type": "BreadcrumbList",
-          itemListElement: [
-            {
-              "@type": "ListItem",
-              position: 1,
-              name: "Home",
-              item: toAbsoluteUrl("/"),
-            },
-            {
-              "@type": "ListItem",
-              position: 2,
-              name: "Services",
-              item: canonicalUrl,
-            },
-          ],
-        },
-        {
-          "@type": "Service",
-          serviceType: "Engineering and Digital Services",
-          areaServed: "Worldwide",
-          provider: {
-            "@type": "Organization",
-            name: "Drawn Dimension",
-          },
-          hasOfferCatalog: {
-            "@type": "OfferCatalog",
-            name: "All Services",
-            itemListElement: seoServices.map((service) => ({
-              "@type": "Offer",
-              itemOffered: {
-                "@type": "Service",
-                name: service.title,
-                description: service.description,
-                url: toAbsoluteUrl(service.link),
-              },
-            })),
-          },
-        },
-        {
-          "@type": "ItemList",
-          name: "Drawn Dimension Services",
-          itemListElement: seoServices.map((service, index) => ({
-            "@type": "ListItem",
-            position: index + 1,
-            name: service.title,
-            url: toAbsoluteUrl(service.link),
-          })),
-        },
-      ],
+      "@type": "ItemList",
+      name: "DrawnDimension Services",
+      description: pageDescription,
+      itemListElement: seoServices.map((service, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: service.title,
+        url: toAbsoluteUrl(service.link),
+      })),
     }),
-    [canonicalUrl, ogImageUrl, pageDescription, seoServices]
+    [pageDescription, seoServices]
   );
+
+  useEffect(() => {
+    let schemaScript = document.head.querySelector('script[data-dd-services-schema="true"]') as HTMLScriptElement | null;
+    const createdScript = !schemaScript;
+    if (!schemaScript) {
+      schemaScript = document.createElement("script");
+      schemaScript.type = "application/ld+json";
+      schemaScript.setAttribute("data-dd-services-schema", "true");
+      document.head.appendChild(schemaScript);
+    }
+
+    const previousContent = schemaScript.textContent ?? "";
+    schemaScript.textContent = JSON.stringify(structuredData);
+
+    return () => {
+      if (createdScript) {
+        schemaScript?.remove();
+      } else if (schemaScript) {
+        schemaScript.textContent = previousContent;
+      }
+    };
+  }, [structuredData]);
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -210,7 +180,7 @@ const Services = () => {
     const resetOgType = upsertMeta("property", "og:type", "website");
     const resetOgUrl = upsertMeta("property", "og:url", canonicalUrl);
     const resetOgImage = upsertMeta("property", "og:image", ogImageUrl);
-    const resetOgSiteName = upsertMeta("property", "og:site_name", "Drawn Dimension");
+    const resetOgSiteName = upsertMeta("property", "og:site_name", "DrawnDimension");
     const resetTwitterCard = upsertMeta("name", "twitter:card", "summary_large_image");
     const resetTwitterTitle = upsertMeta("name", "twitter:title", pageTitle);
     const resetTwitterDescription = upsertMeta("name", "twitter:description", pageDescription);
@@ -254,14 +224,10 @@ const Services = () => {
       <PremiumBackground>
         <Navigation />
         <main>
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-          />
           <PageHero
-            title="Our Services"
-            subtitle="What We Offer"
-            description="Comprehensive engineering and digital solutions tailored to transform your vision into reality."
+            title="Engineering Service Solutions"
+            subtitle="Industrial Solutions"
+            description="Professional B2B services covering CRO, P&ID, PFD, architectural drafting, HAZOP, web development, technical graphic design, and SolidWorks modeling."
           />
 
           <section className="section-padding relative overflow-hidden">

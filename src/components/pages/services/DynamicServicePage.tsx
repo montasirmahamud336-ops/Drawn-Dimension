@@ -29,6 +29,7 @@ import type { ServiceFaqRecord } from "@/components/shared/serviceContent";
 
 const featureIcons = [Code, Smartphone, Zap, Shield, Palette, Monitor];
 const whatsappUrl = "https://wa.me/8801775119416";
+const siteOrigin = "https://drawndimension.com";
 const featureIconByKey = {
   code: Code,
   smartphone: Smartphone,
@@ -38,10 +39,340 @@ const featureIconByKey = {
   monitor: Monitor,
 };
 
+type ServiceSeoOverride = {
+  slugs: string[];
+  canonicalPath: string;
+  pageTitle: string;
+  metaDescription: string;
+  keywords: string[];
+  heroTitle: string;
+  sectionTitle: string;
+  panelTitle: string;
+  processTitle: string;
+  pricingTitle: string;
+  faqTitle: string;
+  featureCardTitles?: string[];
+  quoteLinkLabel: string;
+  portfolioLinkLabel: string;
+  faqLinkLabel: string;
+  blogLinkLabel: string;
+  whatsappLabel: string;
+  schemaName: string;
+  serviceType: string;
+};
+
+const serviceSeoOverrides: ServiceSeoOverride[] = [
+  {
+    slugs: ["conversion-rate-optimization", "cro", "conversion-optimization"],
+    canonicalPath: "/services/conversion-rate-optimization",
+    pageTitle: "Conversion Rate Optimization Services | DrawnDimension",
+    metaDescription:
+      "Conversion rate optimization services for B2B websites with A/B testing, UX audits, and funnel fixes worldwide. Request your CRO quote today for growth.",
+    keywords: [
+      "conversion rate optimization services",
+      "CRO agency",
+      "website conversion optimization",
+      "landing page optimization",
+      "A/B testing services",
+      "UX conversion audit",
+      "B2B CRO",
+    ],
+    heroTitle: "Conversion Rate Optimization Services for B2B Websites",
+    sectionTitle: "Landing Page Optimization and UX Conversion Audit Support",
+    panelTitle: "A/B Testing Services for Website Conversion Optimization",
+    processTitle: "B2B CRO Workflow and Experiment Roadmap",
+    pricingTitle: "Conversion Rate Optimization Service Packages",
+    faqTitle: "Conversion Rate Optimization Service FAQs",
+    featureCardTitles: [
+      "Conversion Research and Analytics",
+      "A/B Testing Execution",
+      "Landing Page Optimization",
+      "UX Conversion Audit",
+      "Funnel Optimization",
+      "B2B CRO Reporting",
+    ],
+    quoteLinkLabel: "Request a CRO Quote",
+    portfolioLinkLabel: "View CRO Case Studies",
+    faqLinkLabel: "Browse CRO FAQs",
+    blogLinkLabel: "Read CRO Insights",
+    whatsappLabel: "Discuss CRO Services on WhatsApp",
+    schemaName: "Conversion Rate Optimization Services",
+    serviceType: "conversion rate optimization services",
+  },
+  {
+    slugs: ["p-and-id", "p-id", "pid", "piping-and-instrumentation-diagram"],
+    canonicalPath: "/services/p-and-id",
+    pageTitle: "P&ID Drawing Services for Process Plants | DrawnDimension",
+    metaDescription:
+      "P&ID drawing services for oil, gas, chemical, and industrial plants with ISA 5.1-aligned deliverables, revisions, and worldwide support. Request a quote today.",
+    keywords: [
+      "P&ID drawing services",
+      "P&ID drafting services",
+      "piping and instrumentation diagram",
+      "ISA 5.1",
+      "as-built P&ID updates",
+      "process control diagrams",
+      "oil and gas engineering",
+    ],
+    heroTitle: "P&ID Drawing Services for Industrial Process Plants",
+    sectionTitle: "Piping and Instrumentation Diagram Support for Oil and Gas Engineering",
+    panelTitle: "ISA 5.1-Aligned P&ID Drafting Services",
+    processTitle: "P&ID Drafting Services Workflow",
+    pricingTitle: "P&ID Drawing Service Packages",
+    faqTitle: "P&ID Drawing Service FAQs",
+    featureCardTitles: [
+      "Piping and Instrumentation Diagram Planning",
+      "ISA 5.1 Instrument Tagging",
+      "As-Built P&ID Updates",
+      "Process Control Diagram Checks",
+      "Plant Documentation Review",
+      "Revision-Ready Engineering Files",
+    ],
+    quoteLinkLabel: "Request a P&ID Drawing Quote",
+    portfolioLinkLabel: "View P&ID Project Samples",
+    faqLinkLabel: "Browse P&ID FAQs",
+    blogLinkLabel: "Read P&ID Engineering Insights",
+    whatsappLabel: "Discuss P&ID Services on WhatsApp",
+    schemaName: "P&ID Drawing Services",
+    serviceType: "P&ID drawing services",
+  },
+  {
+    slugs: ["architechtural-drawing", "architectural-drawing", "architectural-drafting"],
+    canonicalPath: "/services/architechtural-drawing",
+    pageTitle: "Architectural Drafting Services Worldwide | DrawnDimension",
+    metaDescription:
+      "Architectural drafting services for floor plans, elevations, sections, and permit-ready documentation. Send your project scope for a fast quote today.",
+    keywords: [
+      "architectural drafting services",
+      "architectural CAD drafting",
+      "architectural drawing services",
+      "floor plans and elevations",
+      "construction documentation",
+      "permit drawing services",
+      "as-built architectural drawings",
+    ],
+    heroTitle: "Architectural Drafting Services for Building Documentation",
+    sectionTitle: "Architectural CAD Drafting for Plans, Elevations, and Sections",
+    panelTitle: "Construction Documentation and Permit Drawing Support",
+    processTitle: "Architectural Drafting Workflow",
+    pricingTitle: "Architectural Drafting Service Packages",
+    faqTitle: "Architectural Drafting Service FAQs",
+    featureCardTitles: [
+      "Architectural CAD Drafting",
+      "Floor Plans and Elevations",
+      "Section and Detail Drawings",
+      "Permit Drawing Preparation",
+      "As-Built Architectural Drawings",
+      "Construction Documentation Review",
+    ],
+    quoteLinkLabel: "Request an Architectural Drafting Quote",
+    portfolioLinkLabel: "View Architectural Drafting Portfolio",
+    faqLinkLabel: "Browse Architectural Drafting FAQs",
+    blogLinkLabel: "Read Architectural Drafting Insights",
+    whatsappLabel: "Discuss Architectural Drafting on WhatsApp",
+    schemaName: "Architectural Drafting Services",
+    serviceType: "architectural drafting services",
+  },
+  {
+    slugs: ["hazop", "hazop-study", "risk-analysis", "risk-assessment"],
+    canonicalPath: "/services/hazop",
+    pageTitle: "HAZOP Study Services for Process Safety | DrawnDimension",
+    metaDescription:
+      "HAZOP study services for oil, gas, chemical, and process plants, including facilitation, documentation, and risk review. Request a consultation today.",
+    keywords: [
+      "HAZOP study services",
+      "hazard and operability study",
+      "process safety risk assessment",
+      "process hazard analysis",
+      "HAZOP facilitation",
+      "IEC 61882",
+      "LOPA support",
+    ],
+    heroTitle: "HAZOP Study Services for Process Safety Risk Assessment",
+    sectionTitle: "Hazard and Operability Study Support for Process Safety Risk Assessment",
+    panelTitle: "Process Hazard Analysis and IEC 61882 Documentation",
+    processTitle: "HAZOP Study Workflow and Action Tracking",
+    pricingTitle: "HAZOP Study Service Packages",
+    faqTitle: "HAZOP Study Service FAQs",
+    featureCardTitles: [
+      "HAZOP Facilitation Planning",
+      "Process Hazard Analysis",
+      "IEC 61882 Node Reviews",
+      "Process Safety Risk Assessment",
+      "Action Register Documentation",
+      "LOPA Support Coordination",
+    ],
+    quoteLinkLabel: "Request a HAZOP Study Quote",
+    portfolioLinkLabel: "View Process Safety Portfolio",
+    faqLinkLabel: "Browse HAZOP FAQs",
+    blogLinkLabel: "Read HAZOP Insights",
+    whatsappLabel: "Discuss HAZOP Services on WhatsApp",
+    schemaName: "HAZOP Study Services",
+    serviceType: "HAZOP study services",
+  },
+  {
+    slugs: ["web-design", "web-development", "engineering-web-development"],
+    canonicalPath: "/services/web-design",
+    pageTitle: "Web Development for Engineering Firms | DrawnDimension",
+    metaDescription:
+      "Web development services for engineering firms with fast, SEO-ready, conversion-focused websites and global delivery support. Request a custom quote today.",
+    keywords: [
+      "web development services for engineering firms",
+      "engineering website design",
+      "industrial website development",
+      "B2B web design",
+      "engineering company website design",
+      "responsive web development",
+      "SEO-ready website",
+    ],
+    heroTitle: "Web Development Services for Engineering and Industrial Businesses",
+    sectionTitle: "Engineering Website Design and Industrial Website Development",
+    panelTitle: "B2B Web Development Services for Technical Companies",
+    processTitle: "Engineering Web Development Workflow",
+    pricingTitle: "Web Development Packages for Engineering Firms",
+    faqTitle: "Engineering Web Development FAQs",
+    featureCardTitles: [
+      "Engineering Company Website Design",
+      "Responsive Industrial Web Development",
+      "SEO-Ready Technical Content Setup",
+      "Lead Generation Landing Pages",
+      "B2B Conversion-Focused UX",
+      "CMS and Performance Optimization",
+    ],
+    quoteLinkLabel: "Request a Website Development Quote",
+    portfolioLinkLabel: "View Engineering Website Portfolio",
+    faqLinkLabel: "Browse Web Development FAQs",
+    blogLinkLabel: "Read Engineering Website Insights",
+    whatsappLabel: "Discuss Web Development on WhatsApp",
+    schemaName: "Web Development Services for Engineering Firms",
+    serviceType: "web development services for engineering firms",
+  },
+  {
+    slugs: ["graphic-design", "graphics-design", "branding", "technical-graphic-design"],
+    canonicalPath: "/services/graphic-design",
+    pageTitle: "Technical Graphic Design Services | DrawnDimension",
+    metaDescription:
+      "Technical graphic design services for engineering and industrial brands, from illustrations to branding assets. Request your design quote today worldwide.",
+    keywords: [
+      "technical graphic design services",
+      "B2B graphic design services",
+      "industrial branding design",
+      "technical illustration services",
+      "brand identity design",
+      "marketing collateral design",
+      "engineering brochure design",
+    ],
+    heroTitle: "Technical Graphic Design Services for Industrial Brands",
+    sectionTitle: "Industrial Branding Design and Technical Illustration Services",
+    panelTitle: "B2B Graphic Design Services for Engineering Marketing",
+    processTitle: "Technical Graphic Design Workflow",
+    pricingTitle: "Technical Graphic Design Packages",
+    faqTitle: "Technical Graphic Design FAQs",
+    featureCardTitles: [
+      "Engineering Brand Identity Design",
+      "Technical Illustration Services",
+      "Industrial Marketing Collateral",
+      "Presentation and Proposal Graphics",
+      "Trade Show and Print Design",
+      "B2B Campaign Visual Systems",
+    ],
+    quoteLinkLabel: "Request a Graphic Design Quote",
+    portfolioLinkLabel: "View Industrial Branding Portfolio",
+    faqLinkLabel: "Browse Graphic Design FAQs",
+    blogLinkLabel: "Read Technical Design Insights",
+    whatsappLabel: "Discuss Graphic Design on WhatsApp",
+    schemaName: "Technical Graphic Design Services",
+    serviceType: "technical graphic design services",
+  },
+  {
+    slugs: ["pfd", "process-flow-diagram", "p-f-d"],
+    canonicalPath: "/services/pfd",
+    pageTitle: "Process Flow Diagram Services Worldwide | DrawnDimension",
+    metaDescription:
+      "Process flow diagram services for chemical, oil, gas, and manufacturing plants with stream data and revision support for global teams. Request a quote today.",
+    keywords: [
+      "process flow diagram services",
+      "PFD drafting services",
+      "process flow diagram drafting",
+      "ISO 10628",
+      "stream table development",
+      "process engineering diagrams",
+      "chemical plant PFD",
+    ],
+    heroTitle: "Process Flow Diagram Services for Process Engineering Teams",
+    sectionTitle: "Process Flow Diagram Drafting for Chemical and Industrial Plants",
+    panelTitle: "ISO 10628-Aligned Process Engineering Documentation",
+    processTitle: "PFD Drafting Services Workflow",
+    pricingTitle: "Process Flow Diagram Service Packages",
+    faqTitle: "Process Flow Diagram Service FAQs",
+    featureCardTitles: [
+      "Process Flow Diagram Drafting",
+      "Stream Table Development",
+      "Equipment and Utility Mapping",
+      "ISO 10628 Documentation Checks",
+      "Process Engineering Diagram Reviews",
+      "Revision-Ready Plant Flow Files",
+    ],
+    quoteLinkLabel: "Request a PFD Quote",
+    portfolioLinkLabel: "View Process Engineering Portfolio",
+    faqLinkLabel: "Browse PFD FAQs",
+    blogLinkLabel: "Read Process Flow Diagram Insights",
+    whatsappLabel: "Discuss PFD Services on WhatsApp",
+    schemaName: "Process Flow Diagram Services",
+    serviceType: "process flow diagram services",
+  },
+  {
+    slugs: ["solidworks", "3d-product-modeling", "3d-solidworks"],
+    canonicalPath: "/services/solidworks",
+    pageTitle: "SolidWorks Modeling Services Worldwide | DrawnDimension",
+    metaDescription:
+      "SolidWorks modeling services for product design, assemblies, and manufacturing-ready CAD data with revisions and global delivery. Request a quote today.",
+    keywords: [
+      "SolidWorks modeling services",
+      "3D product modeling services",
+      "mechanical 3D modeling",
+      "SolidWorks design outsourcing",
+      "assembly modeling services",
+      "manufacturing drawings",
+      "product design CAD",
+    ],
+    heroTitle: "SolidWorks Modeling Services from Concept to Production",
+    sectionTitle: "3D Product Modeling Services for Mechanical CAD Development",
+    panelTitle: "Mechanical 3D Modeling and Assembly Design Support",
+    processTitle: "SolidWorks Modeling Workflow",
+    pricingTitle: "SolidWorks Modeling Service Packages",
+    faqTitle: "SolidWorks Modeling Service FAQs",
+    featureCardTitles: [
+      "3D Product Modeling",
+      "Mechanical 3D CAD Modeling",
+      "Assembly Modeling Services",
+      "Manufacturing Drawing Preparation",
+      "Product Design Iteration",
+      "SolidWorks Design Outsourcing",
+    ],
+    quoteLinkLabel: "Request a SolidWorks Modeling Quote",
+    portfolioLinkLabel: "View SolidWorks Project Portfolio",
+    faqLinkLabel: "Browse SolidWorks FAQs",
+    blogLinkLabel: "Read SolidWorks Insights",
+    whatsappLabel: "Discuss SolidWorks Services on WhatsApp",
+    schemaName: "SolidWorks Modeling Services",
+    serviceType: "SolidWorks modeling services",
+  },
+];
+
 const toAbsoluteUrl = (path: string) => {
-  if (typeof window === "undefined") return path;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${window.location.origin}${path.startsWith("/") ? path : `/${path}`}`;
+  return `${siteOrigin}${path.startsWith("/") ? path : `/${path}`}`;
+};
+
+const findServiceSeoOverride = (slug: string, service?: ApiServiceRecord | null) => {
+  const slugCandidates = new Set(
+    [slug, service?.slug ?? "", service?.name ?? ""].map((value) => slugifyServiceName(value)).filter(Boolean)
+  );
+
+  return serviceSeoOverrides.find((override) =>
+    override.slugs.some((candidate) => slugCandidates.has(slugifyServiceName(candidate)))
+  );
 };
 
 const DynamicServicePage = () => {
@@ -92,21 +423,23 @@ const DynamicServicePage = () => {
   const service = useMemo(() => findServiceBySlug(services, slug), [services, slug]);
   const card = useMemo(() => (service ? buildServiceCardFromApi(service) : null), [service]);
   const featureCards = useMemo(() => (service ? buildServiceFeatureCardsFromApi(service) : []), [service]);
+  const seoOverride = useMemo(() => findServiceSeoOverride(slug, service), [service, slug]);
 
-  const heroTitle = service?.hero_title?.trim() || service?.name || "Service";
+  const heroTitle = seoOverride?.heroTitle || service?.hero_title?.trim() || service?.name || "Service";
   const heroBadge = service?.hero_badge?.trim() || "Digital Solutions";
   const heroDescription = service?.hero_description?.trim() || card?.description || "";
   const sectionBadge = service?.section_badge?.trim() || "What You Get";
-  const sectionTitle = service?.section_title?.trim() || `Complete ${service?.name || "Service"} Solutions`;
+  const sectionTitle =
+    seoOverride?.sectionTitle || service?.section_title?.trim() || `Complete ${service?.name || "Service"} Solutions`;
   const sectionDescription =
     service?.section_description?.trim() ||
     `We deliver structured and professional ${(service?.name || "service").toLowerCase()} support from planning to final handover.`;
-  const panelTitle = service?.section_panel_title?.trim() || "Professional Delivery Stack";
+  const panelTitle = seoOverride?.panelTitle || service?.section_panel_title?.trim() || "Professional Delivery Stack";
   const panelSubtitle = service?.section_panel_subtitle?.trim() || "Built for clarity and dependable output";
   const processBadge = service?.process_badge?.trim() || "Our Process";
-  const processTitle = service?.process_title?.trim() || "How We Work";
+  const processTitle = seoOverride?.processTitle || service?.process_title?.trim() || "How We Work";
   const pricingBadge = service?.pricing_badge?.trim() || "Pricing Plans";
-  const pricingTitle = service?.pricing_title?.trim() || "Choose Your Plan";
+  const pricingTitle = seoOverride?.pricingTitle || service?.pricing_title?.trim() || "Choose Your Plan";
   const pricingDescription =
     service?.pricing_description?.trim() ||
     "All plans require payment before service delivery begins. Custom quotes available for complex projects.";
@@ -115,10 +448,15 @@ const DynamicServicePage = () => {
   const ctaDescription =
     service?.cta_description?.trim() ||
     "Let's discuss your project and discover how our engineering expertise and creative innovation can help you achieve extraordinary results.";
-  const ctaPrimaryLabel = service?.cta_primary_label?.trim() || "Get Free Consultation";
+  const ctaPrimaryLabel = seoOverride?.quoteLinkLabel || service?.cta_primary_label?.trim() || "Get Free Consultation";
   const ctaPrimaryHref = service?.cta_primary_link?.trim() || "/contact";
-  const ctaSecondaryLabel = service?.cta_secondary_label?.trim() || "View Our Portfolio";
+  const ctaSecondaryLabel =
+    seoOverride?.portfolioLinkLabel || service?.cta_secondary_label?.trim() || "View Our Portfolio";
   const ctaSecondaryHref = service?.cta_secondary_link?.trim() || "/portfolio";
+  const whatsappLabel = seoOverride?.whatsappLabel || "Message Us on WhatsApp";
+  const faqTitle = seoOverride?.faqTitle || "Frequently Asked Questions";
+  const faqLinkLabel = seoOverride?.faqLinkLabel || "View All FAQs";
+  const blogLinkLabel = seoOverride?.blogLinkLabel || "Read Service Blog";
 
   const deliverables = useMemo(() => (service ? buildServiceSectionLeftItemsFromApi(service) : []), [service]);
   const sideItems = useMemo(
@@ -132,16 +470,22 @@ const DynamicServicePage = () => {
     [service]
   );
 
-  const metaDescription = service
-    ? buildServiceMetaDescriptionFromApi(service)
-    : card?.description ||
-      "Premium engineering and creative services with clean workflow, accurate technical output, and client-ready delivery.";
-  const pageTitle = service ? buildServiceMetaTitleFromApi(service) : `${heroTitle} Services | Drawn Dimension`;
-  const canonicalPath = card?.link || `/services/${slug}`;
+  const metaDescription =
+    seoOverride?.metaDescription ||
+    (service
+      ? buildServiceMetaDescriptionFromApi(service)
+      : card?.description ||
+        "Premium engineering and creative services with clean workflow, accurate technical output, and client-ready delivery.");
+  const pageTitle =
+    seoOverride?.pageTitle || (service ? buildServiceMetaTitleFromApi(service) : `${heroTitle} Services | Drawn Dimension`);
+  const canonicalPath = seoOverride?.canonicalPath || card?.link || `/services/${slug}`;
   const canonicalUrl = toAbsoluteUrl(canonicalPath);
   const ogImageUrl = toAbsoluteUrl("/images/logo.png");
   const pageKeywords = useMemo(() => {
     if (!service) return "";
+    if (seoOverride) {
+      return seoOverride.keywords.join(", ");
+    }
 
     const baseKeywords = [
       `${service.name} services`,
@@ -160,78 +504,48 @@ const DynamicServicePage = () => {
       .map((keyword) => keyword.trim())
       .filter(Boolean)
       .join(", ");
-  }, [featureCards, service]);
+  }, [featureCards, seoOverride, service]);
 
   const structuredData = useMemo(() => {
     if (!service) return null;
 
     return {
       "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          name: "Drawn Dimension",
-          url: toAbsoluteUrl("/"),
-          logo: ogImageUrl,
-        },
-        {
-          "@type": "WebPage",
-          name: pageTitle,
-          url: canonicalUrl,
-          description: metaDescription,
-          inLanguage: "en",
-        },
-        {
-          "@type": "BreadcrumbList",
-          itemListElement: [
-            {
-              "@type": "ListItem",
-              position: 1,
-              name: "Home",
-              item: toAbsoluteUrl("/"),
-            },
-            {
-              "@type": "ListItem",
-              position: 2,
-              name: "Services",
-              item: toAbsoluteUrl("/services"),
-            },
-            {
-              "@type": "ListItem",
-              position: 3,
-              name: service.name,
-              item: canonicalUrl,
-            },
-          ],
-        },
-        {
-          "@type": "Service",
-          name: service.name,
-          serviceType: service.name,
-          description: metaDescription,
-          url: canonicalUrl,
-          areaServed: "Worldwide",
-          provider: {
-            "@type": "Organization",
-            name: "Drawn Dimension",
-            url: toAbsoluteUrl("/"),
-          },
-          hasOfferCatalog: {
-            "@type": "OfferCatalog",
-            name: `${service.name} Scope`,
-            itemListElement: featureCards.map((feature) => ({
-              "@type": "Offer",
-              itemOffered: {
-                "@type": "Service",
-                name: feature.title,
-                description: feature.description,
-              },
-            })),
-          },
-        },
-      ],
+      "@type": "Service",
+      name: seoOverride?.schemaName || heroTitle,
+      description: metaDescription,
+      provider: {
+        "@type": "Organization",
+        name: "DrawnDimension",
+        url: siteOrigin,
+      },
+      areaServed: "Worldwide",
+      serviceType: seoOverride?.serviceType || service.name,
     };
-  }, [canonicalUrl, featureCards, metaDescription, ogImageUrl, pageTitle, service]);
+  }, [heroTitle, metaDescription, seoOverride, service]);
+
+  useEffect(() => {
+    if (!structuredData) return;
+
+    let schemaScript = document.head.querySelector('script[data-dd-service-schema="true"]') as HTMLScriptElement | null;
+    const createdScript = !schemaScript;
+    if (!schemaScript) {
+      schemaScript = document.createElement("script");
+      schemaScript.type = "application/ld+json";
+      schemaScript.setAttribute("data-dd-service-schema", "true");
+      document.head.appendChild(schemaScript);
+    }
+    const previousContent = schemaScript.textContent ?? "";
+    schemaScript.textContent = JSON.stringify(structuredData);
+
+    return () => {
+      if (createdScript) {
+        schemaScript?.remove();
+      } else if (schemaScript) {
+        schemaScript.textContent = previousContent;
+      }
+    };
+  }, [structuredData]);
 
   useEffect(() => {
     if (!service) return;
@@ -278,7 +592,7 @@ const DynamicServicePage = () => {
     const resetOgType = upsertMeta("property", "og:type", "website");
     const resetOgUrl = upsertMeta("property", "og:url", canonicalUrl);
     const resetOgImage = upsertMeta("property", "og:image", ogImageUrl);
-    const resetOgSiteName = upsertMeta("property", "og:site_name", "Drawn Dimension");
+    const resetOgSiteName = upsertMeta("property", "og:site_name", "DrawnDimension");
     const resetTwitterCard = upsertMeta("name", "twitter:card", "summary_large_image");
     const resetTwitterTitle = upsertMeta("name", "twitter:title", pageTitle);
     const resetTwitterDescription = upsertMeta("name", "twitter:description", metaDescription);
@@ -434,12 +748,6 @@ const DynamicServicePage = () => {
       <PremiumBackground>
         <Navigation />
         <main>
-          {structuredData ? (
-            <script
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-            />
-          ) : null}
           {loading ? (
             <section className="section-padding pt-36">
               <div className="container-narrow">
@@ -471,8 +779,12 @@ const DynamicServicePage = () => {
                 description={heroDescription}
                 actions={
                   <>
-                    <Link to="/contact" className="btn-primary h-12 px-8 inline-flex items-center gap-2 min-w-[200px] justify-center shadow-[0_16px_34px_-18px_rgba(239,68,68,0.75)]">
-                      Get Started
+                    <Link
+                      to="/contact"
+                      className="btn-primary h-12 px-8 inline-flex items-center gap-2 min-w-[200px] justify-center shadow-[0_16px_34px_-18px_rgba(239,68,68,0.75)]"
+                      aria-label={ctaPrimaryLabel}
+                    >
+                      {ctaPrimaryLabel}
                       <ArrowRight className="w-4 h-4" />
                     </Link>
                     <a
@@ -480,8 +792,9 @@ const DynamicServicePage = () => {
                       target="_blank"
                       rel="noreferrer"
                       className="btn-outline h-12 px-8 inline-flex items-center gap-2 min-w-[240px] justify-center border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/10 backdrop-blur-sm"
+                      aria-label={whatsappLabel}
                     >
-                      Message Us on WhatsApp
+                      {whatsappLabel}
                       <MessageCircle className="w-4 h-4" />
                     </a>
                   </>
@@ -498,9 +811,10 @@ const DynamicServicePage = () => {
                       const Icon =
                         featureIconByKey[key as keyof typeof featureIconByKey] ??
                         featureIcons[index % featureIcons.length];
+                      const featureTitle = seoOverride?.featureCardTitles?.[index] || feature.title;
                       return (
                         <motion.div
-                          key={`${feature.title}-${index}`}
+                          key={`${featureTitle}-${index}`}
                           initial={{ opacity: 0, y: 30 }}
                           whileInView={{ opacity: 1, y: 0 }}
                           viewport={{ once: true }}
@@ -512,7 +826,7 @@ const DynamicServicePage = () => {
                           <div className="relative w-12 h-12 bg-primary/12 border border-primary/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 group-hover:border-primary/55 transition-colors">
                             <Icon className="w-6 h-6 text-primary" />
                           </div>
-                          <h3 className="relative font-semibold text-foreground mb-2 text-balance">{feature.title}</h3>
+                          <h3 className="relative font-semibold text-foreground mb-2 text-balance">{featureTitle}</h3>
                           <p className="relative text-sm text-muted-foreground/90 leading-relaxed">{feature.description}</p>
                         </motion.div>
                       );
@@ -593,7 +907,7 @@ const DynamicServicePage = () => {
                         <span className="inline-flex items-center rounded-full border border-primary/35 bg-primary/10 px-4 py-1.5 text-primary font-semibold text-xs uppercase tracking-[0.16em]">
                           FAQ
                         </span>
-                        <h2 className="text-2xl md:text-3xl font-bold mt-4 text-foreground">Frequently Asked Questions</h2>
+                        <h2 className="text-2xl md:text-3xl font-bold mt-4 text-foreground">{faqTitle}</h2>
                         <p className="text-sm text-muted-foreground mt-2">
                           Answers about process, revisions, and delivery for {service.name}.
                         </p>
@@ -602,14 +916,16 @@ const DynamicServicePage = () => {
                         <Link
                           to={serviceFilterSlug ? `/faq?service=${encodeURIComponent(serviceFilterSlug)}` : "/faq"}
                           className="btn-outline h-10 px-4 text-sm"
+                          aria-label={faqLinkLabel}
                         >
-                          View All FAQs
+                          {faqLinkLabel}
                         </Link>
                         <Link
                           to={serviceFilterSlug ? `/blog?service=${encodeURIComponent(serviceFilterSlug)}` : "/blog"}
                           className="btn-outline h-10 px-4 text-sm"
+                          aria-label={blogLinkLabel}
                         >
-                          Read Service Blog
+                          {blogLinkLabel}
                         </Link>
                       </div>
                     </div>

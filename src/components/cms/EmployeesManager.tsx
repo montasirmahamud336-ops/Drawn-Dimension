@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,9 +31,23 @@ const buildEmployeeDashboardLink = (email: string) => {
   const origin = window.location.origin.replace(/\/$/, "");
   const params = new URLSearchParams({
     email,
+    mode: "signin",
     next: "/employee/dashboard",
   });
   return `${origin}/auth?${params.toString()}`;
+};
+
+const buildEmployeeDashboardPreviewLink = (employeeId: string) => {
+  const origin = window.location.origin.replace(/\/$/, "");
+  const params = new URLSearchParams({
+    preview_employee_id: employeeId,
+  });
+  return `${origin}/employee/dashboard?${params.toString()}`;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
 };
 
 const EmployeesManager = () => {
@@ -46,7 +60,7 @@ const EmployeesManager = () => {
 
   const apiBase = getApiBaseUrl();
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     const token = getAdminToken();
     if (!token) {
       toast.error("Session expired. Please login again.");
@@ -68,17 +82,17 @@ const EmployeesManager = () => {
 
       const data = await response.json();
       setEmployees(Array.isArray(data) ? data : []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.message || "Failed to load employees");
+      toast.error(getErrorMessage(error, "Failed to load employees"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, apiBase]);
 
   useEffect(() => {
-    fetchEmployees();
-  }, [activeTab]);
+    void fetchEmployees();
+  }, [fetchEmployees]);
 
   const handleDelete = async (employee: EmployeeItem, hardDelete: boolean) => {
     const token = getAdminToken();
@@ -109,10 +123,10 @@ const EmployeesManager = () => {
       }
 
       toast.success(hardDelete ? "Employee deleted" : "Employee moved to drafts");
-      fetchEmployees();
-    } catch (error: any) {
+      await fetchEmployees();
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.message || "Operation failed");
+      toast.error(getErrorMessage(error, "Operation failed"));
     }
   };
 
@@ -139,10 +153,10 @@ const EmployeesManager = () => {
       }
 
       toast.success("Employee restored to live");
-      fetchEmployees();
-    } catch (error: any) {
+      await fetchEmployees();
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.message || "Restore failed");
+      toast.error(getErrorMessage(error, "Restore failed"));
     }
   };
 
@@ -242,7 +256,7 @@ const EmployeesManager = () => {
                   <TableCell>{employee.email}</TableCell>
                   <TableCell>{employee.mobile || "-"}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <a
                         href={buildEmployeeDashboardLink(employee.email)}
                         target="_blank"
@@ -254,13 +268,14 @@ const EmployeesManager = () => {
                       </a>
                       <Button
                         type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={() => window.open(buildEmployeeDashboardLink(employee.email), "_blank", "noopener,noreferrer")}
-                        title="Open dashboard link"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 whitespace-nowrap"
+                        onClick={() => window.open(buildEmployeeDashboardPreviewLink(employee.id), "_blank", "noopener,noreferrer")}
+                        title="Preview employee dashboard as admin"
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        <ExternalLink className="w-4 h-4 mr-1.5" />
+                        View Dashboard
                       </Button>
                       <Button
                         type="button"

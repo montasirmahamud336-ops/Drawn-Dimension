@@ -11,6 +11,7 @@ import PageTransition from "@/components/shared/PageTransition";
 import PageHero from "@/components/shared/PageHero";
 import PremiumBackground from "@/components/shared/PremiumBackground";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { EMPLOYEE_DASHBOARD_PATH, setPreferredDashboardPath } from "@/components/shared/dashboardPath";
 
 const signInSchema = z.object({
   email: z.string().trim().email("Invalid email address"),
@@ -242,6 +243,7 @@ const Auth = () => {
 
     const isEmployee = await hasEmployeeDashboardAccess(session?.access_token);
     const postLoginPath = resolvePostLoginPath(isEmployee);
+    setPreferredDashboardPath(isEmployee ? EMPLOYEE_DASHBOARD_PATH : postLoginPath);
     toast({ title: isEmployeeLoginFlow ? "Welcome employee!" : "Welcome back!" });
     navigate(postLoginPath);
   };

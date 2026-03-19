@@ -14,6 +14,8 @@ export interface EmployeeItem {
   profession: string;
   email: string;
   mobile: string | null;
+  login_password_preview?: string | null;
+  login_password_updated_at?: string | null;
   status: "live" | "draft";
   created_at?: string;
 }
@@ -41,6 +43,11 @@ const defaultDraft: EmployeeDraft = {
   login_password: "",
 };
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+};
+
 const EmployeeForm = ({ open, onOpenChange, employee, onSuccess }: EmployeeFormProps) => {
   const [draft, setDraft] = useState<EmployeeDraft>(defaultDraft);
   const [saving, setSaving] = useState(false);
@@ -54,7 +61,7 @@ const EmployeeForm = ({ open, onOpenChange, employee, onSuccess }: EmployeeFormP
         profession: employee.profession ?? "",
         email: employee.email ?? "",
         mobile: employee.mobile ?? "",
-        login_password: "",
+        login_password: employee.login_password_preview ?? "",
       });
       return;
     }
@@ -69,6 +76,8 @@ const EmployeeForm = ({ open, onOpenChange, employee, onSuccess }: EmployeeFormP
     const profession = draft.profession.trim();
     const email = draft.email.trim();
     const loginPassword = draft.login_password.trim();
+    const currentPasswordPreview = employee?.login_password_preview?.trim() ?? "";
+    const shouldUpdatePassword = !employee || (loginPassword.length > 0 && loginPassword !== currentPasswordPreview);
 
     if (!name || !profession || !email) {
       toast.error("Name, profession, and email are required");
@@ -80,7 +89,7 @@ const EmployeeForm = ({ open, onOpenChange, employee, onSuccess }: EmployeeFormP
       return;
     }
 
-    if (employee && loginPassword.length > 0 && loginPassword.length < 6) {
+    if (employee && shouldUpdatePassword && loginPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
@@ -103,7 +112,7 @@ const EmployeeForm = ({ open, onOpenChange, employee, onSuccess }: EmployeeFormP
         profession,
         email,
         mobile: draft.mobile.trim() || null,
-        login_password: loginPassword || null,
+        login_password: shouldUpdatePassword ? loginPassword : null,
         status: employee?.status || "live",
       };
 
@@ -141,8 +150,8 @@ const EmployeeForm = ({ open, onOpenChange, employee, onSuccess }: EmployeeFormP
 
       onOpenChange(false);
       onSuccess();
-    } catch (error: any) {
-      toast.error(error.message || "Something went wrong");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Something went wrong"));
     } finally {
       setSaving(false);
     }
@@ -205,11 +214,13 @@ const EmployeeForm = ({ open, onOpenChange, employee, onSuccess }: EmployeeFormP
               id="employee-login-password"
               value={draft.login_password}
               onChange={(event) => setDraft((prev) => ({ ...prev, login_password: event.target.value }))}
-              placeholder={employee ? "Leave blank to keep current password" : "Minimum 6 characters"}
+              placeholder={employee ? "Stored password preview" : "Minimum 6 characters"}
             />
             {employee && (
               <p className="text-xs text-muted-foreground">
-                Leave it empty if you do not want to change this employee's login password.
+                {employee.login_password_preview
+                  ? "This field shows the current stored password preview. Change it only if you want to update the employee login."
+                  : "Current password cannot be recovered automatically. Enter a new password to replace it and save a preview here."}
               </p>
             )}
           </div>

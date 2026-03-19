@@ -10,10 +10,16 @@ const sanitizeQuality = (value: number) => {
   return Math.max(40, Math.min(90, Math.round(value)));
 };
 
+const sanitizeHeight = (value: number | undefined) => {
+  if (!Number.isFinite(value)) return undefined;
+  return Math.max(160, Math.min(1920, Math.round(value)));
+};
+
 export const optimizeImageUrl = (
   rawUrl: string | null | undefined,
   width = 720,
   quality = 70,
+  height?: number,
 ) => {
   if (!rawUrl || typeof rawUrl !== "string") return "";
   const url = rawUrl.trim();
@@ -32,12 +38,18 @@ export const optimizeImageUrl = (
 
   const targetWidth = sanitizeSize(width);
   const targetQuality = sanitizeQuality(quality);
+  const targetHeight = sanitizeHeight(height);
   const host = parsed.hostname.toLowerCase();
 
   if (host.includes(UNSPLASH_HOST)) {
     parsed.searchParams.set("w", String(targetWidth));
     parsed.searchParams.set("q", String(targetQuality));
-    parsed.searchParams.set("fit", "max");
+    if (targetHeight) {
+      parsed.searchParams.set("h", String(targetHeight));
+      parsed.searchParams.set("fit", "crop");
+    } else {
+      parsed.searchParams.set("fit", "max");
+    }
     parsed.searchParams.set("auto", "format,compress");
     return parsed.toString();
   }
@@ -56,6 +68,13 @@ export const optimizeImageUrl = (
   if (isSupabaseStorageHost && (hasPublicPath || hasRenderPath)) {
     parsed.searchParams.set("width", String(targetWidth));
     parsed.searchParams.set("quality", String(targetQuality));
+    if (targetHeight) {
+      parsed.searchParams.set("height", String(targetHeight));
+      parsed.searchParams.set("resize", "cover");
+    } else {
+      parsed.searchParams.delete("height");
+      parsed.searchParams.delete("resize");
+    }
     return parsed.toString();
   }
 
@@ -63,13 +82,13 @@ export const optimizeImageUrl = (
 };
 
 export const buildCardImageSources = (url: string) => {
-  const base = optimizeImageUrl(url, 640, 68);
+  const base = optimizeImageUrl(url, 640, 68, 360);
   return {
     src: base || url,
     srcSet: [
-      `${optimizeImageUrl(url, 360, 60) || url} 360w`,
-      `${optimizeImageUrl(url, 640, 68) || url} 640w`,
-      `${optimizeImageUrl(url, 960, 72) || url} 960w`,
+      `${optimizeImageUrl(url, 360, 60, 203) || url} 360w`,
+      `${optimizeImageUrl(url, 640, 68, 360) || url} 640w`,
+      `${optimizeImageUrl(url, 960, 72, 540) || url} 960w`,
     ].join(", "),
   };
 };

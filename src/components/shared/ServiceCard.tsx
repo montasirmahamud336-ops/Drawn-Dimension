@@ -12,6 +12,8 @@ interface ServiceCardProps {
 }
 
 const ServiceCard = ({ icon: Icon, title, description, link, features, index = 0 }: ServiceCardProps) => {
+  const ctaLabel = `Explore ${title} Services`;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -52,9 +54,10 @@ const ServiceCard = ({ icon: Icon, title, description, link, features, index = 0
 
         <Link
           to={link}
+          aria-label={ctaLabel}
           className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold bg-secondary/90 text-secondary-foreground hover:bg-primary hover:text-primary-foreground border border-border/70 hover:border-primary transition-all duration-300"
         >
-          Get Started
+          {ctaLabel}
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>

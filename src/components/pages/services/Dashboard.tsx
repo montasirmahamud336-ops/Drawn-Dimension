@@ -1,5 +1,6 @@
 ﻿import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BriefcaseBusiness,
@@ -27,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { CLIENT_DASHBOARD_PATH, EMPLOYEE_DASHBOARD_PATH, setPreferredDashboardPath } from "@/components/shared/dashboardPath";
 
 interface Quote {
   id: string;
@@ -87,6 +89,15 @@ const createEmptyProfile = (email?: string | null): ProfileDraft => ({
   job_role: "",
 });
 
+const mapProfileToDraft = (profile: Profile | null, fallbackEmail?: string | null): ProfileDraft => ({
+  full_name: profile?.full_name ?? "",
+  email: profile?.email ?? fallbackEmail ?? "",
+  company: profile?.company ?? "",
+  avatar_url: profile?.avatar_url ?? null,
+  bio: profile?.bio ?? "",
+  job_role: profile?.job_role ?? "",
+});
+
 const Dashboard = () => {
   const { user, session, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -113,20 +124,17 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-      loadData();
+      setPreferredDashboardPath(CLIENT_DASHBOARD_PATH);
     }
-  }, [user, session?.access_token]);
+  }, [user]);
 
-  const mapProfileToDraft = (profile: Profile | null, fallbackEmail?: string | null): ProfileDraft => ({
-    full_name: profile?.full_name ?? "",
-    email: profile?.email ?? fallbackEmail ?? "",
-    company: profile?.company ?? "",
-    avatar_url: profile?.avatar_url ?? null,
-    bio: profile?.bio ?? "",
-    job_role: profile?.job_role ?? "",
-  });
+  useEffect(() => {
+    if (user) {
+      void loadData();
+    }
+  }, [loadData, user]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -192,12 +200,19 @@ const Dashboard = () => {
       employee?: EmployeeProfile | null;
       assignments?: EmployeeAssignment[];
     };
+    if (employeeData.employee) {
+      setPreferredDashboardPath(EMPLOYEE_DASHBOARD_PATH);
+      navigate(EMPLOYEE_DASHBOARD_PATH, { replace: true });
+      setLoadingEmployeeData(false);
+      setLoading(false);
+      return;
+    }
     setEmployeeProfile(employeeData.employee ?? null);
     setEmployeeAssignments(Array.isArray(employeeData.assignments) ? employeeData.assignments : []);
 
     setLoadingEmployeeData(false);
     setLoading(false);
-  };
+  }, [navigate, session?.access_token, toast, user]);
 
   const persistProfile = async (nextDraft: ProfileDraft, successMessage?: string) => {
     if (!user) return false;

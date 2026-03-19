@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { clearPreferredDashboardPath } from "@/components/shared/dashboardPath";
 
 interface AuthContextType {
   user: User | null;
@@ -74,7 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const ensureProfile = async (currentUser: User, fallbackName?: string) => {
+  const ensureProfile = useCallback(async (currentUser: User, fallbackName?: string) => {
     const { data, error } = await supabase
       .from("profiles")
       .select("id")
@@ -88,9 +89,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email: currentUser.email,
       full_name: currentUser.user_metadata?.full_name ?? fallbackName ?? null,
     });
-  };
+  }, []);
 
-  const handleSession = async (nextSession: Session | null, _event?: string) => {
+  const handleSession = useCallback(async (nextSession: Session | null, _event?: string) => {
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
     setLoading(false);
@@ -100,7 +101,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       const provider = String(nextSession.user.app_metadata?.provider ?? "").toLowerCase();
       const identities = Array.isArray(nextSession.user.identities)
-        ? nextSession.user.identities.map((identity: any) => String(identity?.provider ?? "").toLowerCase())
+        ? nextSession.user.identities.map((identity) => String(identity?.provider ?? "").toLowerCase())
         : [];
       const isGoogleUser = provider === "google" || identities.includes("google");
 
@@ -128,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
     }
-  };
+  }, [ensureProfile]);
 
   useEffect(() => {
     // Get initial session
@@ -144,7 +145,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [handleSession]);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const { data, error } = await supabase.auth.signUp({
@@ -181,6 +182,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    clearPreferredDashboardPath();
     await supabase.auth.signOut();
   };
 

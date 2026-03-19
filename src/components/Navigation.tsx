@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { getPreferredDashboardPath } from "@/components/shared/dashboardPath";
 import { buildServiceNavItems, type ApiServiceRecord } from "@/components/shared/serviceCatalog";
 import {
   DEFAULT_HEADER_LINKS,
@@ -29,6 +30,7 @@ const Navigation = () => {
   const location = useLocation();
   const { user, session, signOut } = useAuth();
   const isSignedIn = Boolean(user || session?.user);
+  const dashboardHref = getPreferredDashboardPath();
 
   useEffect(() => {
     let rafId = 0;
@@ -291,7 +293,7 @@ const Navigation = () => {
                   Live Chat
                 </button>
                 <Link
-                  to="/dashboard"
+                  to={dashboardHref}
                   className={`${desktopActionButtonBase} bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow-lg`}
                 >
                   Dashboard
@@ -328,7 +330,7 @@ const Navigation = () => {
             <ThemeToggle />
             {isSignedIn ? (
               <Link
-                to="/dashboard"
+                to={dashboardHref}
                 className="h-9 px-3 rounded-lg inline-flex items-center justify-center text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 Dashboard
@@ -449,7 +451,7 @@ const Navigation = () => {
                     Live Chat
                   </button>
                   <Link
-                    to="/dashboard"
+                    to={dashboardHref}
                     className="h-10 rounded-lg inline-flex items-center justify-center font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow-lg"
                   >
                     Dashboard

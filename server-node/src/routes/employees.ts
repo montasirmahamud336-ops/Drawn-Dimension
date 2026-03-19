@@ -67,6 +67,7 @@ const buildEmployeeLoginLink = (email: string) => {
   const base = env.siteBaseUrl.replace(/\/+$/, "");
   const params = new URLSearchParams({
     email,
+    mode: "signin",
     next: "/employee/dashboard",
   });
   return `${base}/auth?${params.toString()}`;
@@ -140,6 +141,12 @@ const parseAuthError = async (response: Response, fallback: string) => {
 type AuthUser = {
   id: string;
   email?: string | null;
+};
+
+type EmployeeLoginCredential = {
+  employee_id?: string | null;
+  login_password_preview?: string | null;
+  updated_at?: string | null;
 };
 
 const listAuthUsers = async (): Promise<AuthUser[]> => {
@@ -287,6 +294,61 @@ const syncEmployeeAuthAccount = async (params: {
   };
 };
 
+const listEmployeeLoginCredentials = async () => {
+  const rows = await selectRows(
+    "/employee_login_credentials?select=employee_id,login_password_preview,updated_at"
+  );
+  return Array.isArray(rows) ? (rows as EmployeeLoginCredential[]) : [];
+};
+
+const syncEmployeeLoginCredentialPreview = async (employeeId: string, loginPassword: string) => {
+  const normalizedEmployeeId = normalizeText(employeeId);
+  const normalizedPassword = normalizePassword(loginPassword);
+
+  if (!normalizedEmployeeId || !normalizedPassword) return;
+
+  const existingRows = await selectRows(
+    `/employee_login_credentials?employee_id=eq.${encodeURIComponent(normalizedEmployeeId)}&limit=1`
+  );
+  const payload = {
+    employee_id: normalizedEmployeeId,
+    login_password_preview: normalizedPassword,
+  };
+
+  if (Array.isArray(existingRows) && existingRows.length > 0) {
+    await updateRow(
+      `/employee_login_credentials?employee_id=eq.${encodeURIComponent(normalizedEmployeeId)}`,
+      payload
+    );
+    return;
+  }
+
+  await insertRow("/employee_login_credentials", payload);
+};
+
+const loadEmployeeDashboardPreview = async (employeeId: string) => {
+  const normalizedEmployeeId = normalizeText(employeeId);
+  if (!normalizedEmployeeId) return null;
+
+  const employeeRows = await selectRows(
+    `/employees?id=eq.${encodeURIComponent(normalizedEmployeeId)}&limit=1`
+  );
+  const employee = Array.isArray(employeeRows) ? employeeRows[0] ?? null : null;
+
+  if (!employee) {
+    return null;
+  }
+
+  const assignments = await selectRows(
+    `/work_assignments?employee_id=eq.${encodeURIComponent(normalizedEmployeeId)}&status=neq.draft&order=created_at.desc`
+  );
+
+  return {
+    employee,
+    assignments: Array.isArray(assignments) ? assignments : [],
+  };
+};
+
 router.get("/employees", requireAuth, async (req, res) => {
   try {
     const status = normalizeStatus(req.query.status);
@@ -299,8 +361,32 @@ router.get("/employees", requireAuth, async (req, res) => {
       ? `?${filters.join("&")}&order=created_at.desc`
       : "?order=created_at.desc";
 
-    const data = await selectRows(`/employees${query}`);
-    return res.json(data ?? []);
+    const [employees, credentials] = await Promise.all([
+      selectRows(`/employees${query}`),
+      listEmployeeLoginCredentials(),
+    ]);
+
+    const credentialMap = new Map(
+      credentials.map((item) => [
+        normalizeText(item.employee_id),
+        {
+          login_password_preview: item.login_password_preview ?? null,
+          login_password_updated_at: item.updated_at ?? null,
+        },
+      ])
+    );
+
+    const data = Array.isArray(employees) ? employees : [];
+    return res.json(
+      data.map((employee: any) => {
+        const credential = credentialMap.get(normalizeText(employee?.id));
+        return {
+          ...employee,
+          login_password_preview: credential?.login_password_preview ?? null,
+          login_password_updated_at: credential?.login_password_updated_at ?? null,
+        };
+      })
+    );
   } catch (error: unknown) {
     return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to fetch employees"
@@ -334,6 +420,11 @@ router.post("/employees", requireAuth, async (req, res) => {
 
     const data = await insertRow("/employees", payload);
     const createdEmployee = data?.[0] ?? payload;
+    const createdEmployeeId = normalizeText((createdEmployee as { id?: unknown })?.id);
+
+    if (createdEmployeeId && loginPassword) {
+      await syncEmployeeLoginCredentialPreview(createdEmployeeId, loginPassword);
+    }
 
     let emailNotificationSent = false;
     let emailNotificationError: string | null = null;
@@ -407,10 +498,40 @@ router.patch("/employees/:id", requireAuth, async (req, res) => {
     delete patch.login_password;
 
     const data = await updateRow(`/employees?id=eq.${encodeURIComponent(id)}`, patch);
-    return res.json(data?.[0] ?? {});
+    if (loginPassword) {
+      await syncEmployeeLoginCredentialPreview(id, loginPassword);
+    }
+
+    const updatedEmployee = data?.[0] ?? {};
+    const credentialRows = await selectRows(
+      `/employee_login_credentials?employee_id=eq.${encodeURIComponent(id)}&select=login_password_preview,updated_at&limit=1`
+    );
+    const credential = Array.isArray(credentialRows) ? credentialRows[0] : null;
+
+    return res.json({
+      ...updatedEmployee,
+      login_password_preview: credential?.login_password_preview ?? null,
+      login_password_updated_at: credential?.updated_at ?? null,
+    });
   } catch (error: unknown) {
     return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to update employee"
+    });
+  }
+});
+
+router.get("/employees/:id/dashboard-preview", requireAuth, async (req, res) => {
+  try {
+    const preview = await loadEmployeeDashboardPreview(req.params.id);
+
+    if (!preview) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    return res.json(preview);
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to load employee dashboard preview"
     });
   }
 });

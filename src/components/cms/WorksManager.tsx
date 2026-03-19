@@ -1,368 +1,560 @@
-import { useState, useEffect, useRef, useMemo, useDeferredValue } from "react";
+import { DragEvent, Suspense, lazy, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Edit, Trash2, RotateCcw, MonitorPlay, GripVertical } from "lucide-react";
+import { Edit, GripVertical, MonitorPlay, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
-import WorkForm from "./WorkForm";
 import { moveItemById } from "./reorderUtils";
+import { buildCardImageSources } from "@/components/shared/mediaUrl";
 
 const INITIAL_VISIBLE_WORKS = 9;
 const WORKS_LOAD_MORE_STEP = 9;
+const EAGER_IMAGE_COUNT = 2;
+const DESCRIPTION_PREVIEW_LIMIT = 180;
+const CARD_SHELL_STYLE = {
+  contentVisibility: "auto",
+  containIntrinsicSize: "420px",
+  contain: "layout paint style",
+} as const;
+const LOADING_SKELETON_IDS = [1, 2, 3, 4, 5, 6];
+const WorkForm = lazy(() => import("./WorkForm"));
+
+type ProjectRecord = {
+  id: string;
+  title: string;
+  description?: string | null;
+  image_url?: string | null;
+  category?: string | null;
+  status?: string | null;
+  client?: string | null;
+};
+
+type ProjectCardRecord = ProjectRecord & {
+  descriptionPreview: string;
+  imageSources: ReturnType<typeof buildCardImageSources> | null;
+  searchText: string;
+};
+
+const getDescriptionPreview = (value: string | null | undefined) => {
+  const text = typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  if (!text) return "No description provided.";
+  if (text.length <= DESCRIPTION_PREVIEW_LIMIT) return text;
+  return `${text.slice(0, DESCRIPTION_PREVIEW_LIMIT).trimEnd().replace(/[.,;:!?-]+$/, "")}...`;
+};
+
+const normalizeProject = (project: ProjectRecord): ProjectCardRecord => {
+  const title = project.title?.trim() || "Untitled Work";
+  return {
+    ...project,
+    title,
+    descriptionPreview: getDescriptionPreview(project.description),
+    imageSources: project.image_url ? buildCardImageSources(project.image_url) : null,
+    searchText: [title, project.category, project.client].filter(Boolean).join(" ").toLowerCase(),
+  };
+};
+
+type WorkCardProps = {
+  activeTab: string;
+  eagerImage: boolean;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  isReorderEnabled: boolean;
+  onDelete: (id: string, isHardDelete: boolean) => void;
+  onDragEnd: () => void;
+  onDragEnter: (id: string) => void;
+  onDragStart: (id: string) => void;
+  onDrop: (id: string) => void;
+  onEdit: (project: ProjectRecord) => void;
+  onRestore: (id: string) => void;
+  project: ProjectCardRecord;
+};
+
+const WorkCard = memo(({
+  activeTab,
+  eagerImage,
+  isDragging,
+  isDropTarget,
+  isReorderEnabled,
+  onDelete,
+  onDragEnd,
+  onDragEnter,
+  onDragStart,
+  onDrop,
+  onEdit,
+  onRestore,
+  project,
+}: WorkCardProps) => {
+  const imageSrc = project.imageSources?.src ?? project.image_url ?? "";
+  const [isImageReady, setIsImageReady] = useState(!imageSrc);
+
+  useEffect(() => {
+    setIsImageReady(!imageSrc);
+  }, [imageSrc]);
+
+  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (isReorderEnabled) {
+      event.preventDefault();
+    }
+  }, [isReorderEnabled]);
+
+  return (
+    <div
+      className={`group relative ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "opacity-70" : ""} ${isDropTarget ? "ring-1 ring-primary/35 rounded-3xl" : ""}`}
+      draggable={isReorderEnabled}
+      onDragStart={() => onDragStart(project.id)}
+      onDragEnter={() => onDragEnter(project.id)}
+      onDragOver={handleDragOver}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop(project.id);
+      }}
+      onDragEnd={onDragEnd}
+      style={CARD_SHELL_STYLE}
+    >
+      <div className="glass-card cms-card-lite overflow-hidden h-full flex flex-col border-border/50 bg-secondary/10 transition-none">
+        <div className="relative overflow-hidden aspect-video bg-muted/10">
+          {imageSrc ? (
+            <>
+              <div
+                className={`absolute inset-0 bg-muted/30 transition-opacity duration-200 ${isImageReady ? "opacity-0" : "opacity-100"}`}
+                aria-hidden="true"
+              />
+              <img
+                src={imageSrc}
+                srcSet={project.imageSources?.srcSet}
+                alt={project.title}
+                loading={eagerImage ? "eager" : "lazy"}
+                fetchPriority={eagerImage ? "high" : "low"}
+                decoding="async"
+                width={640}
+                height={360}
+                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                onLoad={() => setIsImageReady(true)}
+                onError={() => setIsImageReady(true)}
+                className={`w-full h-full object-cover transition-opacity duration-200 ${isImageReady ? "opacity-100" : "opacity-0"}`}
+              />
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full bg-muted/30 text-muted-foreground">
+              No Image
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-40" />
+
+          <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="shadow-lg hover:scale-105 transition-transform"
+              onClick={() => onEdit(project)}
+            >
+              <Edit className="w-4 h-4 mr-2" /> Edit
+            </Button>
+
+            {activeTab === "draft" ? (
+              <>
+                <Button
+                  size="icon"
+                  className="bg-green-600 hover:bg-green-700 shadow-lg hover:scale-105 transition-transform"
+                  onClick={() => onRestore(project.id)}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="shadow-lg hover:scale-105 transition-transform"
+                  onClick={() => onDelete(project.id, true)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="shadow-lg hover:scale-105 transition-transform"
+                onClick={() => onDelete(project.id, false)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Draft
+              </Button>
+            )}
+          </div>
+
+          <div className="absolute top-4 left-4 z-10">
+            <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow">
+              {project.category || "Uncategorized"}
+            </span>
+          </div>
+
+          {project.status === "draft" && (
+            <div className="absolute top-4 right-4 z-10">
+              <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/90 text-black font-medium shadow-sm">
+                Draft
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 flex-grow flex flex-col justify-between relative z-10">
+          <div>
+            {isReorderEnabled && (
+              <div className="flex justify-end mb-2">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
+                  <GripVertical className="w-3.5 h-3.5" />
+                  Drag
+                </span>
+              </div>
+            )}
+            <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+              {project.title}
+            </h3>
+            <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
+              {project.descriptionPreview}
+            </p>
+          </div>
+
+          {project.client && (
+            <div className="mt-auto pt-4 border-t border-border/50">
+              <p className="text-xs font-bold tracking-wider text-primary uppercase flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                CLIENT: <span className="text-foreground/80 font-normal normal-case">{project.client}</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => (
+  prevProps.activeTab === nextProps.activeTab
+  && prevProps.eagerImage === nextProps.eagerImage
+  && prevProps.isDragging === nextProps.isDragging
+  && prevProps.isDropTarget === nextProps.isDropTarget
+  && prevProps.isReorderEnabled === nextProps.isReorderEnabled
+  && prevProps.onDelete === nextProps.onDelete
+  && prevProps.onDragEnd === nextProps.onDragEnd
+  && prevProps.onDragEnter === nextProps.onDragEnter
+  && prevProps.onDragStart === nextProps.onDragStart
+  && prevProps.onDrop === nextProps.onDrop
+  && prevProps.onEdit === nextProps.onEdit
+  && prevProps.onRestore === nextProps.onRestore
+  && prevProps.project === nextProps.project
+));
+
+WorkCard.displayName = "WorkCard";
 
 const WorksManager = () => {
-    const [projects, setProjects] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState("live");
-    const [searchInput, setSearchInput] = useState("");
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingProject, setEditingProject] = useState<any | null>(null);
-    const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
-    const [hasOrderChange, setHasOrderChange] = useState(false);
-    const [isSavingOrder, setIsSavingOrder] = useState(false);
-    const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_WORKS);
-    const projectsRef = useRef<any[]>([]);
-    const deferredSearch = useDeferredValue(searchInput);
+  const [projects, setProjects] = useState<ProjectCardRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("live");
+  const [searchInput, setSearchInput] = useState("");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectRecord | null>(null);
+  const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
+  const [dropTargetProjectId, setDropTargetProjectId] = useState<string | null>(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_WORKS);
+  const projectsRef = useRef<ProjectCardRecord[]>([]);
+  const draggingProjectIdRef = useRef<string | null>(null);
+  const dropTargetProjectIdRef = useRef<string | null>(null);
+  const deferredSearch = useDeferredValue(searchInput);
 
-    const apiBase = getApiBaseUrl();
-    const token = getAdminToken();
-    const searchQuery = deferredSearch.trim().toLowerCase();
-    const isReorderEnabled = searchQuery.length === 0 && !isSavingOrder;
+  const apiBase = getApiBaseUrl();
+  const token = getAdminToken();
+  const searchQuery = deferredSearch.trim().toLowerCase();
+  const isReorderEnabled = searchQuery.length === 0 && !isSavingOrder;
 
-    useEffect(() => {
-        projectsRef.current = projects;
-    }, [projects]);
+  useEffect(() => {
+    projectsRef.current = projects;
+  }, [projects]);
 
-    const fetchProjects = async () => {
-        setLoading(true);
-        try {
-            // Fetch all and filter client side or fetch by status?
-            // API supports ?status=... but let's just fetch filtered by tab to be efficient
-            const res = await fetch(`${apiBase}/projects?status=${activeTab}`);
-            if (res.ok) {
-                const data = await res.json();
-                setProjects(data);
-            }
-        } catch (error) {
-            console.error("Failed to fetch projects", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const syncDragState = useCallback((draggingId: string | null, targetId: string | null) => {
+    draggingProjectIdRef.current = draggingId;
+    dropTargetProjectIdRef.current = targetId;
+    setDraggingProjectId(draggingId);
+    setDropTargetProjectId(targetId);
+  }, []);
 
-    useEffect(() => {
-        fetchProjects();
-    }, [activeTab]);
+  const fetchProjects = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/projects?status=${activeTab}`, { signal });
+      if (res.ok) {
+        const data = await res.json();
+        const nextProjects = Array.isArray(data)
+          ? (data as ProjectRecord[]).map(normalizeProject)
+          : [];
+        setProjects(nextProjects);
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      console.error("Failed to fetch projects", error);
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }, [activeTab, apiBase]);
 
-    useEffect(() => {
-        setVisibleCount(INITIAL_VISIBLE_WORKS);
-    }, [activeTab, searchQuery, projects.length]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchProjects(controller.signal);
+    return () => controller.abort();
+  }, [fetchProjects]);
 
-    const saveProjectOrder = async (orderedProjects: any[]) => {
-        try {
-            setIsSavingOrder(true);
-            const res = await fetch(`${apiBase}/projects/reorder`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    orderedIds: orderedProjects.map((project) => project.id)
-                })
-            });
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_WORKS);
+  }, [activeTab, searchQuery, projects.length]);
 
-            if (!res.ok) {
-                throw new Error("Failed to save order");
-            }
+  const saveProjectOrder = useCallback(async (orderedProjects: ProjectCardRecord[]) => {
+    try {
+      setIsSavingOrder(true);
+      const res = await fetch(`${apiBase}/projects/reorder`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          orderedIds: orderedProjects.map((project) => project.id),
+        }),
+      });
 
-            toast.success("Work order updated");
-        } catch (error) {
-            toast.error("Could not save work order");
-            fetchProjects();
-        } finally {
-            setIsSavingOrder(false);
-        }
-    };
+      if (!res.ok) {
+        throw new Error("Failed to save order");
+      }
 
-    const handleDragStart = (projectId: string) => {
-        if (!isReorderEnabled) return;
-        setDraggingProjectId(projectId);
-        setHasOrderChange(false);
-    };
+      toast.success("Work order updated");
+    } catch (error) {
+      toast.error("Could not save work order");
+      void fetchProjects();
+    } finally {
+      setIsSavingOrder(false);
+    }
+  }, [apiBase, fetchProjects, token]);
 
-    const handleDragEnter = (targetProjectId: string) => {
-        if (!isReorderEnabled || !draggingProjectId || draggingProjectId === targetProjectId) return;
+  const handleDragStart = useCallback((projectId: string) => {
+    if (!isReorderEnabled) return;
+    syncDragState(projectId, projectId);
+  }, [isReorderEnabled, syncDragState]);
 
-        setProjects((prev) => {
-            const next = moveItemById(prev, draggingProjectId, targetProjectId);
-            if (next !== prev) projectsRef.current = next;
-            return next;
-        });
-        setHasOrderChange(true);
-        setDraggingProjectId(targetProjectId);
-    };
+  const handleDragEnter = useCallback((targetProjectId: string) => {
+    const sourceProjectId = draggingProjectIdRef.current;
+    if (!isReorderEnabled || !sourceProjectId || sourceProjectId === targetProjectId || dropTargetProjectIdRef.current === targetProjectId) {
+      return;
+    }
 
-    const handleDragEnd = () => {
-        const shouldSave = hasOrderChange;
-        const orderedProjects = projectsRef.current;
-        setDraggingProjectId(null);
-        setHasOrderChange(false);
+    dropTargetProjectIdRef.current = targetProjectId;
+    setDropTargetProjectId(targetProjectId);
+  }, [isReorderEnabled]);
 
-        if (shouldSave && orderedProjects.length > 0) {
-            void saveProjectOrder(orderedProjects);
-        }
-    };
+  const handleDragEnd = useCallback(() => {
+    syncDragState(null, null);
+  }, [syncDragState]);
 
-    const handleDelete = async (id: string, isHardDelete: boolean) => {
-        if (!confirm(isHardDelete ? "Are you sure you want to PERMANENTLY delete this?" : "Move this work to Drafts?")) return;
+  const handleDrop = useCallback((targetProjectId: string) => {
+    const sourceProjectId = draggingProjectIdRef.current;
 
-        try {
-            let res;
-            if (isHardDelete) {
-                // DELETE /api/projects/:id
-                res = await fetch(`${apiBase}/projects/${id}`, {
-                    method: "DELETE",
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-            } else {
-                // PATCH status to draft
-                res = await fetch(`${apiBase}/projects/${id}`, {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ status: "draft" })
-                });
-            }
+    if (!isReorderEnabled || !sourceProjectId) {
+      syncDragState(null, null);
+      return;
+    }
 
-            if (res.ok) {
-                toast.success(isHardDelete ? "Work deleted permanently" : "Work moved to Drafts");
-                fetchProjects();
-            } else {
-                throw new Error("Failed to delete");
-            }
-        } catch (error) {
-            toast.error("Operation failed");
-        }
-    };
+    let orderedProjects = projectsRef.current;
 
-    const handleRestore = async (id: string) => {
-        try {
-            const res = await fetch(`${apiBase}/projects/${id}`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: "live" })
-            });
+    if (sourceProjectId !== targetProjectId) {
+      setProjects((prev) => {
+        const next = moveItemById(prev, sourceProjectId, targetProjectId);
+        projectsRef.current = next;
+        orderedProjects = next;
+        return next;
+      });
+    }
 
-            if (res.ok) {
-                toast.success("Work restored to Live");
-                fetchProjects();
-            }
-        } catch (error) {
-            toast.error("Restore failed");
-        }
-    };
+    syncDragState(null, null);
 
-    const filteredProjects = useMemo(
-        () =>
-            projects.filter((p) => {
-                if (!searchQuery) return true;
-                return (
-                    String(p.title || "").toLowerCase().includes(searchQuery) ||
-                    String(p.category || "").toLowerCase().includes(searchQuery)
-                );
-            }),
-        [projects, searchQuery]
-    );
+    if (sourceProjectId !== targetProjectId && orderedProjects.length > 0) {
+      void saveProjectOrder(orderedProjects);
+    }
+  }, [isReorderEnabled, saveProjectOrder, syncDragState]);
 
-    const visibleProjects = useMemo(
-        () => filteredProjects.slice(0, visibleCount),
-        [filteredProjects, visibleCount]
-    );
+  const handleDelete = useCallback(async (id: string, isHardDelete: boolean) => {
+    if (!confirm(isHardDelete ? "Are you sure you want to PERMANENTLY delete this?" : "Move this work to Drafts?")) {
+      return;
+    }
 
-    const canLoadMore = visibleCount < filteredProjects.length;
+    try {
+      const res = await fetch(`${apiBase}/projects/${id}`, isHardDelete ? {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      } : {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "draft" }),
+      });
 
-    return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Live Works</h2>
-                    <p className="text-muted-foreground">Manage your portfolio projects.</p>
-                </div>
-                <Button onClick={() => { setEditingProject(null); setIsFormOpen(true); }} className="gap-2">
-                    <Plus className="w-4 h-4" /> Upload Work
-                </Button>
-            </div>
+      if (!res.ok) {
+        throw new Error("Failed to delete");
+      }
 
-            <div className="flex items-center gap-4">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
-                    <TabsList>
-                        <TabsTrigger value="live" className="gap-2"><MonitorPlay className="w-4 h-4" /> Live Works</TabsTrigger>
-                        <TabsTrigger value="draft" className="gap-2"><RotateCcw className="w-4 h-4" /> Drafts</TabsTrigger>
-                    </TabsList>
-                </Tabs>
-                <div className="relative flex-1 max-w-sm ml-auto">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search projects..."
-                        className="pl-8"
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                    />
-                </div>
-            </div>
+      toast.success(isHardDelete ? "Work deleted permanently" : "Work moved to Drafts");
+      void fetchProjects();
+    } catch (error) {
+      toast.error("Operation failed");
+    }
+  }, [apiBase, fetchProjects, token]);
 
-            <p className="text-xs text-muted-foreground">
-                {isReorderEnabled
-                    ? "Drag and drop cards to control website display order."
-                    : "Clear search text before dragging cards to reorder."}
-            </p>
+  const handleRestore = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`${apiBase}/projects/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "live" }),
+      });
 
-            {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-96 bg-muted/20 animate-pulse rounded-2xl" />)}
-                </div>
-            ) : (
-                <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {visibleProjects.map((project) => (
-                            <div
-                                key={project.id}
-                                className={`group relative ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${draggingProjectId === project.id ? "opacity-70" : ""}`}
-                                draggable={isReorderEnabled}
-                                onDragStart={() => handleDragStart(project.id)}
-                                onDragEnter={() => handleDragEnter(project.id)}
-                                onDragOver={(event) => {
-                                    if (isReorderEnabled) event.preventDefault();
-                                }}
-                                onDrop={(event) => event.preventDefault()}
-                                onDragEnd={handleDragEnd}
-                                style={{ contentVisibility: "auto", containIntrinsicSize: "420px" }}
-                            >
-                                <div className="glass-card cms-card-lite overflow-hidden h-full flex flex-col border-border/50 bg-secondary/10 transition-none">
-                                    <div className="relative overflow-hidden aspect-video">
-                                        {project.image_url ? (
-                                            <img
-                                                src={project.image_url}
-                                                alt={project.title}
-                                                loading="lazy"
-                                                decoding="async"
-                                                width={640}
-                                                height={360}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="flex items-center justify-center h-full bg-muted/30 text-muted-foreground">
-                                                No Image
-                                            </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-40" />
+      if (res.ok) {
+        toast.success("Work restored to Live");
+        void fetchProjects();
+      }
+    } catch (error) {
+      toast.error("Restore failed");
+    }
+  }, [apiBase, fetchProjects, token]);
 
-                                        {/* Action Buttons Overlay */}
-                                        <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                                            <Button size="sm" variant="secondary" className="shadow-lg hover:scale-105 transition-transform" onClick={() => { setEditingProject(project); setIsFormOpen(true); }}>
-                                                <Edit className="w-4 h-4 mr-2" /> Edit
-                                            </Button>
+  const handleOpenCreate = useCallback(() => {
+    setEditingProject(null);
+    setIsFormOpen(true);
+  }, []);
 
-                                            {activeTab === 'draft' ? (
-                                                <>
-                                                    <Button size="icon" className="bg-green-600 hover:bg-green-700 shadow-lg hover:scale-105 transition-transform" onClick={() => handleRestore(project.id)}>
-                                                        <RotateCcw className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button size="icon" variant="destructive" className="shadow-lg hover:scale-105 transition-transform" onClick={() => handleDelete(project.id, true)}>
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <Button size="sm" variant="destructive" className="shadow-lg hover:scale-105 transition-transform" onClick={() => handleDelete(project.id, false)}>
-                                                    <Trash2 className="w-4 h-4 mr-2" /> {activeTab === "live" ? "Draft" : "Delete"}
-                                                </Button>
-                                            )}
-                                        </div>
+  const handleOpenEdit = useCallback((project: ProjectRecord) => {
+    setEditingProject(project);
+    setIsFormOpen(true);
+  }, []);
 
-                                        {/* Badge */}
-                                        <div className="absolute top-4 left-4 z-10">
-                                            <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow backdrop-blur-md">
-                                                {project.category || "Uncategorized"}
-                                            </span>
-                                        </div>
+  const handleFormSuccess = useCallback(() => {
+    void fetchProjects();
+  }, [fetchProjects]);
 
-                                        {/* Status Badge for Drafts */}
-                                        {project.status === 'draft' && (
-                                            <div className="absolute top-4 right-4 z-10">
-                                                <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/90 text-black font-medium shadow-glow backdrop-blur-md">
-                                                    Draft
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
+  const filteredProjects = useMemo(
+    () => projects.filter((project) => !searchQuery || project.searchText.includes(searchQuery)),
+    [projects, searchQuery],
+  );
 
-                                    <div className="p-6 flex-grow flex flex-col justify-between relative z-10">
-                                        <div>
-                                            {isReorderEnabled && (
-                                                <div className="flex justify-end mb-2">
-                                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
-                                                        <GripVertical className="w-3.5 h-3.5" />
-                                                        Drag
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                                                {project.title}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
-                                                {project.description}
-                                            </p>
-                                        </div>
+  const visibleProjects = useMemo(
+    () => filteredProjects.slice(0, visibleCount),
+    [filteredProjects, visibleCount],
+  );
 
-                                        {project.client && (
-                                            <div className="mt-auto pt-4 border-t border-border/50">
-                                                <p className="text-xs font-bold tracking-wider text-primary uppercase flex items-center gap-2">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                                                    CLIENT: <span className="text-foreground/80 font-normal normal-case">{project.client}</span>
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {filteredProjects.length === 0 && (
-                            <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/5 rounded-3xl border border-dashed border-border/50">
-                                <MonitorPlay className="w-12 h-12 mb-4 opacity-20" />
-                                <p className="text-lg font-medium">No works found in {activeTab}.</p>
-                                <p className="text-sm opacity-60">Upload a new work to get started.</p>
-                            </div>
-                        )}
-                    </div>
+  const canLoadMore = visibleCount < filteredProjects.length;
 
-                    {canLoadMore && (
-                        <div className="flex justify-center">
-                            <Button
-                                variant="outline"
-                                onClick={() => setVisibleCount((prev) => prev + WORKS_LOAD_MORE_STEP)}
-                            >
-                                Load more works
-                            </Button>
-                        </div>
-                    )}
-                </>
-            )}
-
-            <WorkForm
-                open={isFormOpen}
-                onOpenChange={setIsFormOpen}
-                project={editingProject}
-                onSuccess={() => fetchProjects()}
-            />
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Live Works</h2>
+          <p className="text-muted-foreground">Manage your portfolio projects.</p>
         </div>
-    );
+        <Button onClick={handleOpenCreate} className="gap-2">
+          <Plus className="w-4 h-4" /> Upload Work
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
+          <TabsList>
+            <TabsTrigger value="live" className="gap-2"><MonitorPlay className="w-4 h-4" /> Live Works</TabsTrigger>
+            <TabsTrigger value="draft" className="gap-2"><RotateCcw className="w-4 h-4" /> Drafts</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="relative flex-1 max-w-sm ml-auto">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search projects..."
+            className="pl-8"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        {isReorderEnabled
+          ? "Drag and drop cards to control website display order."
+          : "Clear search text before dragging cards to reorder."}
+      </p>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {LOADING_SKELETON_IDS.map((id) => (
+            <div key={id} className="h-96 bg-muted/20 animate-pulse rounded-2xl" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {visibleProjects.map((project, index) => (
+              <WorkCard
+                key={project.id}
+                activeTab={activeTab}
+                eagerImage={index < EAGER_IMAGE_COUNT}
+                isDragging={draggingProjectId === project.id}
+                isDropTarget={dropTargetProjectId === project.id && draggingProjectId !== project.id}
+                isReorderEnabled={isReorderEnabled}
+                onDelete={handleDelete}
+                onDragEnd={handleDragEnd}
+                onDragEnter={handleDragEnter}
+                onDragStart={handleDragStart}
+                onDrop={handleDrop}
+                onEdit={handleOpenEdit}
+                onRestore={handleRestore}
+                project={project}
+              />
+            ))}
+
+            {filteredProjects.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/5 rounded-3xl border border-dashed border-border/50">
+                <MonitorPlay className="w-12 h-12 mb-4 opacity-20" />
+                <p className="text-lg font-medium">No works found in {activeTab}.</p>
+                <p className="text-sm opacity-60">Upload a new work to get started.</p>
+              </div>
+            )}
+          </div>
+
+          {canLoadMore && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount((count) => count + WORKS_LOAD_MORE_STEP)}
+              >
+                Load more works
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
+      {isFormOpen ? (
+        <Suspense fallback={null}>
+          <WorkForm
+            open={isFormOpen}
+            onOpenChange={setIsFormOpen}
+            project={editingProject}
+            onSuccess={handleFormSuccess}
+          />
+        </Suspense>
+      ) : null}
+    </div>
+  );
 };
 
 export default WorksManager;
