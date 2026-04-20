@@ -219,6 +219,7 @@ router.post("/work-assignments", requireAuth, async (req, res) => {
     const countdownEndAt = req.body?.countdown_end_at ?? (parsedDays ? buildCountdownEndAt(parsedDays) : null);
     const paymentAmount = normalizePaymentAmount(req.body?.payment_amount);
     const orderCode = normalizeOrderCode(req.body?.order_code) || buildAutoOrderCode();
+    const normalizedStatus = normalizeStatus(req.body?.status);
 
     if (paymentAmount === null || paymentAmount <= 0) {
       return res.status(400).json({
@@ -238,7 +239,8 @@ router.post("/work-assignments", requireAuth, async (req, res) => {
       revision_due_at: req.body?.revision_due_at ?? null,
       payment_amount: paymentAmount,
       payment_status: normalizePaymentStatus(req.body?.payment_status),
-      status: normalizeStatus(req.body?.status)
+      status: normalizedStatus,
+      completed_at: normalizedStatus === "done" ? new Date().toISOString() : null,
     };
 
     const data = await insertRow("/work_assignments", payload);
@@ -287,7 +289,9 @@ router.patch("/work-assignments/:id", requireAuth, async (req, res) => {
     const patch: Record<string, unknown> = { ...(req.body ?? {}) };
 
     if ("status" in patch) {
-      patch.status = normalizeStatus(patch.status);
+      const normalizedStatus = normalizeStatus(patch.status);
+      patch.status = normalizedStatus;
+      patch.completed_at = normalizedStatus === "done" ? new Date().toISOString() : null;
     }
 
     if ("payment_status" in patch) {

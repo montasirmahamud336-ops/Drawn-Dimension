@@ -16,6 +16,47 @@ const normalizeDisplayOrder = (value: unknown): number | null => {
   return Math.max(0, Math.trunc(numeric));
 };
 
+const normalizeLinkedServiceIds = (value: unknown) => {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? (() => {
+        const trimmed = value.trim();
+        if (!trimmed) return [] as string[];
+
+        try {
+          const parsed = JSON.parse(trimmed);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            return trimmed
+              .slice(1, -1)
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean);
+          }
+
+          return trimmed
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+        }
+      })()
+      : [];
+
+  const seen = new Set<number>();
+  const normalized: number[] = [];
+
+  source.forEach((item) => {
+    const serviceId = Number(item);
+    if (!Number.isInteger(serviceId) || serviceId <= 0 || seen.has(serviceId)) return;
+    seen.add(serviceId);
+    normalized.push(serviceId);
+  });
+
+  return normalized;
+};
+
 const buildProjectsQuery = (filters: string[], withDisplayOrder: boolean) => {
   const order = withDisplayOrder
     ? "order=display_order.asc.nullslast,created_at.desc"
@@ -38,25 +79,29 @@ const getNextProjectDisplayOrder = async (status: string) => {
 
 router.get("/projects", async (req, res) => {
   try {
-    const status = String(req.query.status ?? "live");
+    const status = String(req.query.status ?? "live").toLowerCase();
     const filters: string[] = [];
     if (status !== "all") {
       filters.push(`status=eq.${encodeURIComponent(status)}`);
     }
 
-    const orderedQuery = buildProjectsQuery(filters, true);
-    try {
-      const data = await selectRows(`/projects${orderedQuery}`);
-      return res.json(data ?? []);
-    } catch (error) {
-      if (!isMissingDisplayOrderError(error)) {
-        throw error;
-      }
+    const loadProjects = async () => {
+      const orderedQuery = buildProjectsQuery(filters, true);
+      try {
+        const data = await selectRows(`/projects${orderedQuery}`);
+        return data ?? [];
+      } catch (error) {
+        if (!isMissingDisplayOrderError(error)) {
+          throw error;
+        }
 
-      const fallbackQuery = buildProjectsQuery(filters, false);
-      const data = await selectRows(`/projects${fallbackQuery}`);
-      return res.json(data ?? []);
-    }
+        const fallbackQuery = buildProjectsQuery(filters, false);
+        const data = await selectRows(`/projects${fallbackQuery}`);
+        return data ?? [];
+      }
+    };
+
+    return res.json(await loadProjects());
   } catch (error: unknown) {
     return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to fetch projects"
@@ -82,6 +127,7 @@ router.post("/projects", requireAuth, async (req, res) => {
       project_duration: req.body?.project_duration ?? null,
       category: req.body?.category ?? null,
       tags: req.body?.tags ?? [],
+      linked_service_ids: normalizeLinkedServiceIds(req.body?.linked_service_ids),
       live_link: req.body?.live_link ?? null,
       github_link: req.body?.github_link ?? null,
       status,
@@ -141,6 +187,9 @@ router.patch("/projects/:id", requireAuth, async (req, res) => {
     if ("display_order" in patch) {
       const normalized = normalizeDisplayOrder(patch.display_order);
       patch.display_order = normalized ?? 0;
+    }
+    if ("linked_service_ids" in patch) {
+      patch.linked_service_ids = normalizeLinkedServiceIds(patch.linked_service_ids);
     }
 
     const data = await updateRow(`/projects?id=eq.${encodeURIComponent(id)}`, patch);

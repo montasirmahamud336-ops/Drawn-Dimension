@@ -1,9 +1,15 @@
 import { Router } from "express";
+import multer from "multer";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
 import { insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
 
 const router = Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 type ChatMessage = {
   id: string;
@@ -236,6 +242,43 @@ router.post("/chat/messages/:employeeId", requireAuth, async (req: AuthRequest, 
   } catch (error: unknown) {
     return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to send message",
+    });
+  }
+});
+
+router.post("/chat/upload", requireAuth, upload.single("file"), async (req: AuthRequest, res) => {
+  try {
+    if (!req.admin?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ message: "file is required" });
+    }
+
+    const ext = (file.originalname.split(".").pop() || "bin").replace(/[^a-zA-Z0-9]/g, "") || "bin";
+    const safeName = file.originalname
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9._-]/g, "")
+      .slice(0, 120) || "file";
+    const objectPath = normalizeObjectPath(`admins/${req.admin.id}/chat/${Date.now()}-${safeName}`, ext);
+    const saved = await storeUploadedFile({
+      objectPath,
+      buffer: new Uint8Array(file.buffer),
+    });
+
+    return res.status(201).json({
+      path: saved.path,
+      publicUrl: saved.publicUrl,
+      fileName: file.originalname,
+      mimeType: file.mimetype || "application/octet-stream",
+      size: file.size,
+    });
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to upload attachment",
     });
   }
 });

@@ -2,13 +2,313 @@
   "section_order": [
     "hero",
     "services",
+    "trusted-logos",
     "portfolio",
-    "global-reach",
     "testimonials",
+    "global-reach",
     "about",
     "why-choose-us",
     "cta"
   ],
-  "sections": {},
-  "updated_at": null
+  "sections": {
+    "hero": {
+      "enabled": true,
+      "badge": "Engineering Excellence Redefined",
+      "title_line_1": "Drawn",
+      "title_line_2": "Dimension",
+      "description": "Where precision engineering meets digital innovation. We transform complex challenges into elegant solutions.",
+      "primary_label": "Start Your Project",
+      "primary_href": "/contact",
+      "secondary_label": "View Our Work",
+      "secondary_href": "/portfolio",
+      "cards": [
+        {
+          "id": "hero-pfd-pid",
+          "icon": "file-text",
+          "title": "PFD & P&ID Diagrams",
+          "description": "Process flow documentation",
+          "link": "/services/pfd-pid"
+        },
+        {
+          "id": "hero-solidworks",
+          "icon": "box",
+          "title": "3D SolidWorks Modeling",
+          "description": "Advanced 3D modeling solutions",
+          "link": "/services/solidworks"
+        },
+        {
+          "id": "hero-autocad",
+          "icon": "ruler",
+          "title": "AutoCAD Technical Drawings",
+          "description": "Precision engineering drawings",
+          "link": "/services/autocad"
+        },
+        {
+          "id": "hero-web-design",
+          "icon": "code",
+          "title": "Web Design & Development",
+          "description": "Modern, responsive websites",
+          "link": "/services/web-design"
+        }
+      ],
+      "software_strip": {
+        "enabled": true,
+        "items": [
+          {
+            "id": "hero-software-yyhk9t",
+            "name": "AutoCad",
+            "image_url": "http://127.0.0.1:4000/media/cms-uploads/home/hero-software-strip/1776198537776-jntr6xrbsl.png"
+          }
+        ]
+      }
+    },
+    "trusted-logos": {
+      "enabled": true,
+      "badge": "Trusted By",
+      "title": "Companies We Have Supported",
+      "description": "Showcase the brands, businesses, and organizations your team has worked with using an automatically moving logo slider.",
+      "logos": [
+        {
+          "id": "trusted-logo-dsrrsw",
+          "name": "Client 1",
+          "image_url": "https://drawndimension.com/media/cms-uploads/home/trusted-logos/1774475551379-mh3g2pnkcv.png",
+          "link": ""
+        }
+      ]
+    },
+    "services": {
+      "enabled": true,
+      "badge": "Our Services",
+      "title": "Comprehensive Solutions for",
+      "title_highlight": "Every Challenge",
+      "description": "From concept to completion, we provide end-to-end services that combine engineering precision with creative innovation.",
+      "items": [
+        {
+          "id": "service-web",
+          "icon": "globe",
+          "title": "Web Design & Development",
+          "description": "Stunning, responsive websites built with modern technologies. From landing pages to complex web applications.",
+          "features": [
+            "Custom Design",
+            "React/Next.js",
+            "E-commerce",
+            "CMS Integration"
+          ],
+          "link": "/services/web-design"
+        },
+        {
+          "id": "service-autocad",
+          "icon": "pen-tool",
+          "title": "AutoCAD Technical Drawings",
+          "description": "Precise 2D technical drawings and documentation for engineering, architecture, and manufacturing projects.",
+          "features": [
+            "2D Drafting",
+            "As-Built Drawings",
+            "Shop Drawings",
+            "Detail Plans"
+          ],
+          "link": "/services/autocad"
+        },
+        {
+          "id": "service-solidworks",
+          "icon": "box",
+          "title": "3D SolidWorks Modeling",
+          "description": "Advanced 3D modeling and simulation for product design, prototyping, and mechanical engineering.",
+          "features": [
+            "3D Modeling",
+            "Assembly Design",
+            "FEA Analysis",
+            "Rendering"
+          ],
+          "link": "/services/solidworks"
+        },
+        {
+          "id": "service-pfd-pid",
+          "icon": "git-branch",
+          "title": "PFD & P&ID Diagrams",
+          "description": "Comprehensive process flow diagrams and piping & instrumentation diagrams for industrial applications.",
+          "features": [
+            "Process Design",
+            "P&ID Standards",
+            "Equipment Specs",
+            "Control Systems"
+          ],
+          "link": "/services/pfd-pid"
+        },
+        {
+          "id": "service-hazop",
+          "icon": "shield-check",
+          "title": "HAZOP Study & Risk Analysis",
+          "description": "Thorough hazard and operability studies to ensure safety and compliance in industrial processes.",
+          "features": [
+            "Risk Assessment",
+            "Safety Analysis",
+            "Compliance",
+            "Documentation"
+          ],
+          "link": "/services/hazop"
+        },
+        {
+          "id": "service-graphic",
+          "icon": "palette",
+          "title": "Graphic Design & Branding",
+          "description": "Creative visual solutions from marketing materials to complete brand identities that captivate audiences.",
+          "features": [
+            "Brand Identity",
+            "Marketing Materials",
+            "Social Media",
+            "Print Design"
+          ],
+          "link": "/services/graphic-design"
+        }
+      ],
+      "cta_title": "And Many More Engineering Services",
+      "cta_description": "We offer a wide range of additional engineering and digital services tailored to your specific needs.",
+      "primary_label": "View All Services",
+      "primary_href": "/services",
+      "secondary_label": "Message Us on WhatsApp",
+      "secondary_href": "https://wa.me/8801775119416"
+    },
+    "portfolio": {
+      "enabled": true,
+      "badge": "Our Portfolio",
+      "title": "Projects That",
+      "title_highlight": "Speak Excellence",
+      "description": "Explore our diverse portfolio showcasing engineering precision, creative innovation, and technical expertise across multiple disciplines.",
+      "primary_label": "View More",
+      "primary_href": "/portfolio",
+      "secondary_label": "Message on WhatsApp",
+      "secondary_href": "https://wa.me/8801775119416"
+    },
+    "global-reach": {
+      "enabled": true,
+      "badge": "Global Footprint",
+      "title": "Countries Where We",
+      "title_highlight": "Delivered Projects",
+      "description": "A live map of regions where our engineering and digital teams have completed client work.",
+      "empty_title": "No countries marked yet",
+      "empty_description": "Add countries from CMS to highlight them here."
+    },
+    "testimonials": {
+      "enabled": true,
+      "badge": "Featured Reviews",
+      "title": "What Our Clients Say"
+    },
+    "about": {
+      "enabled": true,
+      "badge": "About Us",
+      "title": "Building Tomorrow's",
+      "title_highlight": "Engineering Legacy",
+      "description": "At Drawn Dimension, we blend decades of technical expertise with cutting-edge digital innovation. Our multidisciplinary team transforms complex engineering challenges into streamlined, elegant solutions that drive your business forward.",
+      "description_secondary": "From intricate AutoCAD technical drawings to sophisticated 3D modeling, from comprehensive HAZOP studies to stunning web experiences - we deliver excellence across every discipline we touch.",
+      "primary_label": "Learn More About Us",
+      "primary_href": "/about",
+      "secondary_label": "Message Us on WhatsApp",
+      "secondary_href": "https://wa.me/8801775119416",
+      "values": [
+        {
+          "id": "value-precision",
+          "icon": "target",
+          "title": "Precision",
+          "description": "Every detail matters. We deliver accuracy that exceeds industry standards."
+        },
+        {
+          "id": "value-innovation",
+          "icon": "lightbulb",
+          "title": "Innovation",
+          "description": "Pioneering solutions that push boundaries and redefine possibilities."
+        },
+        {
+          "id": "value-collaboration",
+          "icon": "users",
+          "title": "Collaboration",
+          "description": "Your vision, our expertise. Together we create extraordinary results."
+        },
+        {
+          "id": "value-excellence",
+          "icon": "award",
+          "title": "Excellence",
+          "description": "Committed to delivering nothing less than exceptional quality."
+        }
+      ]
+    },
+    "why-choose-us": {
+      "enabled": true,
+      "badge": "Why Choose Us",
+      "title": "Your Success Is",
+      "title_highlight": "Our Priority",
+      "description": "We do not just deliver projects - we build partnerships. Our commitment to excellence, combined with deep technical expertise and genuine care for your success, sets us apart in the industry.",
+      "primary_label": "Start Your Project Today",
+      "primary_href": "/contact",
+      "secondary_label": "Message Us on WhatsApp",
+      "secondary_href": "https://wa.me/8801775119416",
+      "reasons": [
+        {
+          "id": "reason-technology",
+          "icon": "zap",
+          "title": "Cutting-Edge Technology",
+          "description": "We leverage the latest tools and technologies to deliver innovative solutions that keep you ahead of the competition."
+        },
+        {
+          "id": "reason-delivery",
+          "icon": "clock",
+          "title": "On-Time Delivery",
+          "description": "We respect your timelines. Our streamlined processes ensure projects are completed on schedule without compromising quality."
+        },
+        {
+          "id": "reason-support",
+          "icon": "headphones",
+          "title": "Dedicated Support",
+          "description": "Our team provides ongoing support and consultation, ensuring your success long after project completion."
+        },
+        {
+          "id": "reason-quality",
+          "icon": "shield",
+          "title": "Quality Assurance",
+          "description": "Rigorous quality checks at every stage guarantee deliverables that meet the highest industry standards."
+        },
+        {
+          "id": "reason-scalable",
+          "icon": "trending-up",
+          "title": "Scalable Solutions",
+          "description": "Our solutions grow with your business, designed to adapt and scale as your needs evolve."
+        },
+        {
+          "id": "reason-track-record",
+          "icon": "check",
+          "title": "Proven Track Record",
+          "description": "With 500+ successful projects and a 98% client satisfaction rate, our results speak for themselves."
+        }
+      ],
+      "stats": [
+        {
+          "id": "stat-iso",
+          "value": "ISO",
+          "label": "Certified"
+        },
+        {
+          "id": "stat-support",
+          "value": "24/7",
+          "label": "Support"
+        },
+        {
+          "id": "stat-security",
+          "value": "100%",
+          "label": "Secure"
+        }
+      ]
+    },
+    "cta": {
+      "enabled": true,
+      "compact": false,
+      "title_prefix": "Ready to Transform Your",
+      "title_highlight": "Vision Into Reality?",
+      "description": "Let's discuss your project and discover how our engineering expertise and creative innovation can help you achieve extraordinary results.",
+      "primary_label": "Get Free Consultation",
+      "primary_href": "/contact",
+      "secondary_label": "View Our Portfolio",
+      "secondary_href": "/portfolio"
+    }
+  },
+  "updated_at": "2026-04-14T21:29:17.433Z"
 }

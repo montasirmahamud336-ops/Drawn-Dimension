@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
-import { getSupabaseUserFromToken } from "../middleware/userAuth.js";
+import { getUserFromAccessToken } from "../middleware/userAuth.js";
 import { insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
 import { isNonEmptyString } from "../utils/validation.js";
 
@@ -638,19 +638,9 @@ router.post("/auth/notify-signup", async (req, res) => {
       return res.status(400).json({ message: "accessToken is required for google notifications" });
     }
 
-    const user = await getSupabaseUserFromToken(accessToken);
+    const user = await getUserFromAccessToken(accessToken);
     if (!user?.id) {
       return res.status(401).json({ message: "Invalid Google access token" });
-    }
-
-    const provider = String(user.app_metadata?.provider ?? "").toLowerCase();
-    const identityProviders = Array.isArray(user.identities)
-      ? user.identities.map((identity) => String(identity?.provider ?? "").toLowerCase())
-      : [];
-    const isGoogleAccount = provider === "google" || identityProviders.includes("google");
-
-    if (!isGoogleAccount) {
-      return res.status(400).json({ message: "Provided token is not a Google user" });
     }
 
     const userEmail = normalizeEmail(user.email || bodyEmail);

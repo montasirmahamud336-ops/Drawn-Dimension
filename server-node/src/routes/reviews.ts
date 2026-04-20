@@ -80,19 +80,23 @@ router.get("/reviews", async (req, res) => {
     if (status === "live") filters.push("is_published=eq.true");
     if (status === "draft") filters.push("is_published=eq.false");
 
-    const query = buildReviewsQuery(filters, true);
-    try {
-      const data = await selectRows(`/testimonials${query}`);
-      return res.json((data ?? []).map(mapTestimonialToReview));
-    } catch (error) {
-      if (!isMissingDisplayOrderError(error)) {
-        throw error;
-      }
+    const loadReviews = async () => {
+      const query = buildReviewsQuery(filters, true);
+      try {
+        const data = await selectRows(`/testimonials${query}`);
+        return (data ?? []).map(mapTestimonialToReview);
+      } catch (error) {
+        if (!isMissingDisplayOrderError(error)) {
+          throw error;
+        }
 
-      const fallbackQuery = buildReviewsQuery(filters, false);
-      const data = await selectRows(`/testimonials${fallbackQuery}`);
-      return res.json((data ?? []).map(mapTestimonialToReview));
-    }
+        const fallbackQuery = buildReviewsQuery(filters, false);
+        const data = await selectRows(`/testimonials${fallbackQuery}`);
+        return (data ?? []).map(mapTestimonialToReview);
+      }
+    };
+
+    return res.json(await loadReviews());
   } catch (error: any) {
     return res.status(500).json({ message: error?.message || "Failed to fetch reviews" });
   }

@@ -380,6 +380,7 @@ const isSchemaOutdatedError = (error: unknown) => {
       message.includes("process_badge") ||
       message.includes("pricing_badge") ||
       message.includes("cta_") ||
+      message.includes("related_works_") ||
       message.includes("process_steps") ||
       message.includes("pricing_tiers") ||
       message.includes("meta_") ||
@@ -422,6 +423,12 @@ type RawServiceRow = {
   cta_primary_link?: unknown;
   cta_secondary_label?: unknown;
   cta_secondary_link?: unknown;
+  related_works_badge?: unknown;
+  related_works_title?: unknown;
+  related_works_description?: unknown;
+  related_works_button_label?: unknown;
+  related_works_button_link?: unknown;
+  related_works_empty_text?: unknown;
   meta_title?: unknown;
   meta_description?: unknown;
   created_at?: unknown;
@@ -487,6 +494,16 @@ const normalizeServiceRow = (row: RawServiceRow) => {
     cta_primary_link: normalizeOptionalText(row.cta_primary_link) ?? "/contact",
     cta_secondary_label: normalizeOptionalText(row.cta_secondary_label) ?? "View Our Portfolio",
     cta_secondary_link: normalizeOptionalText(row.cta_secondary_link) ?? "/portfolio",
+    related_works_badge: normalizeOptionalText(row.related_works_badge) ?? "Our Work",
+    related_works_title: normalizeOptionalText(row.related_works_title) ?? `Related {{service}} Projects`,
+    related_works_description:
+      normalizeOptionalText(row.related_works_description) ??
+      "Live works linked from CMS for this service page appear here automatically.",
+    related_works_button_label: normalizeOptionalText(row.related_works_button_label) ?? "View All Works",
+    related_works_button_link: normalizeOptionalText(row.related_works_button_link) ?? "/portfolio",
+    related_works_empty_text:
+      normalizeOptionalText(row.related_works_empty_text) ??
+      "No live works are linked to this service yet. Select this service while posting from CMS Live Work to show it here.",
     meta_title: normalizeOptionalText(row.meta_title) ?? getDefaultMetaTitle(name, slug),
     meta_description:
       normalizeOptionalText(row.meta_description) ??
@@ -600,6 +617,24 @@ const buildServicePatch = (body: unknown, requireName = false) => {
   if ("cta_secondary_link" in source) {
     patch.cta_secondary_link = normalizeOptionalText(source.cta_secondary_link);
   }
+  if ("related_works_badge" in source) {
+    patch.related_works_badge = normalizeOptionalText(source.related_works_badge);
+  }
+  if ("related_works_title" in source) {
+    patch.related_works_title = normalizeOptionalText(source.related_works_title);
+  }
+  if ("related_works_description" in source) {
+    patch.related_works_description = normalizeOptionalText(source.related_works_description);
+  }
+  if ("related_works_button_label" in source) {
+    patch.related_works_button_label = normalizeOptionalText(source.related_works_button_label);
+  }
+  if ("related_works_button_link" in source) {
+    patch.related_works_button_link = normalizeOptionalText(source.related_works_button_link);
+  }
+  if ("related_works_empty_text" in source) {
+    patch.related_works_empty_text = normalizeOptionalText(source.related_works_empty_text);
+  }
   if ("meta_title" in source) {
     patch.meta_title = normalizeOptionalText(source.meta_title);
   }
@@ -612,7 +647,7 @@ const buildServicePatch = (body: unknown, requireName = false) => {
 
 const selectServices = async (status: ServiceStatus | "all") => {
   const filters = [
-    "select=id,name,slug,status,short_description,hero_badge,hero_title,hero_description,features,feature_cards,section_badge,section_title,section_description,section_left_items,section_panel_title,section_panel_subtitle,section_panel_items,process_badge,process_title,process_steps,pricing_badge,pricing_title,pricing_description,pricing_tiers,cta_title_prefix,cta_title_highlight,cta_description,cta_primary_label,cta_primary_link,cta_secondary_label,cta_secondary_link,meta_title,meta_description,created_at,updated_at",
+    "select=id,name,slug,status,short_description,hero_badge,hero_title,hero_description,features,feature_cards,section_badge,section_title,section_description,section_left_items,section_panel_title,section_panel_subtitle,section_panel_items,process_badge,process_title,process_steps,pricing_badge,pricing_title,pricing_description,pricing_tiers,cta_title_prefix,cta_title_highlight,cta_description,cta_primary_label,cta_primary_link,cta_secondary_label,cta_secondary_link,related_works_badge,related_works_title,related_works_description,related_works_button_label,related_works_button_link,related_works_empty_text,meta_title,meta_description,created_at,updated_at",
     "order=created_at.desc",
   ];
 
@@ -637,9 +672,13 @@ router.get("/services", async (req, res) => {
   const status = normalizeStatus(req.query.status, true);
 
   try {
-    const rows = await selectServices(status);
-    const items = Array.isArray(rows) ? rows : [];
-    return res.json(items.map((row) => normalizeServiceRow(row as RawServiceRow)));
+    const loadServices = async () => {
+      const rows = await selectServices(status);
+      const items = Array.isArray(rows) ? rows : [];
+      return items.map((row) => normalizeServiceRow(row as RawServiceRow));
+    };
+
+    return res.json(await loadServices());
   } catch (error: unknown) {
     if (isSchemaOutdatedError(error)) {
       try {

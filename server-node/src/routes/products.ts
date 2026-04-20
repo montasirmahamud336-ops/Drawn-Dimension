@@ -77,6 +77,8 @@ router.post("/products", requireAuth, async (req, res) => {
       image_url: req.body?.image_url ?? null,
       media: req.body?.media ?? [],
       category: req.body?.category ?? null,
+      live_link: req.body?.live_link ?? null,
+      github_link: req.body?.github_link ?? null,
       status,
       display_order: displayOrder
     };

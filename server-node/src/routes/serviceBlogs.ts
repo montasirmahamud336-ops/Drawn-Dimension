@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { requireAuth } from "../middleware/auth.js";
 import { deleteRow, insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { SERVER_DATA_DIR } from "../lib/runtimePaths.js";
 
 type BlogStatus = "live" | "draft";
 
@@ -21,7 +22,7 @@ type RawBlogRow = {
 };
 
 const router = Router();
-const LOCAL_DATA_DIR = path.resolve("data");
+const LOCAL_DATA_DIR = SERVER_DATA_DIR;
 const LOCAL_BLOGS_FILE = path.join(LOCAL_DATA_DIR, "service-blogs.json");
 
 const normalizeText = (value: unknown) => String(value ?? "").trim();

@@ -16,6 +16,12 @@ const isMissingMemberTypeError = (error: unknown) => {
   return message.includes("member_type") && message.includes("does not exist");
 };
 
+const isMissingColumnError = (error: unknown, column: string) => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes(column.toLowerCase()) && message.includes("does not exist");
+};
+
 const normalizeDisplayOrder = (value: unknown): number | null => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
@@ -27,6 +33,11 @@ const normalizeMemberType = (value: unknown) => {
   if (raw === "employee") return "employee";
   if (raw === "all") return "all";
   return "leadership";
+};
+
+const normalizeOptionalText = (value: unknown) => {
+  const normalized = String(value ?? "").trim();
+  return normalized.length > 0 ? normalized : null;
 };
 
 const buildTeamQuery = (filters: string[], withDisplayOrder: boolean) => {
@@ -111,6 +122,7 @@ router.post("/team", requireAuth, async (req, res) => {
       name: req.body?.name,
       role: req.body?.role,
       bio: req.body?.bio ?? null,
+      country: normalizeOptionalText(req.body?.country),
       image_url: req.body?.image_url ?? null,
       media: req.body?.media ?? [],
       linkedin_url: req.body?.linkedin_url ?? null,
@@ -124,7 +136,7 @@ router.post("/team", requireAuth, async (req, res) => {
     try {
       data = await insertRow("/team_members", payload);
     } catch (error) {
-      if (!isMissingDisplayOrderError(error) && !isMissingMemberTypeError(error)) {
+      if (!isMissingDisplayOrderError(error) && !isMissingMemberTypeError(error) && !isMissingColumnError(error, "country")) {
         throw error;
       }
 
@@ -134,6 +146,9 @@ router.post("/team", requireAuth, async (req, res) => {
       }
       if (isMissingMemberTypeError(error)) {
         delete legacyPayload.member_type;
+      }
+      if (isMissingColumnError(error, "country")) {
+        delete legacyPayload.country;
       }
 
       data = await insertRow("/team_members", legacyPayload);
@@ -187,12 +202,15 @@ router.patch("/team/:id", requireAuth, async (req, res) => {
       const normalized = normalizeMemberType(patch.member_type);
       patch.member_type = normalized === "employee" ? "employee" : "leadership";
     }
+    if ("country" in patch) {
+      patch.country = normalizeOptionalText(patch.country);
+    }
 
     try {
       const data = await updateRow(`/team_members?id=eq.${encodeURIComponent(id)}`, patch);
       return res.json(data?.[0] ?? {});
     } catch (error) {
-      if (!isMissingMemberTypeError(error) && !isMissingDisplayOrderError(error)) {
+      if (!isMissingMemberTypeError(error) && !isMissingDisplayOrderError(error) && !isMissingColumnError(error, "country")) {
         throw error;
       }
 
@@ -202,6 +220,9 @@ router.patch("/team/:id", requireAuth, async (req, res) => {
       }
       if (isMissingDisplayOrderError(error)) {
         delete legacyPatch.display_order;
+      }
+      if (isMissingColumnError(error, "country")) {
+        delete legacyPatch.country;
       }
 
       const data = await updateRow(`/team_members?id=eq.${encodeURIComponent(id)}`, legacyPatch);

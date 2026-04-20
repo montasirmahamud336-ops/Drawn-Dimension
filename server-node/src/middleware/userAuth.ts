@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { env } from "../config/env.js";
+import { getSiteUserFromToken } from "../lib/siteUserAuth.js";
 
 export interface SupabaseUser {
   id: string;
@@ -21,24 +21,10 @@ const parseBearerToken = (authHeader: string | undefined) => {
   return token;
 };
 
-export async function getSupabaseUserFromToken(accessToken: string): Promise<SupabaseUser | null> {
+export async function getUserFromAccessToken(accessToken: string): Promise<SupabaseUser | null> {
   const token = accessToken.trim();
   if (!token) return null;
-
-  const response = await fetch(`${env.supabaseUrl}/auth/v1/user`, {
-    headers: {
-      apikey: env.supabaseServiceKey,
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const data = (await response.json()) as SupabaseUser;
-  if (!data?.id) return null;
-  return data;
+  return getSiteUserFromToken(token);
 }
 
 export async function requireUserAuth(req: UserAuthRequest, res: Response, next: NextFunction) {
@@ -48,7 +34,7 @@ export async function requireUserAuth(req: UserAuthRequest, res: Response, next:
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await getSupabaseUserFromToken(token);
+    const user = await getUserFromAccessToken(token);
     if (!user) {
       return res.status(401).json({ message: "Invalid user token" });
     }

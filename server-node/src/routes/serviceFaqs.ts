@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { requireAuth } from "../middleware/auth.js";
 import { deleteRow, insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { SERVER_DATA_DIR } from "../lib/runtimePaths.js";
 
 type FaqStatus = "live" | "draft";
 
@@ -18,7 +19,7 @@ type RawFaqRow = {
 };
 
 const router = Router();
-const LOCAL_DATA_DIR = path.resolve("data");
+const LOCAL_DATA_DIR = SERVER_DATA_DIR;
 const LOCAL_FAQS_FILE = path.join(LOCAL_DATA_DIR, "service-faqs.json");
 
 const normalizeText = (value: unknown) => String(value ?? "").trim();

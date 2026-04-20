@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { requireAuth } from "../middleware/auth.js";
 import { insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { SERVER_DATA_DIR } from "../lib/runtimePaths.js";
 
 type HomePageSettings = {
   section_order: string[];
@@ -19,11 +20,21 @@ type RawSettingsRow = {
 };
 
 const router = Router();
-const LOCAL_DATA_DIR = path.resolve("data");
+const LOCAL_DATA_DIR = SERVER_DATA_DIR;
 const LOCAL_SETTINGS_FILE = path.join(LOCAL_DATA_DIR, "home-page-settings.json");
 
 const DEFAULT_SETTINGS: HomePageSettings = {
-  section_order: ["hero", "services", "portfolio", "global-reach", "testimonials", "about", "why-choose-us", "cta"],
+  section_order: [
+    "hero",
+    "trusted-logos",
+    "services",
+    "portfolio",
+    "global-reach",
+    "testimonials",
+    "about",
+    "why-choose-us",
+    "cta",
+  ],
   sections: {},
   updated_at: null,
 };
@@ -95,11 +106,25 @@ const getDbSettings = async (): Promise<HomePageSettings | null> => {
 router.get("/home-page-settings", async (_req, res) => {
   try {
     const dbSettings = await getDbSettings();
+    const localSettings = await readLocalSettings();
+
     if (dbSettings) {
-      return res.json(dbSettings);
+      const trustedLogosSection =
+        dbSettings.sections["trusted-logos"] ?? localSettings.sections["trusted-logos"];
+      const sectionOrder = dbSettings.section_order.includes("trusted-logos")
+        ? dbSettings.section_order
+        : localSettings.section_order;
+
+      return res.json({
+        ...dbSettings,
+        section_order: sectionOrder,
+        sections: {
+          ...dbSettings.sections,
+          ...(trustedLogosSection ? { "trusted-logos": trustedLogosSection } : {}),
+        },
+      });
     }
 
-    const localSettings = await readLocalSettings();
     return res.json(localSettings);
   } catch (error: unknown) {
     if (isSchemaError(error)) {

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
-import { insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { isDatabaseConfigured, query } from "../db.js";
 
 const router = Router();
 
@@ -43,20 +43,32 @@ const isMissingSettingsTableError = (error: unknown) => {
   }
 
   const message = error.message.toLowerCase();
-  return message.includes("pgrst205") && message.includes("global_reach_settings");
+  return (
+    message.includes("global_reach_settings")
+    && (message.includes("does not exist") || message.includes("relation"))
+  );
 };
 
 const getCurrentSettings = async (): Promise<WorldMapSettingsRow | null> => {
-  const rows = await selectRows("/global_reach_settings?select=id,country_codes,updated_at&id=eq.1&limit=1");
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return null;
-  }
-
-  return rows[0] as WorldMapSettingsRow;
+  const result = await query<WorldMapSettingsRow>(
+    `
+      select id, country_codes, updated_at
+      from public.global_reach_settings
+      where id = 1
+      limit 1
+    `
+  );
+  return result.rows[0] ?? null;
 };
 
 router.get("/world-map-settings", async (_req, res) => {
   try {
+    if (!isDatabaseConfigured()) {
+      return res.status(503).json({
+        message: "DATABASE_URL is not configured for the local Node API"
+      });
+    }
+
     const row = await getCurrentSettings();
     return res.json(mapSettingsResponse(row));
   } catch (error: any) {
@@ -73,6 +85,12 @@ router.get("/world-map-settings", async (_req, res) => {
 
 router.patch("/world-map-settings", requireAuth, async (req, res) => {
   try {
+    if (!isDatabaseConfigured()) {
+      return res.status(503).json({
+        message: "DATABASE_URL is not configured for the local Node API"
+      });
+    }
+
     const countryCodes = sanitizeCountryCodes(req.body?.country_codes);
     const timestamp = new Date().toISOString();
     const payload = {
@@ -83,24 +101,35 @@ router.patch("/world-map-settings", requireAuth, async (req, res) => {
     const existing = await getCurrentSettings();
 
     if (!existing) {
-      const createdRows = await insertRow("/global_reach_settings", {
-        id: 1,
-        country_codes: countryCodes,
-        created_at: timestamp,
-        updated_at: timestamp
-      });
+      const createdResult = await query<WorldMapSettingsRow>(
+        `
+          insert into public.global_reach_settings (id, country_codes, created_at, updated_at)
+          values (1, $1::text[], $2::timestamptz, $2::timestamptz)
+          returning id, country_codes, updated_at
+        `,
+        [countryCodes, timestamp]
+      );
 
-      const created = Array.isArray(createdRows) ? (createdRows[0] as Partial<WorldMapSettingsRow> | undefined) : undefined;
+      const created = createdResult.rows[0];
       return res.json(mapSettingsResponse(created ?? payload));
     }
 
-    const updatedRows = await updateRow("/global_reach_settings?id=eq.1", payload);
-    const updated = Array.isArray(updatedRows) ? (updatedRows[0] as Partial<WorldMapSettingsRow> | undefined) : undefined;
+    const updatedResult = await query<WorldMapSettingsRow>(
+      `
+        update public.global_reach_settings
+        set country_codes = $1::text[], updated_at = $2::timestamptz
+        where id = 1
+        returning id, country_codes, updated_at
+      `,
+      [countryCodes, timestamp]
+    );
+
+    const updated = updatedResult.rows[0];
     return res.json(mapSettingsResponse(updated ?? payload));
   } catch (error: any) {
     if (isMissingSettingsTableError(error)) {
       return res.status(503).json({
-        message: "global_reach_settings table is missing. Run the latest Supabase migration first."
+        message: "global_reach_settings table is missing in PostgreSQL. Create the table on your VPS database first."
       });
     }
 

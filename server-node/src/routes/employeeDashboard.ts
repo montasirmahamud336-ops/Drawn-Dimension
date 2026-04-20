@@ -1,8 +1,14 @@
 import { Router } from "express";
+import multer from "multer";
 import { selectRows, updateRow } from "../lib/supabaseRest.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
+import { normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
 
 const router = Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 const normalizeEmail = (value: string | null | undefined) => (value ?? "").trim().toLowerCase();
 
@@ -139,6 +145,53 @@ router.patch("/employee/profile", requireUserAuth, async (req: UserAuthRequest, 
   }
 });
 
+router.post("/employee/profile/upload", requireUserAuth, upload.single("file"), async (req: UserAuthRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ message: "file is required" });
+    }
+    if (!String(file.mimetype ?? "").toLowerCase().startsWith("image/")) {
+      return res.status(400).json({ message: "Please upload a valid image file" });
+    }
+
+    const employees = await getLinkedEmployees(user);
+    if (employees.length === 0) {
+      return res.status(404).json({ message: "No employee profile linked with this account" });
+    }
+
+    const employee = employees[0];
+    const employeeId = String(employee?.id ?? "").trim();
+    if (!employeeId) {
+      return res.status(400).json({ message: "Invalid employee profile" });
+    }
+
+    const ext = (file.originalname.split(".").pop() || "jpg").replace(/[^a-zA-Z0-9]/g, "") || "jpg";
+    const objectPath = normalizeObjectPath(`employees/${employeeId}/profile-${Date.now()}.${ext}`, ext);
+    const saved = await storeUploadedFile({
+      objectPath,
+      buffer: new Uint8Array(file.buffer),
+    });
+
+    return res.status(201).json({
+      path: saved.path,
+      publicUrl: saved.publicUrl,
+      fileName: file.originalname,
+      mimeType: file.mimetype || "application/octet-stream",
+      size: file.size,
+    });
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to upload profile image"
+    });
+  }
+});
+
 router.patch("/employee/work-assignments/:id/submit", requireUserAuth, async (req: UserAuthRequest, res) => {
   try {
     const user = req.user;
@@ -204,6 +257,55 @@ router.patch("/employee/work-assignments/:id/submit", requireUserAuth, async (re
   } catch (error: unknown) {
     return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to submit assignment"
+    });
+  }
+});
+
+router.post("/employee/chat/upload", requireUserAuth, upload.single("file"), async (req: UserAuthRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ message: "file is required" });
+    }
+
+    const employees = await getLinkedEmployees(user);
+    if (employees.length === 0) {
+      return res.status(404).json({ message: "No employee profile linked with this account" });
+    }
+
+    const employee = employees[0];
+    const employeeId = String(employee?.id ?? "").trim();
+    if (!employeeId) {
+      return res.status(400).json({ message: "Invalid employee profile" });
+    }
+
+    const ext = (file.originalname.split(".").pop() || "bin").replace(/[^a-zA-Z0-9]/g, "") || "bin";
+    const safeName = file.originalname
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9._-]/g, "")
+      .slice(0, 120) || "file";
+    const objectPath = normalizeObjectPath(`employees/${employeeId}/chat/${Date.now()}-${safeName}`, ext);
+    const saved = await storeUploadedFile({
+      objectPath,
+      buffer: new Uint8Array(file.buffer),
+    });
+
+    return res.status(201).json({
+      path: saved.path,
+      publicUrl: saved.publicUrl,
+      fileName: file.originalname,
+      mimeType: file.mimetype || "application/octet-stream",
+      size: file.size,
+    });
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to upload attachment"
     });
   }
 });

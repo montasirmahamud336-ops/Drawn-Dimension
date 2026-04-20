@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { env } from "../config/env.js";
 import { requireAuth } from "../middleware/auth.js";
+import { ensureMediaBucket, normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
 
 const router = Router();
 const upload = multer({
@@ -9,68 +10,27 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-const authHeaders = {
-  apikey: env.supabaseServiceKey,
-  Authorization: `Bearer ${env.supabaseServiceKey}`
-};
+const isLoopbackHost = (host: string) =>
+  host === "localhost" || host === "127.0.0.1" || host === "::1";
 
-const normalizeObjectPath = (rawPath: unknown, fallbackExt: string) => {
-  const value = String(rawPath ?? "")
-    .trim()
-    .replace(/\\/g, "/")
-    .replace(/^\/+/, "");
-
-  const safeParts = value
+const buildLocalMediaUrl = (host: string, objectPath: string, bucket = env.storageBucket) => {
+  const encodedPath = objectPath
     .split("/")
-    .filter((part) => part.length > 0 && part !== "." && part !== "..")
-    .map((part) => part.replace(/[^a-zA-Z0-9._-]/g, "-"));
-
-  if (safeParts.length === 0) {
-    const randomName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fallbackExt}`;
-    return `misc/${randomName}`;
-  }
-
-  return safeParts.join("/");
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+  return `http://${host}/media/${encodeURIComponent(bucket)}/${encodedPath}`;
 };
 
 router.post("/storage/ensure", requireAuth, async (_req, res) => {
   const bucket = env.storageBucket;
-
-  const checkRes = await fetch(
-    `${env.supabaseUrl}/storage/v1/bucket/${encodeURIComponent(bucket)}`,
-    { headers: authHeaders }
-  );
-
-  if (checkRes.ok) {
+  try {
+    await ensureMediaBucket(bucket);
     return res.json({ status: "ok", bucket });
+  } catch (error: unknown) {
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to prepare media storage"
+    });
   }
-
-  if (checkRes.status !== 404) {
-    const text = await checkRes.text().catch(() => "");
-    return res.status(checkRes.status).json({ message: text || "Failed to check bucket" });
-  }
-
-  const createRes = await fetch(`${env.supabaseUrl}/storage/v1/bucket`, {
-    method: "POST",
-    headers: {
-      ...authHeaders,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      id: bucket,
-      name: bucket,
-      public: true
-    })
-  });
-
-  if (!createRes.ok) {
-    const text = await createRes.text().catch(() => "");
-    if (!text.toLowerCase().includes("already")) {
-      return res.status(createRes.status).json({ message: text || "Failed to create bucket" });
-    }
-  }
-
-  return res.json({ status: "ok", bucket });
 });
 
 router.post("/storage/upload", requireAuth, upload.single("file"), async (req, res) => {
@@ -83,27 +43,18 @@ router.post("/storage/upload", requireAuth, upload.single("file"), async (req, r
     const bucket = env.storageBucket;
     const ext = (file.originalname.split(".").pop() || "bin").replace(/[^a-zA-Z0-9]/g, "") || "bin";
     const objectPath = normalizeObjectPath(req.body?.path, ext);
-    const encodedPath = objectPath.split("/").map((part) => encodeURIComponent(part)).join("/");
+    const saved = await storeUploadedFile({
+      bucket,
+      objectPath,
+      buffer: new Uint8Array(file.buffer),
+    });
 
-    const uploadRes = await fetch(
-      `${env.supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodedPath}`,
-      {
-        method: "POST",
-        headers: {
-          ...authHeaders,
-          "Content-Type": file.mimetype || "application/octet-stream",
-          "x-upsert": "true"
-        },
-        body: new Uint8Array(file.buffer)
-      }
-    );
+    const requestHost = String(req.get("host") || "").trim();
+    const hostname = requestHost.split(":")[0].toLowerCase();
+    const publicUrl = isLoopbackHost(hostname)
+      ? buildLocalMediaUrl(requestHost, objectPath, bucket)
+      : saved.publicUrl;
 
-    if (!uploadRes.ok) {
-      const text = await uploadRes.text().catch(() => "");
-      return res.status(uploadRes.status).json({ message: text || "Failed to upload file" });
-    }
-
-    const publicUrl = `${env.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodedPath}`;
     return res.status(201).json({ path: objectPath, publicUrl });
   } catch (error: unknown) {
     return res.status(500).json({

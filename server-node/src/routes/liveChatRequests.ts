@@ -5,6 +5,7 @@ import { env } from "../config/env.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
 import { insertRow, selectRows, updateRow, deleteRow } from "../lib/supabaseRest.js";
+import { normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
 import { isNonEmptyString } from "../utils/validation.js";
 
 const router = Router();
@@ -45,11 +46,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: LIVE_CHAT_UPLOAD_LIMIT },
 });
-
-const authHeaders = {
-  apikey: env.supabaseServiceKey,
-  Authorization: `Bearer ${env.supabaseServiceKey}`,
-};
 
 const allowedAttachmentMimes = new Set([
   "application/pdf",
@@ -137,25 +133,6 @@ const buildSafeFileName = (value: string) =>
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9._-]/g, "")
     .slice(0, 120) || "file";
-
-const normalizeObjectPath = (rawPath: unknown, fallbackExt: string) => {
-  const value = String(rawPath ?? "")
-    .trim()
-    .replace(/\\/g, "/")
-    .replace(/^\/+/, "");
-
-  const safeParts = value
-    .split("/")
-    .filter((part) => part.length > 0 && part !== "." && part !== "..")
-    .map((part) => part.replace(/[^a-zA-Z0-9._-]/g, "-"));
-
-  if (safeParts.length === 0) {
-    const randomName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fallbackExt}`;
-    return `live-chat/misc/${randomName}`;
-  }
-
-  return safeParts.join("/");
-};
 
 const isAllowedAttachmentFile = (file: Express.Multer.File) => {
   const mime = String(file.mimetype ?? "").trim().toLowerCase();
@@ -470,30 +447,11 @@ const uploadAttachmentToStorage = async (
   const ext = extractFileExtension(file.originalname) || "bin";
   const safeName = buildSafeFileName(file.originalname);
   const objectPath = normalizeObjectPath(`${pathPrefix}/${Date.now()}-${safeName}`, ext);
-  const encodedPath = objectPath.split("/").map((part) => encodeURIComponent(part)).join("/");
-
-  const uploadRes = await fetch(
-    `${env.supabaseUrl}/storage/v1/object/${encodeURIComponent(env.storageBucket)}/${encodedPath}`,
-    {
-      method: "POST",
-      headers: {
-        ...authHeaders,
-        "Content-Type": file.mimetype || "application/octet-stream",
-        "x-upsert": "true",
-      },
-      body: new Uint8Array(file.buffer),
-    }
-  );
-
-  if (!uploadRes.ok) {
-    const text = await uploadRes.text().catch(() => "");
-    throw new Error(text || "Failed to upload file");
-  }
-
-  const publicUrl = `${env.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(
-    env.storageBucket
-  )}/${encodedPath}`;
-  return { publicUrl, path: objectPath };
+  const saved = await storeUploadedFile({
+    objectPath,
+    buffer: new Uint8Array(file.buffer),
+  });
+  return { publicUrl: saved.publicUrl, path: objectPath };
 };
 
 router.post("/live-chat/requests", async (req, res) => {

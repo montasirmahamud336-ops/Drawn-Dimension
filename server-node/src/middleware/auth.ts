@@ -25,11 +25,47 @@ type AdminTokenPayload = {
 const normalizeRole = (value: unknown): "owner" | "manager" =>
   String(value ?? "").toLowerCase() === "owner" ? "owner" : "manager";
 
-export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
-  const auth = req.headers.authorization ?? "";
-  const [scheme, token] = auth.split(" ");
+const extractTokenFromHeader = (value: string | undefined) => {
+  let raw = String(value ?? "").trim();
+  if (!raw) return "";
 
-  if (scheme !== "Bearer" || !token) {
+  if (/^bearer\s+/i.test(raw)) {
+    raw = raw.replace(/^bearer\s+/i, "").trim();
+  }
+
+  raw = raw.replace(/^['"]+|['"]+$/g, "").trim();
+  while (/^bearer\s+/i.test(raw)) {
+    raw = raw.replace(/^bearer\s+/i, "").trim();
+  }
+
+  if (raw.startsWith("{") && raw.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const nested =
+        typeof parsed.token === "string"
+          ? parsed.token
+          : typeof parsed.access_token === "string"
+            ? parsed.access_token
+            : typeof parsed.accessToken === "string"
+              ? parsed.accessToken
+              : "";
+      raw = String(nested).trim() || raw;
+      raw = raw.replace(/^['"]+|['"]+$/g, "").trim();
+      while (/^bearer\s+/i.test(raw)) {
+        raw = raw.replace(/^bearer\s+/i, "").trim();
+      }
+    } catch {
+      // ignore malformed JSON-looking header values
+    }
+  }
+
+  return raw;
+};
+
+export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
+  const token = extractTokenFromHeader(req.headers.authorization);
+
+  if (!token) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 

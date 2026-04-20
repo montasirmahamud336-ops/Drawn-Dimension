@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { requireAuth } from "../middleware/auth.js";
 import { insertRow, selectRows, updateRow, deleteRow } from "../lib/supabaseRest.js";
 import { env } from "../config/env.js";
+import { syncEmployeeSiteUser } from "../lib/siteUserAuth.js";
 
 const router = Router();
 let transporter: nodemailer.Transporter | null = null;
@@ -120,111 +121,10 @@ const sendEmployeeWelcomeEmail = async (payload: {
   });
 };
 
-const authHeaders = {
-  apikey: env.supabaseServiceKey,
-  Authorization: `Bearer ${env.supabaseServiceKey}`,
-  "Content-Type": "application/json",
-};
-
-const parseAuthError = async (response: Response, fallback: string) => {
-  const contentType = response.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    const body = await response.json().catch(() => null);
-    const message = body?.msg || body?.message || body?.error_description || body?.error;
-    if (message) return String(message);
-  }
-  const text = await response.text().catch(() => "");
-  if (text) return text;
-  return fallback;
-};
-
-type AuthUser = {
-  id: string;
-  email?: string | null;
-};
-
 type EmployeeLoginCredential = {
   employee_id?: string | null;
   login_password_preview?: string | null;
   updated_at?: string | null;
-};
-
-const listAuthUsers = async (): Promise<AuthUser[]> => {
-  const response = await fetch(`${env.supabaseUrl}/auth/v1/admin/users?per_page=1000`, {
-    headers: authHeaders,
-  });
-
-  if (!response.ok) {
-    const message = await parseAuthError(response, "Failed to load auth users");
-    throw new Error(message);
-  }
-
-  const body = await response.json();
-  const users = Array.isArray(body?.users) ? body.users : [];
-  return users;
-};
-
-const findAuthUserByEmail = async (email: string): Promise<AuthUser | null> => {
-  const normalized = normalizeEmail(email);
-  if (!normalized) return null;
-
-  const users = await listAuthUsers();
-  const user = users.find((item: any) => normalizeEmail(item?.email) === normalized);
-  return user ?? null;
-};
-
-const createAuthUser = async (email: string, password: string, fullName?: string): Promise<AuthUser> => {
-  const response = await fetch(`${env.supabaseUrl}/auth/v1/admin/users`, {
-    method: "POST",
-    headers: authHeaders,
-    body: JSON.stringify({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: fullName ?? "",
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const message = await parseAuthError(response, "Failed to create login user");
-    throw new Error(message);
-  }
-
-  const body = await response.json();
-  return body?.user ?? body;
-};
-
-const updateAuthUser = async (
-  userId: string,
-  payload: { email?: string; password?: string; fullName?: string }
-): Promise<AuthUser> => {
-  const bodyPayload: Record<string, unknown> = {};
-  if (payload.email) {
-    bodyPayload.email = payload.email;
-    bodyPayload.email_confirm = true;
-  }
-  if (payload.password) {
-    bodyPayload.password = payload.password;
-  }
-  if (payload.fullName) {
-    bodyPayload.user_metadata = { full_name: payload.fullName };
-  }
-
-  const response = await fetch(`${env.supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
-    method: "PUT",
-    headers: authHeaders,
-    body: JSON.stringify(bodyPayload),
-  });
-
-  if (!response.ok) {
-    const message = await parseAuthError(response, "Failed to update login user");
-    throw new Error(message);
-  }
-
-  const body = await response.json();
-  return body?.user ?? body;
 };
 
 const syncEmployeeAuthAccount = async (params: {
@@ -234,64 +134,13 @@ const syncEmployeeAuthAccount = async (params: {
   existingLinkedUserId?: string | null;
   requirePasswordForCreate?: boolean;
 }) => {
-  const email = normalizeEmail(params.email);
-  const fullName = normalizeText(params.fullName);
-  const loginPassword = normalizePassword(params.loginPassword);
-  const existingLinkedUserId = normalizeText(params.existingLinkedUserId);
-  const requirePasswordForCreate = Boolean(params.requirePasswordForCreate);
-
-  if (!email) {
-    throw new Error("Employee email is required for login account");
-  }
-
-  let authUser: AuthUser | null = null;
-
-  if (existingLinkedUserId) {
-    authUser = { id: existingLinkedUserId, email };
-  } else {
-    authUser = await findAuthUserByEmail(email);
-  }
-
-  if (!authUser) {
-    if (!loginPassword) {
-      if (requirePasswordForCreate) {
-        throw new Error("Login password is required to create employee login");
-      }
-      return { linkedUserId: null, linkedUserEmail: null };
-    }
-
-    if (loginPassword.length < 6) {
-      throw new Error("Login password must be at least 6 characters");
-    }
-
-    const createdUser = await createAuthUser(email, loginPassword, fullName);
-    return {
-      linkedUserId: String(createdUser?.id ?? ""),
-      linkedUserEmail: email,
-    };
-  }
-
-  if (loginPassword.length > 0 && loginPassword.length < 6) {
-    throw new Error("Login password must be at least 6 characters");
-  }
-
-  const needsUpdate =
-    Boolean(loginPassword) ||
-    normalizeEmail(authUser.email ?? "") !== email ||
-    Boolean(fullName);
-
-  if (needsUpdate) {
-    await updateAuthUser(String(authUser.id), {
-      email,
-      password: loginPassword || undefined,
-      fullName: fullName || undefined,
-    });
-  }
-
-  return {
-    linkedUserId: String(authUser.id),
-    linkedUserEmail: email,
-  };
+  return syncEmployeeSiteUser({
+    email: normalizeEmail(params.email),
+    fullName: normalizeText(params.fullName),
+    loginPassword: normalizePassword(params.loginPassword),
+    existingLinkedUserId: normalizeText(params.existingLinkedUserId),
+    requirePasswordForCreate: Boolean(params.requirePasswordForCreate),
+  });
 };
 
 const listEmployeeLoginCredentials = async () => {
