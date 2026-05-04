@@ -1,7 +1,9 @@
 const TOKEN_KEY = "admin_token";
 const PROFILE_KEY = "admin_profile";
-const PROD_API_FALLBACK = "https://drawndimension-node-api.onrender.com";
+const PROD_API_FALLBACK = "https://api.drawndimension.com";
+const PROD_CHAT_API_FALLBACK = "https://chat.drawndimension.com";
 const isLocalHostname = (host: string) => host === "localhost" || host === "127.0.0.1" || host === "::1";
+const LOCAL_API_HOST = "127.0.0.1";
 
 export type AdminProfile = {
   id?: string;
@@ -32,6 +34,37 @@ const parseUrl = (value: string) => {
   } catch {
     return null;
   }
+};
+
+const buildLocalLoopbackUrl = (protocol: string, port: string) => `${protocol}//${LOCAL_API_HOST}:${port}`;
+
+const normalizeStoredToken = (value?: string | null) => {
+  let raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("{") && raw.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const nested =
+        typeof parsed.token === "string"
+          ? parsed.token
+          : typeof parsed.access_token === "string"
+            ? parsed.access_token
+            : typeof parsed.accessToken === "string"
+              ? parsed.accessToken
+              : "";
+      raw = String(nested).trim() || raw;
+    } catch {
+      // ignore malformed JSON-looking value
+    }
+  }
+
+  raw = raw.replace(/^['"]+|['"]+$/g, "").trim();
+  while (/^bearer\s+/i.test(raw)) {
+    raw = raw.replace(/^bearer\s+/i, "").trim();
+  }
+
+  return raw;
 };
 
 export function setAdminToken(token: string, profile?: AdminProfile | null) {
@@ -73,13 +106,19 @@ const normalizeAdminProfile = (value: unknown): AdminProfile | null => {
 };
 
 export function setAdminSession(token: string, profile?: AdminProfile | null) {
-  localStorage.setItem(TOKEN_KEY, token);
+  const normalizedToken = normalizeStoredToken(token);
+  if (!normalizedToken) {
+    clearAdminToken();
+    return;
+  }
+
+  localStorage.setItem(TOKEN_KEY, normalizedToken);
   if (profile) {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     return;
   }
 
-  const payload = decodeJwtPayload(token);
+  const payload = decodeJwtPayload(normalizedToken);
   const derivedProfile = normalizeAdminProfile({
     id: payload?.sub,
     username: payload?.username,
@@ -140,6 +179,11 @@ export async function refreshAdminProfileFromApi(): Promise<AdminProfile | null>
       },
     });
 
+    if (response.status === 401) {
+      clearAdminToken();
+      return null;
+    }
+
     if (!response.ok) {
       return getAdminProfile();
     }
@@ -158,7 +202,20 @@ export async function refreshAdminProfileFromApi(): Promise<AdminProfile | null>
 }
 
 export function getAdminToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  const raw = localStorage.getItem(TOKEN_KEY);
+  const normalized = normalizeStoredToken(raw);
+  if (!normalized) {
+    if (raw) {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+    return null;
+  }
+
+  if (raw !== normalized) {
+    localStorage.setItem(TOKEN_KEY, normalized);
+  }
+
+  return normalized;
 }
 
 export function clearAdminToken() {
@@ -191,6 +248,10 @@ export function getApiBaseUrl() {
       const envHost = parsedEnv.hostname.toLowerCase();
       const envIsLocal = isLocalHostname(envHost);
 
+      if (runningOnLocal && envIsLocal) {
+        return buildLocalLoopbackUrl(protocol, parsedEnv.port || "4000");
+      }
+
       if (!runningOnLocal && envIsLocal) {
         return isProductionDomain ? PROD_API_FALLBACK : window.location.origin.replace(/\/$/, "");
       }
@@ -208,7 +269,50 @@ export function getApiBaseUrl() {
   }
 
   if (runningOnLocal) {
-    return `${protocol}//${hostname}:4000`;
+    return buildLocalLoopbackUrl(protocol, "4000");
+  }
+
+  return window.location.origin.replace(/\/$/, "");
+}
+
+export function getChatApiBaseUrl() {
+  const { protocol, hostname } = window.location;
+  const runningOnLocal = isLocalHostname(hostname);
+  const isProductionDomain =
+    hostname === "drawndimension.com" ||
+    hostname === "www.drawndimension.com" ||
+    hostname.endsWith(".drawndimension.com");
+
+  const envBaseRaw = (import.meta as any).env?.VITE_CHAT_API_BASE_URL as string | undefined;
+  const envBase = normalizeApiBase(envBaseRaw);
+  if (envBase) {
+    const parsedEnv = parseUrl(envBase);
+    if (parsedEnv) {
+      const envHost = parsedEnv.hostname.toLowerCase();
+      const envIsLocal = isLocalHostname(envHost);
+
+      if (runningOnLocal && envIsLocal) {
+        return buildLocalLoopbackUrl(protocol, parsedEnv.port || "8000");
+      }
+
+      if (!runningOnLocal && envIsLocal) {
+        return isProductionDomain ? PROD_CHAT_API_FALLBACK : window.location.origin.replace(/\/$/, "");
+      }
+
+      if (protocol === "https:" && parsedEnv.protocol === "http:" && !envIsLocal) {
+        return envBase.replace(/^http:\/\//i, "https://");
+      }
+    }
+
+    return envBase;
+  }
+
+  if (isProductionDomain) {
+    return PROD_CHAT_API_FALLBACK;
+  }
+
+  if (runningOnLocal) {
+    return buildLocalLoopbackUrl(protocol, "8000");
   }
 
   return window.location.origin.replace(/\/$/, "");

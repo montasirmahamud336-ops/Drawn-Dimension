@@ -20,7 +20,11 @@ const REVIEWS_QUERY_KEY = ["testimonials", "published"];
 const Testimonials = () => {
   const queryClient = useQueryClient();
 
-  const { data: testimonials = [], isLoading, isError } = useQuery({
+  const {
+    data: testimonials = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: REVIEWS_QUERY_KEY,
     queryFn: fetchPublishedReviews,
     staleTime: 30_000,
@@ -32,162 +36,196 @@ const Testimonials = () => {
     const unsubscribe = subscribeToPublishedReviews(() => {
       void queryClient.invalidateQueries({ queryKey: REVIEWS_QUERY_KEY });
     });
-
     return unsubscribe;
   }, [queryClient]);
 
+  // ── Live statistics from reviews ──
   const stats = useMemo(() => {
-    const totalReviews = testimonials.length;
-    const totalRating = testimonials.reduce((sum, review) => sum + review.rating, 0);
-    const averageRating = totalReviews ? totalRating / totalReviews : 0;
-    const positiveRate = totalReviews
-      ? Math.round((testimonials.filter((review) => review.rating >= 4).length / totalReviews) * 100)
+    const total = testimonials.length;
+    const totalRating = testimonials.reduce((s, r) => s + r.rating, 0);
+    const average = total ? totalRating / total : 0;
+    const positive = total
+      ? Math.round((testimonials.filter((r) => r.rating >= 4).length / total) * 100)
       : 0;
-    const serviceCount = new Set(testimonials.map((review) => review.project)).size;
+    const services = new Set(testimonials.map((r) => r.project)).size;
 
     return [
       {
-        value: <CountUp to={totalReviews} duration={2.5} />,
+        value: <CountUp to={total} duration={2.5} />,
         label: "Client Reviews",
         hint: "Verified testimonials",
-        icon: MessageSquare
+        icon: MessageSquare,
       },
       {
-        value: <CountUp to={positiveRate} suffix="%" duration={2.5} />,
+        value: <CountUp to={positive} suffix="%" duration={2.5} />,
         label: "Positive Ratings",
-        hint: "4-star and above",
-        icon: ThumbsUp
+        hint: "4‑star and above",
+        icon: ThumbsUp,
       },
       {
-        value: <CountUp to={averageRating} decimals={1} suffix="/5" duration={2.5} />,
+        value: <CountUp to={average} decimals={1} suffix="/5" duration={2.5} />,
         label: "Average Rating",
         hint: "Service quality score",
-        icon: Star
+        icon: Star,
       },
       {
-        value: <CountUp to={serviceCount} duration={2.5} />,
+        value: <CountUp to={services} duration={2.5} />,
         label: "Services Reviewed",
-        hint: "Cross-domain coverage",
-        icon: Briefcase
+        hint: "Cross‑domain coverage",
+        icon: Briefcase,
       },
     ];
   }, [testimonials]);
 
   const featuredTestimonials = useMemo(() => testimonials.slice(0, 6), [testimonials]);
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+  };
+
   return (
     <PageTransition>
       <PremiumBackground>
         <Navigation />
         <main>
-          <PageHero title="Client Testimonials" subtitle="What They Say" description="Hear from our satisfied clients about their experience working with Drawn Dimension." />
+          {/* ── Page Hero ── */}
+          <PageHero
+            title="Client Testimonials"
+            subtitle="What They Say"
+            description="Hear from our satisfied clients about their experience working with Drawn Dimension."
+          />
 
-          {/* Stats */}
-          <section className="py-12 md:py-14 bg-secondary/30 relative overflow-hidden">
-            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[34rem] h-[34rem] rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+          {/* ── Stats Section ── */}
+          <section className="relative py-10 md:py-16 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
             <div className="container-narrow relative z-10">
-              <div className="glass-panel p-4 sm:p-6 border-border/50">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {stats.map((stat, index) => (
-                    <motion.article
-                      key={stat.label}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.45, delay: index * 0.08 }}
-                      className="h-full rounded-2xl border border-border/50 bg-background/55 backdrop-blur-md p-5 sm:p-6 text-center transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_14px_34px_rgba(239,68,68,0.14)]"
-                    >
-                      <div className="mx-auto mb-4 w-10 h-10 rounded-xl border border-primary/30 bg-primary/10 text-primary flex items-center justify-center">
-                        <stat.icon className="w-5 h-5" />
-                      </div>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-primary tracking-tight mb-2">{stat.value}</div>
-                      <div className="text-foreground/90 font-medium">{stat.label}</div>
-                      <div className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">{stat.hint}</div>
-                    </motion.article>
-                  ))}
-                </div>
-              </div>
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              >
+                {stats.map((stat) => (
+                  <motion.div
+                    key={stat.label}
+                    variants={itemVariants}
+                    className="group relative rounded-2xl border border-border/40 bg-card/60 dark:bg-white/[0.03] backdrop-blur-sm p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5"
+                  >
+                    <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20 transition-colors group-hover:ring-primary/40">
+                      <stat.icon className="h-5 w-5" />
+                    </div>
+                    <div className="text-3xl font-extrabold text-primary tracking-tight">
+                      {stat.value}
+                    </div>
+                    <div className="text-sm font-semibold text-foreground mt-1">
+                      {stat.label}
+                    </div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground/70 mt-1">
+                      {stat.hint}
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
             </div>
           </section>
 
-          {/* Testimonials Grid */}
-          <section className="py-12 md:py-16">
+          {/* ── Featured Testimonials Grid ── */}
+          <section className="py-10 md:py-16">
             <div className="container-narrow">
-              {isLoading ? (
-                <div className="glass-card p-10 text-center text-muted-foreground flex items-center justify-center gap-3">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  Loading reviews...
+              {isLoading && (
+                <div className="flex justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : null}
+              )}
 
-              {isError ? (
-                <div className="glass-card p-10 text-center text-muted-foreground">
-                  Reviews are temporarily unavailable. Please try again shortly.
+              {isError && (
+                <div className="text-center py-20 text-muted-foreground">
+                  Unable to load reviews right now. Please try again later.
                 </div>
-              ) : null}
+              )}
 
-              {!isLoading && !isError && !testimonials.length ? (
-                <div className="glass-card p-10 text-center text-muted-foreground">
-                  No published reviews yet.
+              {!isLoading && !isError && testimonials.length === 0 && (
+                <div className="text-center py-20 text-muted-foreground">
+                  No reviews yet. Be the first to share your experience!
                 </div>
-              ) : null}
+              )}
 
-              {!isLoading && !isError && featuredTestimonials.length ? (
+              {!isLoading && !isError && featuredTestimonials.length > 0 && (
                 <>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-                    {featuredTestimonials.map((testimonial, index) => (
-                      <ReviewCard key={testimonial.id} review={testimonial} index={index} />
+                  <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
+                    {featuredTestimonials.map((review, i) => (
+                      <motion.div key={review.id} variants={itemVariants}>
+                        <ReviewCard review={review} index={i} />
+                      </motion.div>
                     ))}
-                  </div>
-                  <div className="mt-8 text-center">
-                    <Link
-                      to="/testimonials/all"
-                      className="text-sm font-medium text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"
-                    >
-                      See more results
-                    </Link>
-                  </div>
-                  <AddReviewForm
-                    onSubmitted={() => {
-                      void queryClient.invalidateQueries({ queryKey: REVIEWS_QUERY_KEY });
-                    }}
-                  />
-                </>
-              ) : null}
+                  </motion.div>
 
-              {!isLoading && !isError && !testimonials.length ? (
-                <>
-                  <div className="mt-8 text-center">
+                  <div className="mt-10 text-center">
                     <Link
                       to="/testimonials/all"
-                      className="text-sm font-medium text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                     >
-                      See more results
+                      View all reviews
+                      <span aria-hidden="true">→</span>
                     </Link>
                   </div>
+
                   <AddReviewForm
-                    onSubmitted={() => {
-                      void queryClient.invalidateQueries({ queryKey: REVIEWS_QUERY_KEY });
-                    }}
+                    onSubmitted={() =>
+                      queryClient.invalidateQueries({ queryKey: REVIEWS_QUERY_KEY })
+                    }
                   />
                 </>
-              ) : null}
+              )}
+
+              {!isLoading && !isError && testimonials.length === 0 && (
+                <AddReviewForm
+                  onSubmitted={() =>
+                    queryClient.invalidateQueries({ queryKey: REVIEWS_QUERY_KEY })
+                  }
+                />
+              )}
             </div>
           </section>
 
-          {/* Testimonial Slider */}
+          {/* ── Testimonial Carousel ── */}
           <TestimonialSlider testimonials={testimonials} />
 
-          {/* Trust Banner */}
-          <section className="py-12 md:py-16 bg-secondary/30 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/[0.04] to-transparent pointer-events-none" />
+          {/* ── Trust Banner ── */}
+          <section className="relative py-16 md:py-24 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent pointer-events-none" />
             <div className="container-narrow">
-              <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="glass-card p-8 md:p-10 text-center border border-border/60 bg-gradient-to-br from-background to-primary/[0.03] relative z-10">
-                <Quote className="w-12 h-12 text-primary mx-auto mb-4" />
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Trusted by Industry Leaders</h2>
-                <p className="text-muted-foreground max-w-2xl mx-auto text-sm md:text-base">
-                  Our commitment to excellence has earned us the trust of companies across industries.
-                  From startups to Fortune 500 corporations, our clients choose Drawn Dimension for quality that speaks for itself.
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="mx-auto max-w-3xl rounded-3xl border border-border/30 bg-card/70 dark:bg-white/[0.02] backdrop-blur-md p-8 md:p-12 text-center"
+              >
+                <Quote className="mx-auto h-10 w-10 text-primary/30 mb-4" />
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+                  Trusted by Industry Leaders
+                </h2>
+                <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+                  Our commitment to excellence has earned us the trust of companies
+                  worldwide. From startups to Fortune 500 corporations, our clients
+                  choose Drawn Dimension for quality that speaks for itself.
                 </p>
               </motion.div>
             </div>

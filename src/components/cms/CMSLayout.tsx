@@ -149,6 +149,9 @@ const CMSLayout = () => {
       const profile = await refreshAdminProfileFromApi();
       if (mounted) {
         setAdminProfile(profile);
+        if (!profile) {
+          navigate("/database/login", { replace: true });
+        }
       }
     };
 
@@ -157,7 +160,7 @@ const CMSLayout = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -268,9 +271,9 @@ const CMSLayout = () => {
 
         <main
           data-lenis-prevent
-          className="cms-main-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain"
+          className="cms-main-scroll flex-1 min-h-0 overflow-hidden"
         >
-          <div className="mx-auto w-full max-w-[1600px] px-5 py-6 sm:px-6 lg:px-10 lg:py-8">
+          <div className="mx-auto w-full max-w-[1600px] px-5 py-6 sm:px-6 lg:px-10 lg:py-8 h-full overflow-y-auto">
             <Outlet />
           </div>
         </main>

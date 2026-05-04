@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { getReviewsApiBase } from "@/components/shared/reviewsApi";
 
 export interface Review {
@@ -182,18 +181,31 @@ export const submitReview = async (submission: ReviewSubmission): Promise<void> 
 };
 
 export const subscribeToPublishedReviews = (onChange: () => void) => {
-  const testimonialsChannel = supabase
-    .channel("public:testimonials")
-    .on("postgres_changes", { event: "*", schema: "public", table: "testimonials" }, onChange)
-    .subscribe();
+  let disposed = false;
+  let lastTriggeredAt = 0;
+  const trigger = () => {
+    if (disposed) return;
+    const now = Date.now();
+    if (now - lastTriggeredAt < 1500) return;
+    lastTriggeredAt = now;
+    onChange();
+  };
 
-  const reviewsChannel = supabase
-    .channel("public:reviews")
-    .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, onChange)
-    .subscribe();
+  const intervalId = window.setInterval(trigger, 60000);
+  const handleFocus = () => trigger();
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      trigger();
+    }
+  };
+
+  window.addEventListener("focus", handleFocus);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 
   return () => {
-    void supabase.removeChannel(testimonialsChannel);
-    void supabase.removeChannel(reviewsChannel);
+    disposed = true;
+    window.clearInterval(intervalId);
+    window.removeEventListener("focus", handleFocus);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
   };
 };

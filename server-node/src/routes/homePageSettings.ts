@@ -26,6 +26,7 @@ const LOCAL_SETTINGS_FILE = path.join(LOCAL_DATA_DIR, "home-page-settings.json")
 const DEFAULT_SETTINGS: HomePageSettings = {
   section_order: [
     "hero",
+    "key-metrics",
     "trusted-logos",
     "services",
     "portfolio",

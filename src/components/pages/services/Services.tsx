@@ -14,7 +14,7 @@ import {
   getFallbackServiceCards,
 } from "@/components/shared/serviceCatalog";
 
-const siteOrigin = "https://drawndimension.com";
+const siteOrigin = "https://www.drawndimension.com";
 
 const toAbsoluteUrl = (path: string) => {
   if (/^https?:\/\//i.test(path)) return path;

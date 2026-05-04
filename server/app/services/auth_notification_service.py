@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 
 from server.app.config import Settings
 from server.app.models.auth_events import AuthUserCreatedEvent
+from server.app.services.database import (
+    ensure_auth_event_notifications_table,
+    execute,
+    fetch_one,
+    is_database_configured,
+)
 from server.app.services.email.client import SMTPEmailClient
 from server.app.services.email.templates import (
     build_admin_notification_html,
     build_welcome_email_html,
 )
-from server.app.services.supabase_admin import get_supabase_admin_client
 
 logger = logging.getLogger(__name__)
 
@@ -29,19 +35,22 @@ class AuthNotificationService:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.email_client = SMTPEmailClient(settings)
-        self.supabase_admin = get_supabase_admin_client(settings)
+        if not is_database_configured():
+            raise RuntimeError("DATABASE_URL is required for auth notification tracking")
+        ensure_auth_event_notifications_table()
 
     def _event_already_recorded(self, *, user_id: str, event_type: str) -> bool:
         try:
-            response = (
-                self.supabase_admin.table("auth_event_notifications")
-                .select("id")
-                .eq("user_id", user_id)
-                .eq("event_type", event_type)
-                .limit(1)
-                .execute()
+            row = fetch_one(
+                """
+                select id
+                from public.auth_event_notifications
+                where user_id = %s and event_type = %s
+                limit 1
+                """,
+                (user_id, event_type),
             )
-            return bool(response.data)
+            return bool(row)
         except Exception as exc:
             raise RuntimeError(
                 "Failed to read auth_event_notifications. Ensure migration is applied."
@@ -49,10 +58,13 @@ class AuthNotificationService:
 
     def _record_event(self, *, user_id: str, event_type: str) -> None:
         try:
-            (
-                self.supabase_admin.table("auth_event_notifications")
-                .insert({"user_id": user_id, "event_type": event_type})
-                .execute()
+            execute(
+                """
+                insert into public.auth_event_notifications (id, user_id, event_type)
+                values (%s, %s, %s)
+                on conflict (user_id, event_type) do nothing
+                """,
+                (str(uuid.uuid4()), user_id, event_type),
             )
         except Exception as exc:
             message = str(exc).lower()

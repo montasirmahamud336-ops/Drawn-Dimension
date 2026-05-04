@@ -1,15 +1,29 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
 import { clearPreferredDashboardPath } from "@/components/shared/dashboardPath";
 
+export type AuthUser = {
+  id: string;
+  email: string | null;
+  created_at?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+  identities?: Array<{ provider?: string }>;
+};
+
+export type AuthSession = {
+  access_token: string;
+  token_type: "Bearer";
+  user: AuthUser;
+};
+
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
+  session: AuthSession | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null; session: Session | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; session: AuthSession | null }>;
+  signInWithGoogleIdToken: (idToken: string) => Promise<{ error: Error | null; session: AuthSession | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   resendSignupConfirmation: (email: string) => Promise<{ error: Error | null }>;
@@ -21,6 +35,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const OAUTH_POST_LOGIN_REDIRECT_KEY = "post_auth_redirect_path";
+const TOKEN_STORAGE_KEY = "site_user_token";
+const USER_STORAGE_KEY = "site_user_payload";
 
 export const getPendingOAuthRedirectPath = () => {
   if (typeof window === "undefined") return null;
@@ -30,6 +46,80 @@ export const getPendingOAuthRedirectPath = () => {
 export const clearPendingOAuthRedirectPath = () => {
   if (typeof window === "undefined") return;
   window.sessionStorage.removeItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
+};
+
+const normalizeAuthUser = (value: unknown): AuthUser | null => {
+  if (!value || typeof value !== "object") return null;
+  const input = value as Record<string, unknown>;
+  const id = String(input.id ?? "").trim();
+  if (!id) return null;
+
+  return {
+    id,
+    email: input.email ? String(input.email) : null,
+    created_at: input.created_at ? String(input.created_at) : undefined,
+    app_metadata:
+      input.app_metadata && typeof input.app_metadata === "object"
+        ? (input.app_metadata as Record<string, unknown>)
+        : { provider: "email" },
+    user_metadata:
+      input.user_metadata && typeof input.user_metadata === "object"
+        ? (input.user_metadata as Record<string, unknown>)
+        : {},
+    identities: Array.isArray(input.identities)
+      ? input.identities
+          .filter((item) => item && typeof item === "object")
+          .map((item) => ({ provider: String((item as { provider?: unknown }).provider ?? "") || undefined }))
+      : [{ provider: "email" }],
+  };
+};
+
+const buildSession = (accessToken: string, user: AuthUser): AuthSession => ({
+  access_token: accessToken,
+  token_type: "Bearer",
+  user,
+});
+
+const persistSession = (nextSession: AuthSession | null) => {
+  if (typeof window === "undefined") return;
+
+  if (!nextSession) {
+    window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem(USER_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(TOKEN_STORAGE_KEY, nextSession.access_token);
+  window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextSession.user));
+};
+
+const loadStoredSession = (): AuthSession | null => {
+  if (typeof window === "undefined") return null;
+
+  const accessToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+  const rawUser = window.localStorage.getItem(USER_STORAGE_KEY);
+  if (!accessToken || !rawUser) return null;
+
+  try {
+    const parsed = JSON.parse(rawUser);
+    const user = normalizeAuthUser(parsed);
+    if (!user) return null;
+    return buildSession(accessToken, user);
+  } catch {
+    return null;
+  }
+};
+
+const parseApiError = async (response: Response, fallback: string) => {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const body = await response.json().catch(() => null);
+    const message = body?.message || body?.detail || body?.error;
+    if (message) return String(message);
+  }
+
+  const text = await response.text().catch(() => "");
+  return text || fallback;
 };
 
 const notifySignup = async (payload: {
@@ -58,21 +148,7 @@ const notifySignup = async (payload: {
     });
 
     if (!response.ok) {
-      const contentType = response.headers.get("content-type") || "";
-      let message = "Failed to notify signup event";
-
-      if (contentType.includes("application/json")) {
-        const body = await response.json().catch(() => null);
-        if (body?.message) {
-          message = String(body.message);
-        }
-      } else {
-        const text = await response.text().catch(() => "");
-        if (text) {
-          message = text;
-        }
-      }
-
+      const message = await parseApiError(response, "Failed to notify signup event");
       throw new Error(message);
     }
   } catch (error) {
@@ -81,156 +157,253 @@ const notifySignup = async (payload: {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const ensureProfile = useCallback(async (currentUser: User, fallbackName?: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", currentUser.id)
-      .maybeSingle();
-
-    if (error || data) return;
-
-    await supabase.from("profiles").insert({
-      user_id: currentUser.id,
-      email: currentUser.email,
-      full_name: currentUser.user_metadata?.full_name ?? fallbackName ?? null,
-    });
-  }, []);
-
-  const handleSession = useCallback(async (nextSession: Session | null, _event?: string) => {
+  const applySession = useCallback((nextSession: AuthSession | null) => {
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
+    persistSession(nextSession);
+  }, []);
+
+  const refreshSession = useCallback(async () => {
+    const stored = loadStoredSession();
+
+    if (stored?.access_token) {
+      try {
+        const apiBase = getApiBaseUrl();
+        const response = await fetch(`${apiBase}/auth/user-me`, {
+          headers: {
+            Authorization: `Bearer ${stored.access_token}`,
+          },
+        });
+
+        if (response.ok) {
+          const payload = await response.json();
+          const normalizedUser = normalizeAuthUser(payload);
+          if (normalizedUser) {
+            applySession(buildSession(stored.access_token, normalizedUser));
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // Fall through to local session reset.
+      }
+    }
+
+    applySession(null);
     setLoading(false);
+  }, [applySession]);
 
-    if (nextSession?.user) {
-      await ensureProfile(nextSession.user);
+  useEffect(() => {
+    void refreshSession();
+  }, [refreshSession]);
 
-      const provider = String(nextSession.user.app_metadata?.provider ?? "").toLowerCase();
-      const identities = Array.isArray(nextSession.user.identities)
-        ? nextSession.user.identities.map((identity) => String(identity?.provider ?? "").toLowerCase())
-        : [];
-      const isGoogleUser = provider === "google" || identities.includes("google");
+  const signUp = async (email: string, password: string, fullName?: string) => {
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/auth/user-signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName: fullName ?? "",
+        }),
+      });
 
-      if ((_event === "SIGNED_IN" || _event === "INITIAL_SESSION") && isGoogleUser) {
+      if (!response.ok) {
+        return {
+          error: new Error(await parseApiError(response, "Failed to create account")),
+        };
+      }
+
+      const payload = await response.json().catch(() => null);
+      const createdUser = normalizeAuthUser(payload?.user);
+      if (createdUser?.id) {
         void notifySignup({
-          method: "google",
-          email: nextSession.user.email,
-          fullName: String(
-            nextSession.user.user_metadata?.full_name ??
-            nextSession.user.user_metadata?.name ??
-            ""
-          ),
-          accessToken: nextSession.access_token,
+          method: "email",
+          email,
+          fullName: fullName ?? "",
+          userId: createdUser.id,
+          userCreatedAt: String(payload?.createdAt ?? createdUser.created_at ?? ""),
         });
       }
 
-      const pendingOAuthRedirect = window.sessionStorage.getItem(OAUTH_POST_LOGIN_REDIRECT_KEY);
-      if (pendingOAuthRedirect) {
-        if (window.location.pathname === pendingOAuthRedirect) {
-          clearPendingOAuthRedirectPath();
-        } else if (window.location.pathname === "/" || window.location.pathname === "/auth") {
-          clearPendingOAuthRedirectPath();
-          window.location.replace(pendingOAuthRedirect);
-          return;
-        }
-      }
+      return { error: null };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error : new Error("Failed to create account"),
+      };
     }
-  }, [ensureProfile]);
-
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session, "INITIAL_SESSION");
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, nextSession) => {
-        handleSession(nextSession, event);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [handleSession]);
-
-  const signUp = async (email: string, password: string, fullName?: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
-    if (!error && data.session?.user) {
-      await ensureProfile(data.session.user, fullName);
-    }
-    if (!error) {
-      void notifySignup({
-        method: "email",
-        email,
-        fullName: fullName ?? "",
-        userId: data.user?.id ?? "",
-        userCreatedAt: data.user?.created_at ?? "",
-      });
-    }
-    return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (!error && data.session?.user) {
-      await ensureProfile(data.session.user);
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/auth/user-login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        return {
+          error: new Error(await parseApiError(response, "Failed to sign in")),
+          session: null,
+        };
+      }
+
+      const payload = await response.json().catch(() => null);
+      const accessToken = String(payload?.session?.access_token ?? payload?.token ?? "").trim();
+      const normalizedUser = normalizeAuthUser(payload?.session?.user ?? payload?.user);
+      if (!accessToken || !normalizedUser) {
+        return {
+          error: new Error("Login response is incomplete"),
+          session: null,
+        };
+      }
+
+      const nextSession = buildSession(accessToken, normalizedUser);
+      applySession(nextSession);
+
+      return {
+        error: null,
+        session: nextSession,
+      };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error : new Error("Failed to sign in"),
+        session: null,
+      };
     }
-    return { error, session: data.session ?? null };
   };
 
   const signOut = async () => {
     clearPreferredDashboardPath();
-    await supabase.auth.signOut();
+    applySession(null);
+  };
+
+  const signInWithGoogleIdToken = async (idToken: string) => {
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/auth/user-google`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        return {
+          error: new Error(await parseApiError(response, "Failed to sign in with Google")),
+          session: null,
+        };
+      }
+
+      const payload = await response.json().catch(() => null);
+      const accessToken = String(payload?.session?.access_token ?? payload?.token ?? "").trim();
+      const normalizedUser = normalizeAuthUser(payload?.session?.user ?? payload?.user);
+      if (!accessToken || !normalizedUser) {
+        return {
+          error: new Error("Google login response is incomplete"),
+          session: null,
+        };
+      }
+
+      const nextSession = buildSession(accessToken, normalizedUser);
+      applySession(nextSession);
+
+      if (payload?.created) {
+        void notifySignup({
+          method: "google",
+          email: normalizedUser.email ?? "",
+          fullName:
+            String(
+              normalizedUser.user_metadata?.full_name ??
+                normalizedUser.user_metadata?.name ??
+                ""
+            ).trim() || null,
+          accessToken,
+          userId: normalizedUser.id,
+          userCreatedAt: String(normalizedUser.created_at ?? ""),
+        });
+      }
+
+      return {
+        error: null,
+        session: nextSession,
+      };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error : new Error("Failed to sign in with Google"),
+        session: null,
+      };
+    }
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    return { error };
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/auth/user-password-request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        return {
+          error: new Error(await parseApiError(response, "Failed to send reset link")),
+        };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error : new Error("Failed to send reset link"),
+      };
+    }
   };
 
-  const resendSignupConfirmation = async (email: string) => {
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    return { error };
+  const resendSignupConfirmation = async (_email: string) => {
+    return {
+      error: new Error("Email verification is no longer required. Please sign in or reset your password."),
+    };
   };
 
   const signInWithProvider = async (
-    provider: "google" | "github" | "azure" | "apple",
-    redirectPath = "/dashboard"
+    _provider: "google" | "github" | "azure" | "apple",
+    _redirectPath = "/dashboard"
   ) => {
-    const safeRedirectPath = redirectPath.startsWith("/") ? redirectPath : "/dashboard";
-    window.sessionStorage.setItem(OAUTH_POST_LOGIN_REDIRECT_KEY, safeRedirectPath);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) {
-      clearPendingOAuthRedirectPath();
-    }
-    return { error };
+    clearPendingOAuthRedirectPath();
+    return {
+      error: new Error("Use the Google sign-in button on the auth page."),
+    };
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, session, loading, signUp, signIn, signOut, resetPassword, resendSignupConfirmation, signInWithProvider }}
+      value={{
+        user,
+        session,
+        loading,
+        signUp,
+        signIn,
+        signInWithGoogleIdToken,
+        signOut,
+        resetPassword,
+        resendSignupConfirmation,
+        signInWithProvider,
+      }}
     >
       {children}
     </AuthContext.Provider>

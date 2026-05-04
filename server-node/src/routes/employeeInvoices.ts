@@ -108,6 +108,13 @@ const normalizeOptionalText = (value: unknown, maxLength = 5000) => {
   return text || null;
 };
 
+const normalizeInvoiceItemDescription = (value: unknown, maxLength = 2000) => {
+  const text = normalizeOptionalText(value, maxLength);
+  if (!text) return null;
+  if (text.toLowerCase() === "no additional details") return null;
+  return text;
+};
+
 const normalizeEmail = (value: unknown) => normalizeText(value, 320).toLowerCase();
 
 const parseMoney = (value: unknown): number | null => {
@@ -217,8 +224,13 @@ const buildInvoiceEmailHtml = (payload: {
       const orderCode = normalizeText(item.order_code, 64);
       const safeOrderCode = orderCode ? escapeHtml(orderCode) : "Custom";
       const safeTitle = escapeHtml(item.title);
-      const safeDescription = item.description ? escapeHtml(item.description) : "No additional details";
       const safeAmount = escapeHtml(`BDT ${formatCurrency(item.amount)}`);
+            // শুধু কাস্টম আইটেমের বেলাতেই ইমেইলে description দেখাও, assignment-এর জন্য নয়
+      const shouldShowDescription = item.item_type === "custom";
+      const normalizedDescription = shouldShowDescription ? normalizeInvoiceItemDescription(item.description) : null;
+      const descriptionHtml = normalizedDescription
+        ? `<div style="margin-top:4px;font-size:12px;color:#64748b;">${escapeHtml(normalizedDescription)}</div>`
+        : "";
 
       return `
         <tr>
@@ -226,7 +238,7 @@ const buildInvoiceEmailHtml = (payload: {
           <td style="padding:12px 10px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#334155;">${safeOrderCode}</td>
           <td style="padding:12px 10px;border-bottom:1px solid #e2e8f0;">
             <div style="font-size:13px;font-weight:600;color:#0f172a;">${safeTitle}</div>
-            <div style="margin-top:4px;font-size:12px;color:#64748b;">${safeDescription}</div>
+            ${descriptionHtml}
           </td>
           <td style="padding:12px 10px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#0f172a;text-align:right;">${safeAmount}</td>
         </tr>
@@ -604,7 +616,7 @@ router.post("/employee-invoices/send", requireAuth, async (req, res) => {
           item_type: "assignment",
           order_code: normalizeOptionalText(assignment.order_code, 64),
           title: normalizeText(assignment.work_title, 240),
-          description: normalizeOptionalText(assignment.work_details, 2000),
+          description: null,
           amount,
           display_order: index,
         });
@@ -612,7 +624,7 @@ router.post("/employee-invoices/send", requireAuth, async (req, res) => {
       }
 
       const title = normalizeText(item?.title, 240);
-      const description = normalizeOptionalText(item?.description, 2000);
+      const description = normalizeInvoiceItemDescription(item?.description, 2000);
       const amount = parseMoney(item?.amount);
 
       if (!title) {
@@ -727,7 +739,7 @@ router.post("/employee-invoices/:id/resend", requireAuth, async (req, res) => {
       item_type: item.item_type,
       order_code: normalizeOptionalText(item.order_code, 64),
       title: normalizeText(item.title, 240),
-      description: normalizeOptionalText(item.description, 2000),
+      description: item.item_type === "custom" ? normalizeInvoiceItemDescription(item.description, 2000) : null,
       amount: parseMoney(item.amount) ?? 0,
       display_order: Number(item.display_order) || 0,
     }));

@@ -12,9 +12,8 @@ import { slugifyServiceName } from "@/components/shared/serviceCatalog";
 import type { ServiceBasic, ServiceFaqRecord } from "@/components/shared/serviceContent";
 
 const toAbsoluteUrl = (path: string) => {
-  if (typeof window === "undefined") return path;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${window.location.origin}${path.startsWith("/") ? path : `/${path}`}`;
+  return `https://www.drawndimension.com${path.startsWith("/") ? path : `/${path}`}`;
 };
 
 const FAQ = () => {

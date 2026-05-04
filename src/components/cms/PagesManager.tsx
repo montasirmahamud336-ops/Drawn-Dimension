@@ -8,6 +8,8 @@ import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import FaqManager from "@/components/cms/FaqManager";
 import BlogManager from "@/components/cms/BlogManager";
 import HomePageManager from "@/components/cms/HomePageManager";
+import CMSErrorBoundary from "@/components/cms/CMSErrorBoundary";
+import { scrollCmsMainToTop } from "@/components/cms/cmsScroll";
 import {
   buildDefaultServiceMetaDescription,
   buildDefaultServiceMetaTitle,
@@ -72,6 +74,12 @@ type ServiceForm = {
   ctaPrimaryLink: string;
   ctaSecondaryLabel: string;
   ctaSecondaryLink: string;
+  relatedWorksBadge: string;
+  relatedWorksTitle: string;
+  relatedWorksDescription: string;
+  relatedWorksButtonLabel: string;
+  relatedWorksButtonLink: string;
+  relatedWorksEmptyText: string;
   metaTitle: string;
   metaDescription: string;
 };
@@ -197,9 +205,15 @@ const createForm = (status: ServiceStatus, name = ""): ServiceForm => {
     ctaDescription:
       "Let's discuss your project and discover how our engineering expertise and creative innovation can help you achieve extraordinary results.",
     ctaPrimaryLabel: "Get Free Consultation",
-    ctaPrimaryLink: "/contact",
+    ctaPrimaryLink: "/start-project",
     ctaSecondaryLabel: "View Our Portfolio",
     ctaSecondaryLink: "/portfolio",
+    relatedWorksBadge: "Our Work",
+    relatedWorksTitle: "Related {{service}} Projects",
+    relatedWorksDescription: "Live works linked from CMS for this service page appear here automatically.",
+    relatedWorksButtonLabel: "View All Works",
+    relatedWorksButtonLink: "/portfolio",
+    relatedWorksEmptyText: "No live works are linked to this service yet. Select this service while posting from CMS Live Work to show it here.",
     metaTitle: buildDefaultServiceMetaTitle(baseName),
     metaDescription: buildDefaultServiceMetaDescription(baseName),
   };
@@ -243,9 +257,19 @@ const formFromService = (service: ServiceItem): ServiceForm => {
       service.cta_description?.trim() ||
       "Let's discuss your project and discover how our engineering expertise and creative innovation can help you achieve extraordinary results.",
     ctaPrimaryLabel: service.cta_primary_label?.trim() || "Get Free Consultation",
-    ctaPrimaryLink: service.cta_primary_link?.trim() || "/contact",
+    ctaPrimaryLink: service.cta_primary_link?.trim() || "/start-project",
     ctaSecondaryLabel: service.cta_secondary_label?.trim() || "View Our Portfolio",
     ctaSecondaryLink: service.cta_secondary_link?.trim() || "/portfolio",
+    relatedWorksBadge: service.related_works_badge?.trim() || "Our Work",
+    relatedWorksTitle: service.related_works_title?.trim() || "Related {{service}} Projects",
+    relatedWorksDescription:
+      service.related_works_description?.trim() ||
+      "Live works linked from CMS for this service page appear here automatically.",
+    relatedWorksButtonLabel: service.related_works_button_label?.trim() || "View All Works",
+    relatedWorksButtonLink: service.related_works_button_link?.trim() || "/portfolio",
+    relatedWorksEmptyText:
+      service.related_works_empty_text?.trim() ||
+      "No live works are linked to this service yet. Select this service while posting from CMS Live Work to show it here.",
     metaTitle: buildServiceMetaTitleFromApi(service),
     metaDescription: buildServiceMetaDescriptionFromApi(service),
   };
@@ -289,6 +313,10 @@ const PagesManager = () => {
   useEffect(() => {
     loadServices();
   }, [loadServices]);
+
+  useEffect(() => {
+    scrollCmsMainToTop();
+  }, [activeSection]);
 
   const filtered = useMemo(() => {
     const key = search.trim().toLowerCase();
@@ -350,6 +378,12 @@ const PagesManager = () => {
       cta_primary_link: form.ctaPrimaryLink.trim() || null,
       cta_secondary_label: form.ctaSecondaryLabel.trim() || null,
       cta_secondary_link: form.ctaSecondaryLink.trim() || null,
+      related_works_badge: form.relatedWorksBadge.trim() || null,
+      related_works_title: form.relatedWorksTitle.trim() || null,
+      related_works_description: form.relatedWorksDescription.trim() || null,
+      related_works_button_label: form.relatedWorksButtonLabel.trim() || null,
+      related_works_button_link: form.relatedWorksButtonLink.trim() || null,
+      related_works_empty_text: form.relatedWorksEmptyText.trim() || null,
       meta_title: form.metaTitle.trim() || null,
       meta_description: form.metaDescription.trim() || null,
     };
@@ -576,7 +610,9 @@ const PagesManager = () => {
 
         <section className="space-y-4">
           {activeSection === "home" ? (
-            <HomePageManager />
+            <CMSErrorBoundary>
+              <HomePageManager />
+            </CMSErrorBoundary>
           ) : activeSection === "services" ? (
             <>
           <div className="glass-card p-4 border-border/60">
@@ -832,6 +868,33 @@ const PagesManager = () => {
                   <Input value={form.ctaSecondaryLabel} onChange={(e) => setField("ctaSecondaryLabel", e.target.value)} placeholder="Secondary button text" />
                   <Input value={form.ctaSecondaryLink} onChange={(e) => setField("ctaSecondaryLink", e.target.value)} placeholder="Secondary button link" />
                 </div>
+              </div>
+
+              <div className="space-y-3 rounded-xl border border-border/60 p-4">
+                <p className="text-sm font-medium">Related Works Section</p>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <Input value={form.relatedWorksBadge} onChange={(e) => setField("relatedWorksBadge", e.target.value)} placeholder="Section badge" />
+                  <Input value={form.relatedWorksTitle} onChange={(e) => setField("relatedWorksTitle", e.target.value)} placeholder="Section title, e.g. Related {{service}} Projects" />
+                </div>
+                <Textarea
+                  rows={2}
+                  value={form.relatedWorksDescription}
+                  onChange={(e) => setField("relatedWorksDescription", e.target.value)}
+                  placeholder="Short intro shown above the related works slider"
+                />
+                <div className="grid md:grid-cols-2 gap-3">
+                  <Input value={form.relatedWorksButtonLabel} onChange={(e) => setField("relatedWorksButtonLabel", e.target.value)} placeholder="Button text" />
+                  <Input value={form.relatedWorksButtonLink} onChange={(e) => setField("relatedWorksButtonLink", e.target.value)} placeholder="Button link" />
+                </div>
+                <Textarea
+                  rows={2}
+                  value={form.relatedWorksEmptyText}
+                  onChange={(e) => setField("relatedWorksEmptyText", e.target.value)}
+                  placeholder="Empty state text when no work is linked"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use <code>{"{{service}}"}</code> in the title to automatically show the current service name.
+                </p>
               </div>
 
               <div className="space-y-3 rounded-xl border border-border/60 p-4">

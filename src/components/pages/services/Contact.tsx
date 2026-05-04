@@ -78,9 +78,9 @@ const Contact = () => {
     {
       icon: Mail,
       title: "Email Us",
-      value: "drawndimensioninfo@gmail.com",
+      value: "info@drawndimension.com",
       description: "We'll respond within 24 hours",
-      href: "mailto:drawndimensioninfo@gmail.com",
+      href: "mailto:info@drawndimension.com",
     },
     {
       icon: Phone,

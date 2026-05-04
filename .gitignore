@@ -29,3 +29,4 @@ server-node/.env
 __pycache__/
 *.pyc
 supabase/.temp/
+backup/

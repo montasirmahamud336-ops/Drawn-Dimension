@@ -14,6 +14,10 @@ import Home from "./pages/services/Home";
 import Dashboard from "./pages/services/Dashboard";
 import AuthCallback from "./pages/services/AuthCallback";
 
+// ⬇️ নতুন imports
+const StartProject = lazy(() => import("./pages/services/startproject"));
+const InquiriesManager = lazy(() => import("@/components/cms/InquiriesManager"));
+
 // Pages
 const ChatWidget = lazy(() => import("@/components/ChatWidget"));
 const AdminLogin = lazy(() => import("@/components/admin/AdminLogin"));
@@ -27,6 +31,7 @@ const TeamManager = lazy(() => import("@/components/cms/TeamManager"));
 const ReviewsManager = lazy(() => import("@/components/cms/ReviewsManager"));
 const EmployeesManager = lazy(() => import("@/components/cms/EmployeesManager"));
 const WorkAssignManager = lazy(() => import("@/components/cms/WorkAssignManager"));
+const SentInvoiceManager = lazy(() => import("@/components/cms/SentInvoiceManager"));
 const EmployeeChatManager = lazy(() => import("@/components/cms/EmployeeChatManager"));
 const WorldMapManager = lazy(() => import("@/components/cms/WorldMapManager"));
 const PagesManager = lazy(() => import("@/components/cms/PagesManager"));
@@ -37,6 +42,7 @@ const GiveAccessManager = lazy(() => import("@/components/cms/GiveAccessManager"
 
 // Routes
 const About = lazy(() => import("./pages/services/About"));
+const Team = lazy(() => import("./pages/services/Team"));
 const OurEmployees = lazy(() => import("./pages/services/OurEmployees"));
 const Services = lazy(() => import("./pages/services/Services"));
 const DynamicServicePage = lazy(() => import("./pages/services/DynamicServicePage"));
@@ -65,6 +71,7 @@ const RouteFallback = () => (
   </div>
 );
 
+// ✅ CMS রুট – inquiries যোগ করেছি (relative path)
 const renderCMSRoutes = () => (
   <>
     <Route index element={<DashboardStats />} />
@@ -76,6 +83,7 @@ const renderCMSRoutes = () => (
     <Route path="reviews" element={<ReviewsManager />} />
     <Route path="employees" element={<EmployeesManager />} />
     <Route path="work-assign" element={<WorkAssignManager />} />
+    <Route path="sent-invoice" element={<SentInvoiceManager />} />
     <Route path="world-map" element={<WorldMapManager />} />
     <Route path="pages" element={<PagesManager />} />
     <Route path="header-footer" element={<HeaderFooterManager />} />
@@ -83,19 +91,26 @@ const renderCMSRoutes = () => (
     <Route path="live-chat" element={<LiveChatManager />} />
     <Route path="chat" element={<EmployeeChatManager />} />
     <Route path="give-access" element={<GiveAccessManager />} />
+    <Route path="inquiries" element={<InquiriesManager />} />
   </>
 );
 
 const isAdminRoute = (pathname: string) =>
-  pathname === "/cms"
-  || pathname.startsWith("/cms/")
-  || pathname === "/database"
-  || pathname.startsWith("/database/");
+  pathname === "/cms" ||
+  pathname.startsWith("/cms/") ||
+  pathname === "/database" ||
+  pathname.startsWith("/database/");
 
 const AppShell = () => {
   const location = useLocation();
   const adminRouteActive = isAdminRoute(location.pathname);
   const [shouldLoadChatWidget, setShouldLoadChatWidget] = useState(false);
+
+  useEffect(() => {
+    if (window.location.hostname === "drawndimension.com") {
+      window.location.replace(`https://www.drawndimension.com${window.location.pathname}${window.location.search}${window.location.hash}`);
+    }
+  }, []);
 
   useEffect(() => {
     if (adminRouteActive) {
@@ -104,17 +119,13 @@ const AppShell = () => {
       }
       return;
     }
-
     if (shouldLoadChatWidget) return;
 
-    const activateWidget = () => {
-      setShouldLoadChatWidget(true);
-    };
+    const activateWidget = () => setShouldLoadChatWidget(true);
     const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "scroll", "touchstart"];
-
-    events.forEach((eventName) => {
-      window.addEventListener(eventName, activateWidget, { passive: true, once: true });
-    });
+    events.forEach((eventName) =>
+      window.addEventListener(eventName, activateWidget, { passive: true, once: true })
+    );
 
     const idleWindow = window as Window & {
       requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
@@ -123,7 +134,6 @@ const AppShell = () => {
     const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     const shouldIdleLoad = isDesktop && !connection?.saveData;
-
     const timerId = window.setTimeout(activateWidget, shouldIdleLoad ? 15000 : 25000);
     const idleId = shouldIdleLoad
       ? idleWindow.requestIdleCallback?.(activateWidget, { timeout: 10000 })
@@ -131,12 +141,8 @@ const AppShell = () => {
 
     return () => {
       window.clearTimeout(timerId);
-      if (typeof idleId === "number") {
-        idleWindow.cancelIdleCallback?.(idleId);
-      }
-      events.forEach((eventName) => {
-        window.removeEventListener(eventName, activateWidget);
-      });
+      if (typeof idleId === "number") idleWindow.cancelIdleCallback?.(idleId);
+      events.forEach((eventName) => window.removeEventListener(eventName, activateWidget));
     };
   }, [adminRouteActive, shouldLoadChatWidget]);
 
@@ -144,12 +150,13 @@ const AppShell = () => {
     <>
       {!adminRouteActive ? <SmoothScroll /> : null}
       {!adminRouteActive ? <CustomCursor /> : null}
-      <AnimatePresence mode="wait">
-        <ScrollToTop />
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
+      <ScrollToTop />
+      <Suspense fallback={<RouteFallback />}>
+        <AnimatePresence mode="wait" initial={false}>
+          <Routes location={location} key={location.pathname}>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
+            <Route path="/team" element={<Team />} />
             <Route path="/our-employees" element={<OurEmployees />} />
             <Route path="/services" element={<Services />} />
             <Route path="/services/:slug" element={<DynamicServicePage />} />
@@ -161,6 +168,7 @@ const AppShell = () => {
             <Route path="/testimonials" element={<Testimonials />} />
             <Route path="/testimonials/all" element={<AllReviews />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/start-project" element={<StartProject />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/reset-password" element={<ResetPassword />} />
@@ -197,8 +205,8 @@ const AppShell = () => {
 
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </Suspense>
-      </AnimatePresence>
+        </AnimatePresence>
+      </Suspense>
       {!adminRouteActive && shouldLoadChatWidget ? (
         <Suspense fallback={null}>
           <ChatWidget />
@@ -208,20 +216,23 @@ const AppShell = () => {
   );
 };
 
-const App = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppShell />
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
-};
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+          <AppShell />
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
 
 export default App;

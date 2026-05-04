@@ -2,17 +2,23 @@ import { DragEvent, Suspense, lazy, memo, useCallback, useDeferredValue, useEffe
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Edit, FileText, GripVertical, MonitorPlay, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { Edit, FileText, GripVertical, Loader2, MonitorPlay, Plus, RotateCcw, Search, Tag, Trash2 } from "lucide-react";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import { moveItemById } from "./reorderUtils";
 import { buildCardImageSources } from "@/components/shared/mediaUrl";
 import { getProjectPdfDocument, getProjectPrimaryCardMedia } from "@/components/shared/projectMedia";
-import PdfPreview from "@/components/shared/PdfPreview";
+import {
+  applyPortfolioFilterCategories,
+  getPortfolioFilterCategories,
+  getProjectCategoryLabel,
+  normalizePortfolioFilterCategories,
+  normalizeProjectCategoryOption,
+} from "@/components/shared/projectAssociations";
 
-const INITIAL_VISIBLE_WORKS = 9;
-const WORKS_LOAD_MORE_STEP = 9;
-const EAGER_IMAGE_COUNT = 2;
+const INITIAL_VISIBLE_WORKS = 6;
+const WORKS_LOAD_MORE_STEP = 6;
+const EAGER_IMAGE_COUNT = 1;
 const DESCRIPTION_PREVIEW_LIMIT = 180;
 const CARD_SHELL_STYLE = {
   contentVisibility: "auto",
@@ -29,6 +35,7 @@ type ProjectRecord = {
   image_url?: string | null;
   media?: Array<{ url?: string; type?: string; name?: string | null }> | null;
   category?: string | null;
+  linked_service_ids?: number[] | null;
   status?: string | null;
   client?: string | null;
 };
@@ -39,6 +46,14 @@ type ProjectCardRecord = ProjectRecord & {
   searchText: string;
 };
 
+type WorkCategoryGroup = {
+  key: string;
+  label: string;
+  count: number;
+  projectIds: string[];
+  isUncategorized: boolean;
+};
+
 const getDescriptionPreview = (value: string | null | undefined) => {
   const text = typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
   if (!text) return "No description provided.";
@@ -46,13 +61,19 @@ const getDescriptionPreview = (value: string | null | undefined) => {
   return `${text.slice(0, DESCRIPTION_PREVIEW_LIMIT).trimEnd().replace(/[.,;:!?-]+$/, "")}...`;
 };
 
+const normalizeCategoryValue = normalizeProjectCategoryOption;
+
 const normalizeProject = (project: ProjectRecord): ProjectCardRecord => {
   const title = project.title?.trim() || "Untitled Work";
+  const primaryPreviewMedia = getProjectPrimaryCardMedia(project);
+  const primaryPreviewImageUrl = primaryPreviewMedia?.type === "image"
+    ? primaryPreviewMedia.url
+    : (typeof project.image_url === "string" ? project.image_url : null);
   return {
     ...project,
     title,
     descriptionPreview: getDescriptionPreview(project.description),
-    imageSources: project.image_url ? buildCardImageSources(project.image_url) : null,
+    imageSources: primaryPreviewImageUrl ? buildCardImageSources(primaryPreviewImageUrl) : null,
     searchText: [title, project.category, project.client].filter(Boolean).join(" ").toLowerCase(),
   };
 };
@@ -125,9 +146,18 @@ const WorkCard = memo(({
               className="w-full h-full object-cover"
               muted
               playsInline
+              preload="none"
             />
           ) : previewMedia?.type === "pdf" ? (
-            <PdfPreview url={previewMedia.url} title={project.title} loading={eagerImage ? "eager" : "lazy"} />
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-white to-zinc-100 text-zinc-900">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/12 text-primary shadow-[0_10px_24px_-16px_rgba(239,68,68,0.55)]">
+                <FileText className="h-7 w-7" />
+              </div>
+              <div className="px-6 text-center">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-700">PDF Project</p>
+                <p className="mt-1 text-xs text-zinc-500">Open edit or details view to inspect the full file.</p>
+              </div>
+            </div>
           ) : imageSrc ? (
             <>
               <div
@@ -139,7 +169,7 @@ const WorkCard = memo(({
                 srcSet={project.imageSources?.srcSet}
                 alt={project.title}
                 loading={eagerImage ? "eager" : "lazy"}
-                fetchPriority={eagerImage ? "high" : "low"}
+                fetchpriority={eagerImage ? "high" : "low"}
                 decoding="async"
                 width={640}
                 height={360}
@@ -279,6 +309,12 @@ const WorksManager = () => {
   const [dropTargetProjectId, setDropTargetProjectId] = useState<string | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_WORKS);
+  const [editingCategoryKey, setEditingCategoryKey] = useState<string | null>(null);
+  const [editingCategoryValue, setEditingCategoryValue] = useState("");
+  const [categoryActionKey, setCategoryActionKey] = useState<string | null>(null);
+  const [newCategoryValue, setNewCategoryValue] = useState("");
+  const [portfolioSettings, setPortfolioSettings] = useState<Record<string, unknown>>({});
+  const [managedCategories, setManagedCategories] = useState<string[]>([]);
   const projectsRef = useRef<ProjectCardRecord[]>([]);
   const draggingProjectIdRef = useRef<string | null>(null);
   const dropTargetProjectIdRef = useRef<string | null>(null);
@@ -332,6 +368,35 @@ const WorksManager = () => {
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE_WORKS);
   }, [activeTab, searchQuery, projects.length]);
+
+  useEffect(() => {
+    setEditingCategoryKey(null);
+    setEditingCategoryValue("");
+    setCategoryActionKey(null);
+    setNewCategoryValue("");
+  }, [activeTab]);
+
+  const loadPortfolioCategories = useCallback(async () => {
+    try {
+      const response = await fetch(`${apiBase}/home-page-settings`);
+      if (!response.ok) {
+        throw new Error("Failed to load portfolio category settings");
+      }
+
+      const payload = await response.json();
+      const nextSettings = payload && typeof payload === "object"
+        ? payload as Record<string, unknown>
+        : {};
+      setPortfolioSettings(nextSettings);
+      setManagedCategories(getPortfolioFilterCategories(nextSettings));
+    } catch (error) {
+      console.error("Failed to load portfolio category settings", error);
+    }
+  }, [apiBase]);
+
+  useEffect(() => {
+    void loadPortfolioCategories();
+  }, [loadPortfolioCategories]);
 
   const saveProjectOrder = useCallback(async (orderedProjects: ProjectCardRecord[]) => {
     try {
@@ -473,6 +538,250 @@ const WorksManager = () => {
     [projects, searchQuery],
   );
 
+  const categoryGroups = useMemo<WorkCategoryGroup[]>(() => {
+    const groups = new Map<string, WorkCategoryGroup>();
+    const managedRank = new Map<string, number>();
+
+    normalizePortfolioFilterCategories(managedCategories).forEach((category, index) => {
+      managedRank.set(category, index);
+      groups.set(category, {
+        key: category,
+        label: category,
+        count: 0,
+        projectIds: [],
+        isUncategorized: false,
+      });
+    });
+
+    projects.forEach((project) => {
+      const normalizedCategory = normalizeCategoryValue(project.category);
+      const isUncategorized = normalizedCategory.length === 0;
+      const label = getProjectCategoryLabel(project.category);
+      const key = isUncategorized ? "__uncategorized__" : normalizedCategory;
+      const existing = groups.get(key);
+
+      if (existing) {
+        existing.count += 1;
+        existing.projectIds.push(project.id);
+        return;
+      }
+
+      groups.set(key, {
+        key,
+        label,
+        count: 1,
+        projectIds: [project.id],
+        isUncategorized,
+      });
+    });
+
+    return Array.from(groups.values()).sort((a, b) => {
+      const aRank = managedRank.get(a.key);
+      const bRank = managedRank.get(b.key);
+      const resolvedARank = typeof aRank === "number" ? aRank : Number.MAX_SAFE_INTEGER;
+      const resolvedBRank = typeof bRank === "number" ? bRank : Number.MAX_SAFE_INTEGER;
+
+      if (resolvedARank !== resolvedBRank) {
+        return resolvedARank - resolvedBRank;
+      }
+
+      return b.count - a.count || a.label.localeCompare(b.label);
+    });
+  }, [managedCategories, projects]);
+
+  const handleStartCategoryEdit = useCallback((group: WorkCategoryGroup) => {
+    setEditingCategoryKey(group.key);
+    setEditingCategoryValue(group.isUncategorized ? "" : group.label);
+  }, []);
+
+  const handleCancelCategoryEdit = useCallback(() => {
+    setEditingCategoryKey(null);
+    setEditingCategoryValue("");
+  }, []);
+
+  const fetchAllProjects = useCallback(async () => {
+    const response = await fetch(`${apiBase}/projects?status=all`);
+    if (!response.ok) {
+      throw new Error("Failed to load works for category update");
+    }
+
+    const payload = await response.json();
+    return Array.isArray(payload) ? payload as ProjectRecord[] : [];
+  }, [apiBase]);
+
+  const saveManagedCategories = useCallback(async (categories: string[]) => {
+    if (!token) {
+      throw new Error("Session expired. Please login again.");
+    }
+
+    const payload = applyPortfolioFilterCategories(portfolioSettings, categories);
+    const response = await fetch(`${apiBase}/home-page-settings`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to save category settings");
+    }
+
+    const saved = await response.json();
+    const nextSettings = saved && typeof saved === "object"
+      ? saved as Record<string, unknown>
+      : payload;
+    setPortfolioSettings(nextSettings);
+    setManagedCategories(getPortfolioFilterCategories(nextSettings));
+  }, [apiBase, portfolioSettings, token]);
+
+  const updateProjectsCategory = useCallback(async (projectIds: string[], category: string | null) => {
+    const nextCategory = category && category.trim().length > 0 ? category.trim() : null;
+    const responses = await Promise.all(
+      projectIds.map((projectId) =>
+        fetch(`${apiBase}/projects/${projectId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ category: nextCategory }),
+        })
+      )
+    );
+
+    const failed = responses.find((response) => !response.ok);
+    if (failed) {
+      throw new Error("Failed to update one or more works");
+    }
+  }, [apiBase, token]);
+
+  const resolveCategoryProjectIds = useCallback(async (group: WorkCategoryGroup) => {
+    const allProjects = await fetchAllProjects();
+    return allProjects
+      .filter((project) => {
+        const normalizedCategory = normalizeCategoryValue(project.category);
+        return group.isUncategorized
+          ? normalizedCategory.length === 0
+          : normalizedCategory === group.key;
+      })
+      .map((project) => String(project.id))
+      .filter((id) => id.length > 0);
+  }, [fetchAllProjects]);
+
+  const handleSaveCategory = useCallback(async (group: WorkCategoryGroup) => {
+    const nextLabel = normalizeCategoryValue(editingCategoryValue);
+    if (!nextLabel) {
+      toast.error("Enter a category name");
+      return;
+    }
+
+    if (nextLabel.toLowerCase() === "all") {
+      toast.error("All is reserved");
+      return;
+    }
+
+    if (!group.isUncategorized && nextLabel === group.label) {
+      handleCancelCategoryEdit();
+      return;
+    }
+
+    const duplicateCategory = categoryGroups.some(
+      (item) => item.key !== group.key && item.label.toLowerCase() === nextLabel.toLowerCase()
+    );
+    if (duplicateCategory) {
+      toast.error("Category already exists");
+      return;
+    }
+
+    try {
+      setCategoryActionKey(group.key);
+      const projectIds = await resolveCategoryProjectIds(group);
+      const nextManagedCategories = normalizePortfolioFilterCategories([
+        ...managedCategories.filter((category) => normalizeCategoryValue(category) !== group.key),
+        nextLabel,
+      ]);
+
+      if (projectIds.length > 0) {
+        await updateProjectsCategory(projectIds, nextLabel);
+      }
+      await saveManagedCategories(nextManagedCategories);
+      toast.success("Category updated");
+      handleCancelCategoryEdit();
+      await fetchProjects();
+    } catch (error) {
+      console.error("Failed to update work category", error);
+      toast.error("Could not update category");
+    } finally {
+      setCategoryActionKey(null);
+    }
+  }, [categoryGroups, editingCategoryValue, fetchProjects, handleCancelCategoryEdit, managedCategories, resolveCategoryProjectIds, saveManagedCategories, updateProjectsCategory]);
+
+  const handleRemoveCategory = useCallback(async (group: WorkCategoryGroup) => {
+    if (group.isUncategorized) {
+      return;
+    }
+
+    if (!confirm(`Remove "${group.label}" and move its works to Uncategorized?`)) {
+      return;
+    }
+
+    try {
+      setCategoryActionKey(group.key);
+      const projectIds = await resolveCategoryProjectIds(group);
+      const nextManagedCategories = normalizePortfolioFilterCategories(
+        managedCategories.filter((category) => normalizeCategoryValue(category) !== group.key)
+      );
+
+      if (projectIds.length > 0) {
+        await updateProjectsCategory(projectIds, null);
+      }
+      await saveManagedCategories(nextManagedCategories);
+      toast.success("Category removed");
+      if (editingCategoryKey === group.key) {
+        handleCancelCategoryEdit();
+      }
+      await fetchProjects();
+    } catch (error) {
+      console.error("Failed to remove work category", error);
+      toast.error("Could not remove category");
+    } finally {
+      setCategoryActionKey(null);
+    }
+  }, [editingCategoryKey, fetchProjects, handleCancelCategoryEdit, managedCategories, resolveCategoryProjectIds, saveManagedCategories, updateProjectsCategory]);
+
+  const handleAddCategory = useCallback(async () => {
+    const nextLabel = normalizeCategoryValue(newCategoryValue);
+    if (!nextLabel) {
+      toast.error("Enter a category name");
+      return;
+    }
+
+    if (nextLabel.toLowerCase() === "all") {
+      toast.error("All is reserved");
+      return;
+    }
+
+    const alreadyExists = categoryGroups.some((group) => group.label.toLowerCase() === nextLabel.toLowerCase());
+    if (alreadyExists) {
+      toast.error("Category already exists");
+      return;
+    }
+
+    try {
+      setCategoryActionKey("__add__");
+      await saveManagedCategories([...managedCategories, nextLabel]);
+      setNewCategoryValue("");
+      toast.success("Category added");
+    } catch (error) {
+      console.error("Failed to add work category", error);
+      toast.error("Could not add category");
+    } finally {
+      setCategoryActionKey(null);
+    }
+  }, [categoryGroups, managedCategories, newCategoryValue, saveManagedCategories]);
+
   const visibleProjects = useMemo(
     () => filteredProjects.slice(0, visibleCount),
     [filteredProjects, visibleCount],
@@ -515,6 +824,139 @@ const WorksManager = () => {
           ? "Drag and drop cards to control website display order."
           : "Clear search text before dragging cards to reorder."}
       </p>
+
+      {activeTab === "live" ? (
+        <div className="glass-card border-border/60 bg-secondary/10 p-5 space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <Tag className="h-3.5 w-3.5" />
+                Portfolio Filters
+              </div>
+              <h3 className="mt-3 text-lg font-semibold text-foreground">Edit the filter buttons from here</h3>
+              <p className="text-sm text-muted-foreground">
+                Rename or remove the category pills shown on the public Our Work page. The <span className="font-medium text-foreground">All</span> button stays fixed.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3 text-sm text-muted-foreground">
+              {categoryGroups.length} live categor{categoryGroups.length === 1 ? "y" : "ies"}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-dashed border-border/60 bg-background/35 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <Input
+                value={newCategoryValue}
+                onChange={(event) => setNewCategoryValue(event.target.value)}
+                placeholder="Add a new filter category"
+                disabled={categoryActionKey === "__add__"}
+              />
+              <Button
+                type="button"
+                className="gap-2 md:min-w-[160px]"
+                onClick={() => void handleAddCategory()}
+                disabled={categoryActionKey === "__add__"}
+              >
+                {categoryActionKey === "__add__" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Add Category
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              New categories will appear on the public Our Work filter bar immediately, even before any work is assigned.
+            </p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {categoryGroups.map((group) => {
+              const isEditing = editingCategoryKey === group.key;
+              const isBusy = categoryActionKey === group.key;
+
+              return (
+                <div key={group.key} className="rounded-2xl border border-border/60 bg-background/45 p-4 space-y-3">
+                  {isEditing ? (
+                    <>
+                      <Input
+                        value={editingCategoryValue}
+                        onChange={(event) => setEditingCategoryValue(event.target.value)}
+                        placeholder={group.isUncategorized ? "Name this category" : "Category name"}
+                        autoFocus
+                        disabled={isBusy}
+                      />
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs text-muted-foreground">
+                          {group.count} live work{group.count === 1 ? "" : "s"}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelCategoryEdit}
+                            disabled={isBusy}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => void handleSaveCategory(group)}
+                            disabled={isBusy}
+                          >
+                            {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{group.label}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {group.count} live work{group.count === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-border/60 bg-background/50 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                          {group.count}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => handleStartCategoryEdit(group)}
+                          disabled={isBusy}
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                        {!group.isUncategorized ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="gap-2 text-destructive hover:text-destructive"
+                            onClick={() => void handleRemoveCategory(group)}
+                            disabled={isBusy}
+                          >
+                            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                            Remove
+                          </Button>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Rename this to remove the Uncategorized filter.</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

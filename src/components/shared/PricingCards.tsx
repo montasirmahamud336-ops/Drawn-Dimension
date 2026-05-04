@@ -89,7 +89,7 @@ const PricingCards = ({
               </ul>
 
               <Link
-                to={tier.price.includes("$") ? `/payment?plan=${encodeURIComponent(tier.name)}&price=${encodeURIComponent(tier.price)}` : "/contact"}
+                to={tier.price.includes("$") ? `/payment?plan=${encodeURIComponent(tier.name)}&price=${encodeURIComponent(tier.price)}` : "/start-project"}
                 className={`relative inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold transition-all duration-300 overflow-hidden ${tier.popular
                     ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow"
                     : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/30 hover:border-primary"

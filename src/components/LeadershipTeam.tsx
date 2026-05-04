@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { Linkedin, Twitter, Facebook, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { MouseEvent, useState } from "react";
 import { useLiveData } from "@/hooks/useLiveData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FacebookIcon, LinkedInIcon, TwitterIcon } from "@/components/shared/socialIcons";
 
 type MediaItem = {
   url: string;
@@ -199,9 +200,9 @@ const LeadershipTeam = ({ compact = false }: LeadershipTeamProps) => {
 
                       <div className="flex gap-3 mt-2">
                         {[
-                          { href: normalizeUrl(leader.linkedin_url), icon: Linkedin, label: "LinkedIn" },
-                          { href: normalizeUrl(leader.twitter_url), icon: Twitter, label: "Twitter" },
-                          { href: normalizeUrl(leader.facebook_url), icon: Facebook, label: "Facebook" },
+                          { href: normalizeUrl(leader.linkedin_url), icon: LinkedInIcon, label: "LinkedIn" },
+                          { href: normalizeUrl(leader.twitter_url), icon: TwitterIcon, label: "Twitter" },
+                          { href: normalizeUrl(leader.facebook_url), icon: FacebookIcon, label: "Facebook" },
                         ].map((social) => (
                           <a
                             key={social.label}

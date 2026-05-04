@@ -5,7 +5,6 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, ArrowRight, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,6 +13,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
 import PremiumBackground from "@/components/shared/PremiumBackground";
+import { getApiBaseUrl } from "@/components/admin/adminAuth";
 
 const resetSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -28,7 +28,7 @@ type ResetFormData = z.infer<typeof resetSchema>;
 const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
+  const [resetToken, setResetToken] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -38,35 +38,57 @@ const ResetPassword = () => {
   });
 
   useEffect(() => {
-    const initSession = async () => {
+    const initResetToken = async () => {
       const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
-      if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
-      }
-      const { data: { session } } = await supabase.auth.getSession();
-      setHasSession(!!session);
+      const token = params.get("token")?.trim() ?? "";
+      setResetToken(token);
       setIsReady(true);
     };
-    initSession();
+    void initResetToken();
   }, []);
 
   const handleReset = async (data: ResetFormData) => {
     setIsLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: data.password });
-    setIsLoading(false);
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/user-password-reset`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: resetToken,
+          password: data.password,
+        }),
+      });
 
-    if (error) {
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        let message = "Password update failed";
+
+        if (contentType.includes("application/json")) {
+          const body = await response.json().catch(() => null);
+          message = body?.message || body?.detail || body?.error || message;
+        } else {
+          const text = await response.text().catch(() => "");
+          if (text) {
+            message = text;
+          }
+        }
+
+        throw new Error(message);
+      }
+
+      toast({ title: "Password updated" });
+      navigate("/auth");
+    } catch (error: unknown) {
       toast({
         title: "Password update failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Password update failed",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    toast({ title: "Password updated" });
-    navigate("/auth");
   };
 
   return (
@@ -90,7 +112,7 @@ const ResetPassword = () => {
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
-              ) : !hasSession ? (
+              ) : !resetToken ? (
                 <div className="text-center space-y-4">
                   <p className="text-sm text-muted-foreground">
                     This link is invalid or expired. Please request a new reset link.

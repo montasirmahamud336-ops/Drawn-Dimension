@@ -1,4 +1,5 @@
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
+import { normalizeCmsStoredMediaUrl } from "@/components/shared/mediaUrl";
 
 export const CMS_BUCKET = (import.meta as any).env?.VITE_SUPABASE_BUCKET || "cms-uploads";
 
@@ -57,5 +58,5 @@ export async function uploadCmsFile(file: File, path: string) {
     throw new Error("Missing uploaded file URL");
   }
 
-  return String(data.publicUrl);
+  return normalizeCmsStoredMediaUrl(String(data.publicUrl));
 }

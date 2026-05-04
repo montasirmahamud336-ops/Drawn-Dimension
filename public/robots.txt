@@ -12,4 +12,4 @@ Disallow: /dashboard
 Disallow: /employee/
 Disallow: /payment
 
-Sitemap: https://drawndimension.com/sitemap.xml
+Sitemap: https://www.drawndimension.com/sitemap.xml

@@ -227,6 +227,31 @@
     display: block;
   }
 
+  .trusted-logos-marquee {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  }
+
+  .trusted-logos-track {
+    width: max-content;
+    will-change: transform;
+    animation: trusted-logos-marquee var(--trusted-logos-duration, 24s) linear infinite;
+  }
+
+  .trusted-logos-marquee:hover .trusted-logos-track {
+    animation-play-state: paused;
+  }
+
+}
+
+@keyframes trusted-logos-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(calc(-50% - 0.5rem), 0, 0);
+  }
 }
 
 @media (max-width: 1023px) {
@@ -240,6 +265,13 @@
 
   .hero-glow {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trusted-logos-track {
+    animation: none !important;
+    transform: none !important;
   }
 }
 

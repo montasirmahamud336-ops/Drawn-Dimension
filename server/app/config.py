@@ -12,8 +12,11 @@ def _to_bool(value: str | None, default: bool = False) -> bool:
 
 @dataclass(frozen=True)
 class Settings:
-    supabase_url: str
-    supabase_service_key: str
+    database_url: str
+    database_ssl: bool
+    storage_bucket: str
+    media_root: str
+    media_base_url: str
     webhook_secret: str
     smtp_host: str
     smtp_port: int
@@ -53,14 +56,26 @@ class Settings:
     def from_env(cls) -> "Settings":
         site_base_url = os.getenv("SITE_BASE_URL", "https://drawndimension.com").strip()
         default_logo = f"{site_base_url.rstrip('/')}/images/logo.png" if site_base_url else ""
+        media_base_url = (
+            os.getenv("MEDIA_BASE_URL")
+            or f"{site_base_url.rstrip('/')}/media"
+            or ""
+        ).strip()
+        media_root = (
+            os.getenv("MEDIA_ROOT")
+            or ("/opt/drawndimension/media" if os.getenv("ENV") == "production" or os.getenv("NODE_ENV") == "production" else os.path.abspath(os.path.join(os.getcwd(), "media")))
+        ).strip()
 
         return cls(
-            supabase_url=(
-                os.getenv("SUPABASE_URL")
-                or os.getenv("VITE_SUPABASE_URL")
-                or ""
+            database_url=(os.getenv("DATABASE_URL") or "").strip(),
+            database_ssl=_to_bool(os.getenv("DATABASE_SSL"), default=False),
+            storage_bucket=(
+                os.getenv("STORAGE_BUCKET")
+                or os.getenv("SUPABASE_STORAGE_BUCKET")
+                or "cms-uploads"
             ).strip(),
-            supabase_service_key=(os.getenv("SUPABASE_SERVICE_KEY") or "").strip(),
+            media_root=media_root,
+            media_base_url=media_base_url,
             webhook_secret=(os.getenv("SUPABASE_AUTH_WEBHOOK_SECRET") or "").strip(),
             smtp_host=(os.getenv("SMTP_HOST") or "").strip(),
             smtp_port=int(os.getenv("SMTP_PORT", "587")),
@@ -85,4 +100,3 @@ class Settings:
 
 
 settings = Settings.from_env()
-

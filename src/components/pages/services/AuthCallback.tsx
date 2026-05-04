@@ -28,8 +28,8 @@ const AuthCallback = () => {
       <div className="flex flex-col items-center gap-3 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <div>
-          <p className="text-base font-semibold text-foreground">Completing sign in</p>
-          <p className="text-sm text-muted-foreground">Please wait while we finish your Google login.</p>
+          <p className="text-base font-semibold text-foreground">Checking sign-in state</p>
+          <p className="text-sm text-muted-foreground">Please wait while we redirect you.</p>
         </div>
       </div>
     </div>

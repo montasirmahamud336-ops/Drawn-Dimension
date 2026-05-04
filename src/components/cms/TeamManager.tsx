@@ -160,10 +160,10 @@ const TeamManager = () => {
         }
     };
 
-    const filteredMembers = members.filter(m =>
-        m.name.toLowerCase().includes(search.toLowerCase()) ||
-        m.role.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredMembers = members.filter((m) => {
+        const target = `${m?.name ?? ""} ${m?.role ?? ""} ${m?.country ?? ""}`.toLowerCase();
+        return target.includes(search.toLowerCase());
+    });
 
     return (
         <div className="space-y-6">
@@ -172,7 +172,7 @@ const TeamManager = () => {
                     <h2 className="text-3xl font-bold tracking-tight">{isEmployeeMode ? "Our Employees" : "Team Members"}</h2>
                     <p className="text-muted-foreground">
                         {isEmployeeMode
-                            ? "Manage employee cards for the About page."
+                            ? "Manage employee cards for the Team page."
                             : "Manage your team profiles."}
                     </p>
                 </div>
@@ -276,6 +276,9 @@ const TeamManager = () => {
                                 )}
                                 <h3 className="font-semibold truncate text-lg">{member.name}</h3>
                                 <p className="text-sm font-medium text-primary mb-1">{member.role}</p>
+                                {isEmployeeMode && member.country ? (
+                                    <p className="text-xs text-muted-foreground mb-1 truncate">From {member.country}</p>
+                                ) : null}
                                 {!isEmployeeMode && <p className="text-xs text-muted-foreground line-clamp-2">{member.bio}</p>}
                                 {member.status === 'draft' && <span className="text-xs bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded mt-2 inline-block">Draft</span>}
                             </CardContent>

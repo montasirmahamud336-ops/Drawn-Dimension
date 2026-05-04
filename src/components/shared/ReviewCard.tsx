@@ -1,7 +1,7 @@
+// ReviewCard.tsx — redesigned with light‑theme visibility
 import { motion } from "framer-motion";
-import { Quote, Star } from "lucide-react";
+import { Quote, Star, ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-
 import type { Review } from "@/components/shared/reviews";
 
 interface ReviewCardProps {
@@ -9,13 +9,13 @@ interface ReviewCardProps {
   index?: number;
 }
 
-const COLLAPSED_CONTENT_MAX_HEIGHT = 118;
+const COLLAPSED_CONTENT_MAX_HEIGHT = 120;
 
 const ReviewCard = ({ review, index = 0 }: ReviewCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const contentRef = useRef<HTMLParagraphElement | null>(null);
+  const contentRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     setIsExpanded(false);
@@ -23,109 +23,124 @@ const ReviewCard = ({ review, index = 0 }: ReviewCardProps) => {
 
   useEffect(() => {
     const element = contentRef.current;
-    if (!element) {
-      return;
-    }
+    if (!element) return;
 
-    const computeOverflow = () => {
+    const check = () =>
       setIsOverflowing(element.scrollHeight > COLLAPSED_CONTENT_MAX_HEIGHT + 2);
-    };
 
-    computeOverflow();
-
-    const observer = new ResizeObserver(computeOverflow);
+    check();
+    const observer = new ResizeObserver(check);
     observer.observe(element);
-
     return () => observer.disconnect();
   }, [review.content]);
 
-  const initials = useMemo(() => {
-    const letters = review.name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("");
-
-    return letters || "DD";
-  }, [review.name]);
+  const initials = useMemo(
+    () =>
+      review.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w) => w[0].toUpperCase())
+        .join("") || "DD",
+    [review.name],
+  );
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.45, delay: index * 0.06 }}
-      className="glass-card relative overflow-hidden p-6 group border-border/60 hover:border-primary/45 hover:-translate-y-1 transition-all duration-300 h-[24.5rem] flex flex-col bg-gradient-to-br from-background via-background to-primary/[0.03]"
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay: index * 0.08, ease: [0.25, 0.46, 0.45, 0.94] }}
+      className="group relative flex h-full flex-col rounded-2xl border border-border/40 bg-card/80 dark:border-white/[0.07] dark:bg-white/[0.02] backdrop-blur-sm p-5 transition-all duration-500 hover:border-primary/25 dark:hover:border-primary/25 hover:bg-card/90 dark:hover:bg-white/[0.04] hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary/5"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(239,68,68,0.16),transparent_38%)] opacity-70" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent_42%)]" />
-      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
-
-      <header className="flex items-center gap-4 min-h-[3.5rem]">
+      {/* ── Header ── */}
+      <div className="flex items-start gap-4">
         {review.image && !imageFailed ? (
           <img
             src={review.image}
             alt={review.name}
-            className="w-14 h-14 rounded-full object-cover object-[center_20%] border-2 border-primary/35 shadow-[0_0_0_3px_rgba(5,5,5,0.85)] shrink-0"
+            className="h-12 w-12 rounded-full object-cover ring-2 ring-border/30 dark:ring-white/10 transition-colors group-hover:ring-primary/20"
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <div className="w-14 h-14 rounded-full border-2 border-primary/35 bg-primary/15 text-primary font-semibold flex items-center justify-center shadow-[0_0_0_3px_rgba(5,5,5,0.85)] shrink-0">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary ring-2 ring-primary/10 transition-colors group-hover:ring-primary/20">
             {initials}
           </div>
         )}
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold text-foreground">{review.name}</h3>
+          <p className="truncate text-xs text-muted-foreground/70">{review.role}</p>
 
-        <div className="min-w-0">
-          <h3 className="font-semibold text-foreground leading-tight break-words tracking-tight">{review.name}</h3>
-          <p className="text-sm text-muted-foreground/95 leading-snug break-words">{review.role}</p>
-        </div>
-      </header>
-
-      <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/[0.08] px-2.5 py-1" aria-label={`Rated ${review.rating} out of 5`}>
-        {Array.from({ length: 5 }).map((_, starIndex) => (
-          <Star
-            key={`${review.id}-star-${starIndex}`}
-            className={`w-3.5 h-3.5 ${starIndex < review.rating ? "fill-primary text-primary" : "text-muted-foreground/35"}`}
-          />
-        ))}
-      </div>
-
-      <div className="mt-4 flex-1 min-h-0 flex flex-col">
-        <div className="relative flex-1 min-h-0">
-          <Quote className="w-8 h-8 text-primary/20 absolute -top-2 -left-1" />
-          <div
-            className={`pl-6 pr-1 relative z-10 rounded-xl border border-border/45 bg-gradient-to-b from-background/70 to-background/25 transition-[max-height] duration-300 ease-out ${
-              isExpanded ? "max-h-[11.375rem] overflow-y-auto p-3.5" : "max-h-[7.375rem] overflow-hidden p-3.5"
-            }`}
-          >
-            <p ref={contentRef} className="text-muted-foreground/95 text-sm leading-7 break-words italic">
-              {review.content}
-            </p>
+          {/* Stars + rating number */}
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <div className="flex gap-px">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-3.5 w-3.5 ${
+                    i < review.rating
+                      ? "fill-amber-400 text-amber-400 drop-shadow-sm"
+                      : "fill-transparent text-muted-foreground/20 dark:text-white/[0.06]"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-[13px] font-semibold text-foreground/80">{review.rating}.0</span>
           </div>
-          {!isExpanded && isOverflowing ? (
-            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background via-background/90 to-transparent rounded-b-xl" />
-          ) : null}
         </div>
 
-        <div className="mt-2 min-h-6 flex items-end justify-end">
-          {isOverflowing ? (
-            <button
-              type="button"
-              onClick={() => setIsExpanded((prev) => !prev)}
-              className="inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-4 transition-colors text-primary hover:text-primary/80"
-            >
-              {isExpanded ? "Read less" : "Read more"}
-            </button>
-          ) : null}
-        </div>
+        {/* Big decorative quote */}
+        <Quote className="h-8 w-8 shrink-0 text-primary/[0.10] dark:text-primary/[0.10] transition-colors group-hover:text-primary/20" />
       </div>
 
-      <footer className="relative z-10 mt-4 pt-4 border-t border-border/55">
-        <span className="text-xs px-3 py-1.5 rounded-full border border-primary/20 bg-primary/[0.12] text-primary font-medium inline-flex max-w-full truncate">
-          {review.project}
-        </span>
-      </footer>
+      {/* ── Content ── */}
+      <div className="relative mt-4 flex-1">
+        <div
+          className={`overflow-hidden transition-all duration-300 ${
+            isExpanded ? "max-h-[20rem]" : "max-h-[7.5rem]"
+          }`}
+        >
+          <p
+            ref={contentRef}
+            className="text-sm leading-relaxed text-muted-foreground/90"
+          >
+            &ldquo;{review.content}&rdquo;
+          </p>
+        </div>
+
+        {/* Fade only when collapsed & overflowing */}
+        {!isExpanded && isOverflowing && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background/30 dark:from-background/10 via-background/10 dark:via-background/5 to-transparent" />
+        )}
+      </div>
+
+      {/* ── Read more / less ── */}
+      {isOverflowing && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="mt-2 flex items-center gap-1 self-start text-xs font-medium text-primary/80 transition-colors hover:text-primary"
+        >
+          {isExpanded ? (
+            <>
+              Show less <ChevronUp className="h-3.5 w-3.5" />
+            </>
+          ) : (
+            <>
+              Read more <ChevronDown className="h-3.5 w-3.5" />
+            </>
+          )}
+        </button>
+      )}
+
+      {/* ── Footer tag ── */}
+      {review.project && (
+        <div className="mt-3 border-t border-border/20 dark:border-white/[0.04] pt-3">
+          <span className="inline-block rounded-full border border-primary/10 bg-primary/5 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-primary/70">
+            {review.project}
+          </span>
+        </div>
+      )}
     </motion.article>
   );
 };

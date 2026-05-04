@@ -1,3 +1,5 @@
+import { resolveCmsMediaUrl } from "./mediaUrl";
+
 export type ProjectMediaType = "image" | "video" | "pdf";
 
 export type ProjectMediaItem = {
@@ -32,7 +34,7 @@ const normalizeMediaEntry = (entry: any): ProjectMediaItem | null => {
     : null;
 
   return {
-    url: entry.url,
+    url: resolveCmsMediaUrl(entry.url),
     type: explicitType ?? detectProjectMediaType(entry.url),
     name: typeof entry?.name === "string" && entry.name.trim().length > 0 ? entry.name.trim() : null,
   };
@@ -46,7 +48,8 @@ export const getProjectMediaList = (item: any): ProjectMediaItem[] => {
   }
 
   if (typeof item?.image_url === "string" && item.image_url.trim().length > 0) {
-    return [{ url: item.image_url, type: detectProjectMediaType(item.image_url), name: null }];
+    const imageUrl = resolveCmsMediaUrl(item.image_url);
+    return [{ url: imageUrl, type: detectProjectMediaType(imageUrl), name: null }];
   }
 
   return [];
@@ -68,4 +71,3 @@ export const getProjectPrimaryCardMedia = (item: any) => {
     ?? media.find((entry) => entry.type === "pdf")
     ?? null;
 };
-

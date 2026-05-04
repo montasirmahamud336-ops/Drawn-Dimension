@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Linkedin, Facebook, Instagram, ArrowUp } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { FacebookIcon, InstagramIcon, LinkedInIcon } from "@/components/shared/socialIcons";
 import {
   DEFAULT_FOOTER_LINKS,
   DEFAULT_FOOTER_SERVICE_LINKS,
@@ -119,9 +120,9 @@ const Footer = () => {
   };
 
   const socialLinks = [
-    { icon: Linkedin, href: "#", label: "LinkedIn" },
-    { icon: Facebook, href: "#", label: "Facebook" },
-    { icon: Instagram, href: "#", label: "Instagram" },
+    { icon: LinkedInIcon, href: "#", label: "LinkedIn" },
+    { icon: FacebookIcon, href: "#", label: "Facebook" },
+    { icon: InstagramIcon, href: "#", label: "Instagram" },
   ];
 
   return (

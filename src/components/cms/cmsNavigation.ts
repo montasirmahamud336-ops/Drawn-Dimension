@@ -11,6 +11,7 @@ import {
   MessageSquareText,
   ShieldPlus,
   ShoppingBag,
+  Users,
   UserSquare2,
 } from "lucide-react";
 
@@ -62,6 +63,13 @@ const cmsNavigationSections: CMSNavSectionDef[] = [
     label: "Content",
     items: [
       {
+        id: "team",
+        label: "Team Management",
+        description: "Leadership and public employee cards shown on the Team page.",
+        segment: "team",
+        icon: Users,
+      },
+      {
         id: "works",
         label: "Works",
         description: "Portfolio projects, media, PDF uploads, and display order.",
@@ -104,6 +112,13 @@ const cmsNavigationSections: CMSNavSectionDef[] = [
         icon: ClipboardCheck,
       },
       {
+        id: "sent-invoice",
+        label: "Sent Invoice",
+        description: "Monthly employee invoice builder, email sending, and sent invoice history.",
+        segment: "sent-invoice",
+        icon: FileText,
+      },
+      {
         id: "chat",
         label: "Employee Chat",
         description: "Internal employee conversations and attachment history.",
@@ -124,6 +139,14 @@ const cmsNavigationSections: CMSNavSectionDef[] = [
         segment: "form-massage",
         icon: Inbox,
       },
+
+      {
+  id: "inquiries",
+  label: "Inquiries",
+  description: "Project inquiries from the Start Project page.",
+  segment: "inquiries",
+  icon: Inbox,   // Inbox ইতিমধ্যেই import করা আছে উপরের দিকে
+},
     ],
   },
   {
@@ -229,4 +252,3 @@ export const getCMSNavigationSections = (
         })),
     }))
     .filter((section) => section.items.length > 0);
-

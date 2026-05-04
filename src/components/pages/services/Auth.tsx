@@ -1,8 +1,9 @@
 ﻿import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import { z } from "zod";
-import { ArrowRight, Eye, EyeOff, KeyRound, Loader2, Mail, ShieldCheck, UserCircle2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, KeyRound, Loader2, Mail, UserCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
@@ -29,24 +30,93 @@ const resetSchema = z.object({
 type SignInFormData = z.infer<typeof signInSchema>;
 type SignUpFormData = z.infer<typeof signUpSchema>;
 type ResetFormData = z.infer<typeof resetSchema>;
+type GoogleCredentialResponse = {
+  credential?: string;
+};
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          initialize: (options: {
+            client_id: string;
+            callback: (response: GoogleCredentialResponse) => void;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
+          }) => void;
+          renderButton: (
+            parent: HTMLElement,
+            options: Record<string, string | number | boolean>
+          ) => void;
+          cancel?: () => void;
+        };
+      };
+    };
+  }
+}
+
+let googleIdentityScriptPromise: Promise<void> | null = null;
+
+const loadGoogleIdentityScript = () => {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Google sign-in is only available in the browser."));
+  }
+
+  if (window.google?.accounts?.id) {
+    return Promise.resolve();
+  }
+
+  if (googleIdentityScriptPromise) {
+    return googleIdentityScriptPromise;
+  }
+
+  googleIdentityScriptPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://accounts.google.com/gsi/client"]'
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener(
+        "error",
+        () => reject(new Error("Failed to load Google sign-in.")),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Google sign-in."));
+    document.head.appendChild(script);
+  });
+
+  return googleIdentityScriptPromise;
+};
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isReset, setIsReset] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [googleInitError, setGoogleInitError] = useState<string | null>(null);
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<null | "google" | "github" | "azure" | "apple">(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
 
-  const { signIn, signUp, resetPassword, resendSignupConfirmation, signInWithProvider } = useAuth();
+  const { signIn, signInWithGoogleIdToken, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const prefillEmail = searchParams.get("email") ?? "";
   const nextParam = searchParams.get("next") ?? "";
   const modeParam = (searchParams.get("mode") ?? "").toLowerCase();
   const isEmployeeLoginFlow = nextParam.startsWith("/employee/dashboard");
-  const oauthRedirectPath = isEmployeeLoginFlow ? "/employee/dashboard" : "/dashboard";
+  const googleClientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "").trim();
 
   const resolvePostLoginPath = (hasEmployeeDashboardAccess: boolean) => {
     if (isEmployeeLoginFlow) {
@@ -213,28 +283,15 @@ const Auth = () => {
 
     if (error) {
       const normalizedMessage = error.message.toLowerCase();
-      const isEmailNotConfirmed = normalizedMessage.includes("email not confirmed");
       const isInvalidCredentials =
         normalizedMessage.includes("invalid login credentials") ||
-        normalizedMessage.includes("invalid credentials");
-
-      if (isEmailNotConfirmed) {
-        const { error: resendError } = await resendSignupConfirmation(parsed.data.email);
-
-        toast({
-          title: "Email not confirmed",
-          description: resendError
-            ? getAuthErrorMessage(resendError.message, "resend")
-            : "Your email is not confirmed yet, so we have sent a new verification link to your email.",
-          variant: "destructive",
-        });
-        return;
-      }
+        normalizedMessage.includes("invalid credentials") ||
+        normalizedMessage.includes("no local password is set yet");
 
       toast({
         title: "Sign in failed",
         description: isInvalidCredentials
-          ? "No account was found for this email, so please sign up first or check your password and try again."
+          ? "If this email was from the old system, use Forgot password once to activate your new login. Otherwise, check your password and try again."
           : getAuthErrorMessage(error.message, "signin"),
         variant: "destructive",
       });
@@ -283,24 +340,10 @@ const Auth = () => {
 
     toast({
       title: "Account created!",
-      description: "Please check your email to verify your account.",
+      description: "Your account is ready. You can sign in now.",
     });
     form.reset();
     setAuthMode("signin");
-  };
-
-  const handleOAuth = async (provider: "google" | "github" | "azure" | "apple", label: string) => {
-    setOauthLoading(provider);
-    const { error } = await signInWithProvider(provider, oauthRedirectPath);
-
-    if (error) {
-      setOauthLoading(null);
-      toast({
-        title: `${label} failed`,
-        description: getAuthErrorMessage(error.message, "oauth"),
-        variant: "destructive",
-      });
-    }
   };
 
   const handleResetPassword = async (event: FormEvent<HTMLFormElement>) => {
@@ -342,6 +385,112 @@ const Auth = () => {
     setAuthMode("signin");
   };
 
+  useEffect(() => {
+    if (isEmployeeLoginFlow || isReset) {
+      setGoogleInitError(null);
+      if (googleButtonRef.current) {
+        googleButtonRef.current.innerHTML = "";
+      }
+      return;
+    }
+
+    if (!googleClientId) {
+      setGoogleInitError("Google sign-in is not configured yet.");
+      return;
+    }
+
+    let cancelled = false;
+
+    const initializeGoogleButton = async () => {
+      try {
+        await loadGoogleIdentityScript();
+        if (cancelled) return;
+
+        const googleIdentity = window.google?.accounts?.id;
+        const container = googleButtonRef.current;
+
+        if (!googleIdentity || !container) {
+          throw new Error("Google sign-in is unavailable right now.");
+        }
+
+        setGoogleInitError(null);
+        container.innerHTML = "";
+
+        googleIdentity.initialize({
+          client_id: googleClientId,
+          callback: async (response) => {
+            const credential = String(response?.credential ?? "").trim();
+            if (!credential) {
+              toast({
+                title: "Google sign in failed",
+                description: "Google did not return a valid credential.",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            setIsGoogleLoading(true);
+            const { error, session } = await signInWithGoogleIdToken(credential);
+            setIsGoogleLoading(false);
+
+            if (error) {
+              toast({
+                title: "Google sign in failed",
+                description: getAuthErrorMessage(error.message, "oauth"),
+                variant: "destructive",
+              });
+              return;
+            }
+
+            const isEmployee = await hasEmployeeDashboardAccess(session?.access_token);
+            const postLoginPath = resolvePostLoginPath(isEmployee);
+            setPreferredDashboardPath(isEmployee ? EMPLOYEE_DASHBOARD_PATH : postLoginPath);
+            toast({ title: "Signed in with Google" });
+            navigate(postLoginPath);
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        const buttonWidth = Math.max(Math.min(container.clientWidth || 0, 320), 220);
+
+        googleIdentity.renderButton(container, {
+          type: "standard",
+          theme: "outline",
+          size: "large",
+          text: "continue_with",
+          shape: "pill",
+          logo_alignment: "left",
+          width: buttonWidth,
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setGoogleInitError(
+          error instanceof Error ? error.message : "Google sign-in is unavailable right now."
+        );
+      }
+    };
+
+    void initializeGoogleButton();
+
+    return () => {
+      cancelled = true;
+      window.google?.accounts?.id?.cancel?.();
+      if (googleButtonRef.current) {
+        googleButtonRef.current.innerHTML = "";
+      }
+    };
+  }, [
+    getAuthErrorMessage,
+    googleClientId,
+    isEmployeeLoginFlow,
+    isReset,
+    navigate,
+    resolvePostLoginPath,
+    signInWithGoogleIdToken,
+    toast,
+  ]);
+
   return (
     <PageTransition>
       <PremiumBackground className="flex flex-col">
@@ -367,7 +516,7 @@ const Auth = () => {
                   <div className="relative z-10">
                     <div className="mb-7">
                       <span className="inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                        <ShieldCheck className="h-3.5 w-3.5" />
+                        <KeyRound className="h-3.5 w-3.5" />
                         {formPanelMeta.badge}
                       </span>
                       <h2 className="mt-4 text-2xl font-bold tracking-tight text-foreground md:text-[2rem]">
@@ -517,48 +666,32 @@ const Auth = () => {
                       </form>
                     )}
 
-                    {!isReset && !isEmployeeLoginFlow && (
-                      <>
-                        <div className="my-7 flex items-center gap-3.5">
-                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border/20" />
-                          <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">or continue with</span>
-                          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-border/20" />
+                    {!isEmployeeLoginFlow && !isReset && (
+                      <div className="mt-6 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-px flex-1 bg-border/70" />
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
+                            Or continue with Google
+                          </span>
+                          <div className="h-px flex-1 bg-border/70" />
                         </div>
-                        <div className="grid grid-cols-1 gap-4">
-                          <button
-                            type="button"
-                            onClick={() => handleOAuth("google", "Google sign in")}
-                            className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-border/80 bg-background/65 px-5 text-sm font-semibold text-foreground transition-all duration-300 hover:border-primary/45 hover:bg-secondary/55 disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={!!oauthLoading}
-                          >
-                            {oauthLoading === "google" ? (
-                              "Connecting..."
-                            ) : (
-                              <span className="inline-flex items-center gap-2">
-                                <svg viewBox="0 0 533.5 544.3" aria-hidden="true" className="h-5 w-5 shrink-0">
-                                  <path
-                                    fill="#4285F4"
-                                    d="M533.5 278.4c0-18.5-1.5-37.1-4.7-55.2H272v104.5h147.1c-6.1 33.3-25 62.7-53.3 82.4v68h86.1c50.5-46.5 81.6-115 81.6-199.7z"
-                                  />
-                                  <path
-                                    fill="#34A853"
-                                    d="M272 544.3c73.7 0 135.7-24.4 181-66.1l-86.1-68c-24 16.3-54.9 25.7-94.9 25.7-72.9 0-134.6-49.2-156.7-115.5H26.5v70.1c46.4 92.4 141 153.8 245.5 153.8z"
-                                  />
-                                  <path
-                                    fill="#FBBC04"
-                                    d="M115.3 320.4c-11.4-33.3-11.4-69.5 0-102.8V147.5H26.5c-38.8 77.4-38.8 169 0 246.4l88.8-70.1z"
-                                  />
-                                  <path
-                                    fill="#EA4335"
-                                    d="M272 107.7c42.2-.7 82.7 15.2 113.2 44.1l84.4-84.4C405.3 24.3 340.8-.6 272 0 167.5 0 72.9 61.4 26.5 153.8l88.8 70.1C137.3 156.8 199.1 107.7 272 107.7z"
-                                  />
-                                </svg>
-                                Continue with Google
-                              </span>
-                            )}
-                          </button>
+                        <div className="flex justify-center">
+                          <div
+                            ref={googleButtonRef}
+                            className="w-full max-w-[320px] overflow-hidden rounded-full"
+                          />
                         </div>
-                      </>
+                        {isGoogleLoading && (
+                          <p className="text-center text-xs font-medium text-muted-foreground">
+                            Completing Google sign-in...
+                          </p>
+                        )}
+                        {googleInitError && (
+                          <p className="text-center text-xs font-medium text-destructive">
+                            {googleInitError}
+                          </p>
+                        )}
+                      </div>
                     )}
 
                     {!isEmployeeLoginFlow && (

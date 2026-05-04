@@ -51,6 +51,12 @@ export type ApiServiceRecord = {
   cta_primary_link?: string | null;
   cta_secondary_label?: string | null;
   cta_secondary_link?: string | null;
+  related_works_badge?: string | null;
+  related_works_title?: string | null;
+  related_works_description?: string | null;
+  related_works_button_label?: string | null;
+  related_works_button_link?: string | null;
+  related_works_empty_text?: string | null;
   meta_title?: string | null;
   meta_description?: string | null;
 };

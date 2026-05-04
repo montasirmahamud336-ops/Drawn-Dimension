@@ -9,6 +9,12 @@ CREATE TABLE IF NOT EXISTS services (
   hero_description TEXT,
   features TEXT[] DEFAULT '{}',
   feature_cards JSONB DEFAULT '[]'::jsonb,
+  related_works_badge TEXT,
+  related_works_title TEXT,
+  related_works_description TEXT,
+  related_works_button_label TEXT,
+  related_works_button_link TEXT,
+  related_works_empty_text TEXT,
   meta_title TEXT,
   meta_description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -21,6 +27,7 @@ CREATE TABLE IF NOT EXISTS projects (
   description TEXT NOT NULL,
   service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
   category TEXT,
+  linked_service_ids INTEGER[] NOT NULL DEFAULT '{}',
   tags TEXT[] DEFAULT '{}',
   is_live BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -38,6 +45,7 @@ CREATE TABLE IF NOT EXISTS project_media (
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_category ON projects (category);
 CREATE INDEX IF NOT EXISTS idx_projects_is_live ON projects (is_live);
+CREATE INDEX IF NOT EXISTS idx_projects_linked_service_ids ON projects USING GIN (linked_service_ids);
 CREATE INDEX IF NOT EXISTS idx_project_media_project_id ON project_media (project_id);
 CREATE INDEX IF NOT EXISTS idx_services_name ON services (name);
 CREATE INDEX IF NOT EXISTS idx_services_status ON services (status);

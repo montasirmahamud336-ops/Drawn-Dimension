@@ -3,6 +3,7 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import { ArrowRight, Rocket } from "lucide-react";
 import { Link } from "react-router-dom";
+import { normalizeProjectCtaHref } from "@/components/shared/homePageSettings";
 
 interface CTASectionProps {
   compact?: boolean;
@@ -21,12 +22,13 @@ const CTASection = ({
   titleHighlight = "Vision Into Reality?",
   description = "Let's discuss your project and discover how our engineering expertise and creative innovation can help you achieve extraordinary results.",
   primaryLabel = "Get Free Consultation",
-  primaryHref = "/contact",
+  primaryHref = "/start-project",
   secondaryLabel = "View Our Portfolio",
   secondaryHref = "/portfolio",
 }: CTASectionProps) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const normalizedPrimaryHref = normalizeProjectCtaHref(primaryLabel, primaryHref);
 
   return (
     <section className={`${compact ? "py-14 md:py-16" : "py-24"} relative overflow-hidden`}>
@@ -82,7 +84,7 @@ const CTASection = ({
           >
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Link
-                to={primaryHref}
+                to={normalizedPrimaryHref}
                 className="btn-primary inline-flex items-center justify-center gap-2 group min-w-[220px] shadow-[0_10px_30px_rgba(239,68,68,0.35)]"
               >
                 {primaryLabel}

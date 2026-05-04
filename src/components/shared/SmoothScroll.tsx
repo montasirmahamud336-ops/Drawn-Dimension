@@ -7,18 +7,17 @@ const SmoothScroll = () => {
     useEffect(() => {
         const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
-        const isSmallViewport = window.matchMedia("(max-width: 1024px)").matches;
+        const isSmallViewport = window.matchMedia("(max-width: 767px)").matches;
         const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-        const isLowPowerDevice =
-            typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 4;
+        const isVeryLowPowerDevice =
+            typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 2;
 
-        // Native scroll performs better on mobile/low-power devices.
+        // Keep native scroll for reduced-motion and clearly mobile/low-power contexts.
         if (
             prefersReducedMotion ||
             isCoarsePointer ||
-            isSmallViewport ||
             connection?.saveData ||
-            isLowPowerDevice
+            (isSmallViewport && isVeryLowPowerDevice)
         ) {
             return;
         }

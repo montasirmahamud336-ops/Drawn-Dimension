@@ -6,7 +6,6 @@ import { FileText, MessageCircle } from "lucide-react";
 import { buildCardImageSources } from "@/components/shared/mediaUrl";
 import { DEFAULT_HOME_PAGE_SETTINGS, type HomePortfolioSection } from "@/components/shared/homePageSettings";
 import { getProjectPdfDocument, getProjectPrimaryCardMedia } from "@/components/shared/projectMedia";
-import PdfPreview from "@/components/shared/PdfPreview";
 
 interface Project {
   id: string;
@@ -51,7 +50,15 @@ const PortfolioCardImage = ({
           preload="none"
         />
       ) : previewMedia?.type === "pdf" ? (
-        <PdfPreview url={previewMedia.url} title={title} loading={eagerImage ? "eager" : "lazy"} />
+        <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-white to-zinc-100 text-zinc-900">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/12 text-primary shadow-[0_10px_24px_-16px_rgba(239,68,68,0.55)]">
+            <FileText className="h-7 w-7" />
+          </div>
+          <div className="px-6 text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-700">PDF Project</p>
+            <p className="mt-1 text-xs text-zinc-500">Open details to view the full document.</p>
+          </div>
+        </div>
       ) : imageSources ? (
         <>
           <div
@@ -65,7 +72,7 @@ const PortfolioCardImage = ({
             width={600}
             height={400}
             loading={eagerImage ? "eager" : "lazy"}
-            fetchPriority={eagerImage ? "high" : "low"}
+            fetchpriority={eagerImage ? "high" : "low"}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             decoding="async"
             onLoad={() => setIsImageReady(true)}
@@ -128,7 +135,7 @@ const PortfolioSection = ({ data }: PortfolioSectionProps) => {
         : projectList.filter((p) => (p.category || "Uncategorized") === activeCategory),
     [activeCategory, projectList],
   );
-  const visibleProjects = useMemo(() => filteredProjects.slice(0, 6), [filteredProjects]);
+  const visibleProjects = useMemo(() => filteredProjects.slice(0, 3), [filteredProjects]);
   const openDetails = (project: Project) => {
     if (!project?.id) return;
     navigate(`/portfolio/${encodeURIComponent(project.id)}`, { viewTransition: true });
@@ -189,10 +196,10 @@ const PortfolioSection = ({ data }: PortfolioSectionProps) => {
               return (
                 <div
                   key={project.id || index}
-                  className="group cursor-pointer"
+                  className="group cursor-pointer [content-visibility:auto] [contain-intrinsic-size:440px]"
                   onClick={() => openDetails(project)}
                 >
-                  <div className="glass-card dark:backdrop-blur-0 overflow-hidden h-full flex flex-col">
+                  <div className="glass-card cms-card-lite overflow-hidden h-full flex flex-col border-border/60 bg-card/95 transition-colors duration-300 group-hover:border-primary/35">
                     <PortfolioCardImage
                       project={project}
                       title={project.title}

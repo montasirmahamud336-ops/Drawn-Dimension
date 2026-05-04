@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Loader2, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLiveData } from "@/hooks/useLiveData";
+import { resolveCmsMediaUrl } from "@/components/shared/mediaUrl";
 
 type OurEmployeesSectionProps = {
   showAll?: boolean;
@@ -17,6 +18,12 @@ const getInitials = (name: string) => {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+};
+
+const getCountryLabel = (country: unknown) => {
+  if (typeof country !== "string") return null;
+  const normalized = country.trim();
+  return normalized ? `From ${normalized}` : null;
 };
 
 const OurEmployeesSection = ({ showAll = false, compact = false }: OurEmployeesSectionProps) => {
@@ -79,42 +86,50 @@ const OurEmployeesSection = ({ showAll = false, compact = false }: OurEmployeesS
         ) : (
           <>
             <div className={`${employeeGridClass} ${employeeGridWidthClass}`}>
-              {visibleEmployees.map((employee: any, index: number) => (
-                <motion.div
-                  key={employee.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.35, delay: index * 0.05 }}
-                  className="glass-card overflow-hidden border-slate-300/80 dark:border-border/55 bg-card/45 w-full max-w-[300px]"
-                >
-                  <div className="aspect-square bg-muted/40">
-                    {employee.image_url ? (
-                      <img
-                        src={employee.image_url}
-                        alt={employee.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary text-lg font-bold">
-                        {typeof employee.name === "string" && employee.name.trim()
-                          ? getInitials(employee.name)
-                          : <Users className="w-6 h-6 opacity-70" />}
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3 text-center">
-                    <h3 className="text-sm font-semibold text-foreground truncate">{employee.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">{employee.role}</p>
-                  </div>
-                </motion.div>
-              ))}
+              {visibleEmployees.map((employee: any, index: number) => {
+                const countryLabel = getCountryLabel(employee?.country);
+                const imageUrl = resolveCmsMediaUrl(employee?.image_url);
+
+                return (
+                  <motion.div
+                    key={employee.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.35, delay: index * 0.05 }}
+                    className="glass-card overflow-hidden border-slate-300/80 dark:border-border/55 bg-card/45 w-full max-w-[300px]"
+                  >
+                    <div className="aspect-square bg-muted/40">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={employee.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary text-lg font-bold">
+                          {typeof employee.name === "string" && employee.name.trim()
+                            ? getInitials(employee.name)
+                            : <Users className="w-6 h-6 opacity-70" />}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 text-center">
+                      <h3 className="text-sm font-semibold text-foreground truncate">{employee.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">{employee.role}</p>
+                      {countryLabel ? (
+                        <p className="text-[11px] text-primary/90 mt-1 truncate">{countryLabel}</p>
+                      ) : null}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
 
             {hasMore && (
               <div className="mt-8 text-center">
-                <Link to="/our-employees" className="btn-outline inline-flex">
-                  View More
+                <Link to="/team" className="btn-outline inline-flex">
+                  Meet the Team
                 </Link>
               </div>
             )}

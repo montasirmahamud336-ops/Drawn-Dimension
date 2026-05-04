@@ -17,7 +17,6 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
@@ -98,6 +97,18 @@ const mapProfileToDraft = (profile: Profile | null, fallbackEmail?: string | nul
   job_role: profile?.job_role ?? "",
 });
 
+const parseApiError = async (response: Response, fallback: string) => {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const body = await response.json().catch(() => null);
+    const message = body?.message || body?.detail || body?.error;
+    if (message) return String(message);
+  }
+
+  const text = await response.text().catch(() => "");
+  return text || fallback;
+};
+
 const Dashboard = () => {
   const { user, session, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -129,47 +140,57 @@ const Dashboard = () => {
   }, [user]);
 
   const loadData = useCallback(async () => {
-    if (!user) return;
+    if (!user || !session?.access_token) return;
 
     setLoading(true);
     setLoadingEmployeeData(true);
+    const apiBase = getApiBaseUrl();
 
-    const employeeDashboardPromise = session?.access_token
-      ? fetch(`${getApiBaseUrl()}/employee/dashboard`, {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
+    const [profileResult, quotesResult, employeeDashboard] = await Promise.allSettled([
+      fetch(`${apiBase}/me/profile`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }).then(async (response) => {
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, "Failed to load profile"));
+        }
+        return (await response.json()) as Profile | null;
+      }),
+      fetch(`${apiBase}/me/quotes`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }).then(async (response) => {
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, "Failed to load quotes"));
+        }
+        return (await response.json()) as Quote[];
+      }),
+      fetch(`${apiBase}/employee/dashboard`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+        .then(async (response) => {
+          if (!response.ok) return null;
+          return response.json();
         })
-          .then(async (response) => {
-            if (!response.ok) return null;
-            return response.json();
-          })
-          .catch(() => null)
-      : Promise.resolve(null);
-
-    const [profileResult, quotesResult, employeeDashboard] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("full_name, email, company, avatar_url, bio, job_role")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("quotes")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false }),
-      employeeDashboardPromise,
+        .catch(() => null),
     ]);
 
-    if (profileResult.error) {
+    if (profileResult.status === "rejected") {
       toast({
         title: "Profile load warning",
-        description: profileResult.error.message,
+        description: profileResult.reason instanceof Error ? profileResult.reason.message : "Failed to load profile",
         variant: "destructive",
       });
     }
 
-    const mappedProfile = mapProfileToDraft(profileResult.data as Profile | null, user.email);
+    const mappedProfile = mapProfileToDraft(
+      profileResult.status === "fulfilled" ? profileResult.value : null,
+      user.email
+    );
     setProfileDraft(mappedProfile);
     setSavedProfile(mappedProfile);
 
@@ -180,20 +201,26 @@ const Dashboard = () => {
       !mappedProfile.avatar_url;
     setIsEditingProfile(isProfileEmpty);
 
-    if (quotesResult.error) {
+    if (quotesResult.status === "rejected") {
       toast({
         title: "Quotes load warning",
-        description: quotesResult.error.message,
+        description: quotesResult.reason instanceof Error ? quotesResult.reason.message : "Failed to load quotes",
         variant: "destructive",
       });
     } else {
-      setQuotes((quotesResult.data ?? []) as Quote[]);
+      setQuotes(Array.isArray(quotesResult.value) ? quotesResult.value : []);
     }
 
-    const employeeData = (employeeDashboard ?? {}) as {
-      employee?: EmployeeProfile | null;
-      assignments?: EmployeeAssignment[];
-    };
+    const employeeData =
+      employeeDashboard.status === "fulfilled"
+        ? ((employeeDashboard.value ?? {}) as {
+            employee?: EmployeeProfile | null;
+            assignments?: EmployeeAssignment[];
+          })
+        : ({} as {
+            employee?: EmployeeProfile | null;
+            assignments?: EmployeeAssignment[];
+          });
     if (employeeData.employee) {
       setPreferredDashboardPath(EMPLOYEE_DASHBOARD_PATH);
       navigate(EMPLOYEE_DASHBOARD_PATH, { replace: true });
@@ -215,10 +242,9 @@ const Dashboard = () => {
   }, [loadData, user]);
 
   const persistProfile = async (nextDraft: ProfileDraft, successMessage?: string) => {
-    if (!user) return false;
+    if (!user || !session?.access_token) return false;
 
     const payload = {
-      user_id: user.id,
       email: nextDraft.email?.trim() || user.email || null,
       full_name: nextDraft.full_name.trim() || null,
       company: nextDraft.company.trim() || null,
@@ -227,23 +253,27 @@ const Dashboard = () => {
       job_role: nextDraft.job_role.trim() || null,
     };
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert(payload, { onConflict: "user_id" })
-      .select("full_name, email, company, avatar_url, bio, job_role")
-      .single();
+    const response = await fetch(`${getApiBaseUrl()}/me/profile`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-    if (error) {
+    if (!response.ok) {
       toast({
         title: "Profile update failed",
-        description: error.message,
+        description: await parseApiError(response, "Profile update failed"),
         variant: "destructive",
       });
       return false;
     }
 
+    const data = (await response.json().catch(() => null)) as Profile | null;
     if (data) {
-      const mappedProfile = mapProfileToDraft(data as Profile, user.email);
+      const mappedProfile = mapProfileToDraft(data, user.email);
       setProfileDraft(mappedProfile);
       setSavedProfile(mappedProfile);
     }
@@ -268,7 +298,7 @@ const Dashboard = () => {
     const file = event.target.files?.[0];
     event.target.value = "";
 
-    if (!file || !user || !isEditingProfile) return;
+    if (!file || !user || !session?.access_token || !isEditingProfile) return;
 
     if (!file.type.startsWith("image/")) {
       toast({
@@ -290,36 +320,44 @@ const Dashboard = () => {
     }
 
     setUploadingAvatar(true);
+    try {
+      const apiBase = getApiBaseUrl();
+      const formData = new FormData();
+      formData.append("file", file);
 
-    const fileExt = file.name.split(".").pop() || "jpg";
-    const filePath = `profiles/${user.id}/avatar-${Date.now()}.${fileExt}`;
+      const response = await fetch(`${apiBase}/me/profile/avatar-upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
 
-    const { error: uploadError } = await supabase.storage
-      .from("cms-uploads")
-      .upload(filePath, file, { upsert: true });
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Photo upload failed"));
+      }
 
-    if (uploadError) {
+      const payload = await response.json();
+      const publicUrl = String(payload?.publicUrl ?? "").trim();
+      if (!publicUrl) {
+        throw new Error("Missing uploaded photo URL");
+      }
+
+      const nextDraft = { ...profileDraft, avatar_url: publicUrl };
+      setProfileDraft(nextDraft);
+      toast({
+        title: "Photo ready",
+        description: "Click Save Profile to apply your new photo.",
+      });
+    } catch (error: unknown) {
       toast({
         title: "Photo upload failed",
-        description: uploadError.message,
+        description: error instanceof Error ? error.message : "Photo upload failed",
         variant: "destructive",
       });
+    } finally {
       setUploadingAvatar(false);
-      return;
     }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("cms-uploads").getPublicUrl(filePath);
-
-    const nextDraft = { ...profileDraft, avatar_url: publicUrl };
-    setProfileDraft(nextDraft);
-    toast({
-      title: "Photo ready",
-      description: "Click Save Profile to apply your new photo.",
-    });
-
-    setUploadingAvatar(false);
   };
 
   const handleRemovePhoto = async () => {
@@ -762,7 +800,7 @@ const Dashboard = () => {
                           <p className="text-muted-foreground mb-5 max-w-md mx-auto">
                             When your first quote is created, it will appear here with status, due date, and payment actions.
                           </p>
-                          <Button onClick={() => navigate("/contact")}>Request a Quote</Button>
+                          <Button onClick={() => navigate("/start-project")}>Request a Quote</Button>
                         </div>
                       ) : (
                         <div className="space-y-4">

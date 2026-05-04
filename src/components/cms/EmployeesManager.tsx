@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, Users, Archive, Edit, Trash2, RotateCcw, Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
+import { clearAdminToken, getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import EmployeeForm, { EmployeeItem } from "./EmployeeForm";
+import { buildCMSHref, getCMSBasePath } from "./cmsNavigation";
 
 const readErrorMessage = async (response: Response, fallback: string) => {
   const contentType = response.headers.get("content-type") || "";
@@ -50,6 +52,12 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const handleAdminUnauthorized = () => {
+  clearAdminToken();
+  toast.error("Session expired. Please login again.");
+  window.location.replace("/database/login?switch=1");
+};
+
 const EmployeesManager = () => {
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +66,9 @@ const EmployeesManager = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<EmployeeItem | null>(null);
 
+  const location = useLocation();
   const apiBase = getApiBaseUrl();
+  const teamManagementHref = buildCMSHref(getCMSBasePath(location.pathname), "team");
 
   const fetchEmployees = useCallback(async () => {
     const token = getAdminToken();
@@ -74,6 +84,11 @@ const EmployeesManager = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         const message = await readErrorMessage(response, "Failed to fetch employees");
@@ -117,6 +132,11 @@ const EmployeesManager = () => {
         body: hardDelete ? undefined : JSON.stringify({ status: "draft" }),
       });
 
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
+
       if (!response.ok) {
         const message = await readErrorMessage(response, "Operation failed");
         throw new Error(message);
@@ -146,6 +166,11 @@ const EmployeesManager = () => {
         },
         body: JSON.stringify({ status: "live" }),
       });
+
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         const message = await readErrorMessage(response, "Failed to restore");
@@ -221,6 +246,16 @@ const EmployeesManager = () => {
             placeholder="Search employee..."
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground">Website leadership and employee cards are managed in Team Management.</p>
+          <p className="text-sm text-muted-foreground">Use Employees for internal profiles, dashboard access, and linked employee records.</p>
+        </div>
+        <Button asChild variant="outline" className="shrink-0">
+          <Link to={teamManagementHref}>Open Team Management</Link>
+        </Button>
       </div>
 
       <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden">

@@ -1,35 +1,51 @@
 import asyncio
 # Force reload for env update
+import base64
+import hashlib
+import hmac
+import json
 import os
+import re
 import time
 import smtplib
+from difflib import SequenceMatcher
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Any, Optional
 
 import httpx
-from supabase import create_client, Client
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from server.app.config import settings
 from server.app.routes.auth_webhooks import router as auth_webhooks_router
+from server.app.services.database import (
+    count_records,
+    delete_record_by_id,
+    fetch_all,
+    fetch_one,
+    insert_record,
+    is_database_configured,
+    select_records,
+    table_exists,
+    update_record_by_id,
+)
+from server.app.services.media_storage import (
+    ensure_media_bucket,
+    normalize_object_path,
+    store_uploaded_file,
+)
 
 load_dotenv()
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"), override=False)
 
-supabase_url = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("VITE_SUPABASE_PUBLISHABLE_KEY")
-supabase: Client = create_client(supabase_url, supabase_key)
-supabase_service_key = os.getenv("SUPABASE_SERVICE_KEY")
-supabase_admin: Client | None = None
-if supabase_service_key:
-    supabase_admin = create_client(supabase_url, supabase_service_key)
-CMS_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "cms-uploads")
+CMS_BUCKET = settings.storage_bucket
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+USER_AUTH_TOKEN = os.getenv("USER_AUTH_TOKEN", "") or ADMIN_TOKEN
 
 app = FastAPI(title="DrawnDimension Chat API")
 
@@ -90,6 +106,7 @@ class TeamMember(BaseModel):
     name: str
     role: str
     bio: Optional[str] = None
+    country: Optional[str] = None
     image_url: Optional[str] = None
     status: Optional[str] = "draft"
 
@@ -282,6 +299,501 @@ async def get_default_model(api_key: str) -> str | None:
     return "llama-3.3-70b-versatile"
 
 
+def _contains_bangla(text: str) -> bool:
+    return any("\u0980" <= ch <= "\u09FF" for ch in text)
+
+
+def _prefers_bangla_reply(text: str) -> bool:
+    if _contains_bangla(text):
+        return True
+
+    normalized = f" {_normalize_lookup_text(text)} "
+    banglish_hints = (
+        " ke ",
+        " koi ",
+        " kothay ",
+        " kobe ",
+        " kivabe ",
+        " ki ",
+        " koro ",
+        " koren ",
+        " ache ",
+        " dao ",
+        " bolo ",
+        " bolen ",
+        " malik ",
+        " shuru ",
+        " team e ",
+    )
+    return any(hint in normalized for hint in banglish_hints)
+
+
+def _normalize_lookup_text(text: str) -> str:
+    lowered = str(text or "").lower().replace("&", " and ")
+    cleaned = re.sub(r"[^a-z0-9\u0980-\u09ff]+", " ", lowered)
+    return " ".join(cleaned.split())
+
+
+def _tokenize_lookup_text(text: str) -> tuple[str, ...]:
+    normalized = _normalize_lookup_text(text)
+    return tuple(token for token in normalized.split() if token)
+
+
+COMPANY_FACT_LOOKUP: tuple[dict[str, Any], ...] = (
+    {
+        "id": "ceo",
+        "group": "leadership",
+        "keywords": (
+            "ceo",
+            "chief executive officer",
+            "company ceo",
+            "drawn dimension ceo",
+            "owner",
+            "company owner",
+            "founder",
+            "boss",
+            "head of company",
+            "who runs drawn dimension",
+            "who is in charge",
+            "owner ke",
+            "ceo ke",
+            "boss ke",
+            "malik",
+            "সিইও",
+            "মালিক",
+        ),
+        "reply_en": "The CEO of Drawn Dimension is Faisal Piyash.",
+        "reply_bn": "Drawn Dimension-এর CEO হলেন Faisal Piyash।",
+        "context": "Leadership: The CEO of Drawn Dimension is Faisal Piyash.",
+        "threshold": 4.0,
+    },
+    {
+        "id": "cto",
+        "group": "leadership",
+        "keywords": (
+            "cto",
+            "chief technical officer",
+            "technical head",
+            "technology head",
+            "tech lead",
+            "cto ke",
+            "টেকনিক্যাল অফিসার",
+        ),
+        "reply_en": "The CTO of Drawn Dimension is Muhammad Muntasir Mahamud.",
+        "reply_bn": "Drawn Dimension-এর CTO হলেন Muhammad Muntasir Mahamud।",
+        "context": "Leadership: The CTO of Drawn Dimension is Muhammad Muntasir Mahamud.",
+        "threshold": 4.0,
+    },
+    {
+        "id": "cmo",
+        "group": "leadership",
+        "keywords": (
+            "cmo",
+            "chief marketing officer",
+            "marketing head",
+            "marketing officer",
+            "cmo ke",
+            "মার্কেটিং অফিসার",
+        ),
+        "reply_en": "The CMO of Drawn Dimension is Mafruza Khanam Prottassha.",
+        "reply_bn": "Drawn Dimension-এর CMO হলেন Mafruza Khanam Prottassha।",
+        "context": "Leadership: The CMO of Drawn Dimension is Mafruza Khanam Prottassha.",
+        "threshold": 4.0,
+    },
+    {
+        "id": "leadership_team",
+        "group": "team",
+        "keywords": (
+            "leadership team",
+            "leadership",
+            "leaders",
+            "management team",
+            "team members",
+            "employee team",
+            "staff",
+            "employees",
+            "our team",
+            "team",
+            "leadership kara",
+            "team e ke ke ache",
+            "টিম",
+            "কর্মী",
+            "এমপ্লয়ি",
+        ),
+        "reply_en": (
+            "Leadership team:\n"
+            "- CEO: Faisal Piyash\n"
+            "- CTO: Muhammad Muntasir Mahamud\n"
+            "- CMO: Mafruza Khanam Prottassha\n"
+            "Employee team:\n"
+            "- Sohel Rana, Process Engineer\n"
+            "- Abidur Rahman, Mechanical Engineer\n"
+            "- Md. Ashadu Hinu Sabbir, Graphics Design\n"
+            "- Alif Anam, Web Design\n"
+            "- Monir sahriyar, Process Engineer"
+        ),
+        "reply_bn": (
+            "Leadership team:\n"
+            "- CEO: Faisal Piyash\n"
+            "- CTO: Muhammad Muntasir Mahamud\n"
+            "- CMO: Mafruza Khanam Prottassha\n"
+            "Employee team:\n"
+            "- Sohel Rana, Process Engineer\n"
+            "- Abidur Rahman, Mechanical Engineer\n"
+            "- Md. Ashadu Hinu Sabbir, Graphics Design\n"
+            "- Alif Anam, Web Design\n"
+            "- Monir sahriyar, Process Engineer"
+        ),
+        "context": (
+            "Leadership team: CEO Faisal Piyash, CTO Muhammad Muntasir Mahamud, "
+            "CMO Mafruza Khanam Prottassha. Employees include Sohel Rana, "
+            "Abidur Rahman, Md. Ashadu Hinu Sabbir, Alif Anam, and Monir sahriyar."
+        ),
+        "threshold": 5.0,
+    },
+    {
+        "id": "contact",
+        "group": "contact",
+        "keywords": (
+            "contact",
+            "contact info",
+            "contact details",
+            "how to contact",
+            "reach you",
+            "reach out",
+            "email",
+            "mail",
+            "gmail",
+            "whatsapp",
+            "phone",
+            "number",
+            "mobile number",
+            "call you",
+            "message you",
+            "যোগাযোগ",
+            "কন্টাক্ট",
+            "ইমেইল",
+            "হোয়াটসঅ্যাপ",
+            "নাম্বার",
+        ),
+        "reply_en": (
+            "Official contact details:\n"
+            "- Email: drawndimensioninfo@gmail.com\n"
+            "- WhatsApp: +880 1775-119416\n"
+            "- Location: Dhaka, Bangladesh\n"
+            "- Business hours: 9:00 AM - 6:00 PM, Sunday to Thursday\n"
+            "- Contact page: /contact"
+        ),
+        "reply_bn": (
+            "Official contact details:\n"
+            "- Email: drawndimensioninfo@gmail.com\n"
+            "- WhatsApp: +880 1775-119416\n"
+            "- Location: Dhaka, Bangladesh\n"
+            "- Business hours: 9:00 AM - 6:00 PM, Sunday to Thursday\n"
+            "- Contact page: /contact"
+        ),
+        "context": (
+            "Contact info: Email drawndimensioninfo@gmail.com, WhatsApp +880 1775-119416, "
+            "location Dhaka, Bangladesh, business hours 9:00 AM - 6:00 PM Sunday to Thursday, "
+            "contact page /contact."
+        ),
+        "threshold": 4.0,
+    },
+    {
+        "id": "location",
+        "group": "contact",
+        "keywords": (
+            "location",
+            "address",
+            "where are you",
+            "where located",
+            "office location",
+            "based in",
+            "from where",
+            "office koi",
+            "kothay",
+            "ঠিকানা",
+            "লোকেশন",
+            "কোথায়",
+        ),
+        "reply_en": "Drawn Dimension is based in Dhaka, Bangladesh and serves clients worldwide.",
+        "reply_bn": "Drawn Dimension Dhaka, Bangladesh-এ based এবং worldwide client-এর সাথে কাজ করে।",
+        "context": "Location: Drawn Dimension is based in Dhaka, Bangladesh and offers global service.",
+        "threshold": 4.0,
+    },
+    {
+        "id": "hours",
+        "group": "contact",
+        "keywords": (
+            "business hours",
+            "working hours",
+            "office hours",
+            "opening hours",
+            "open time",
+            "close time",
+            "office time",
+            "koyta theke koyta",
+            "office time ki",
+            "business time",
+            "সময়",
+            "অফিস টাইম",
+            "কয়টা থেকে",
+        ),
+        "reply_en": "Business hours are 9:00 AM to 6:00 PM, Sunday to Thursday.",
+        "reply_bn": "Business hours হলো সকাল 9:00 AM থেকে 6:00 PM, Sunday to Thursday।",
+        "context": "Business hours: 9:00 AM - 6:00 PM, Sunday to Thursday.",
+        "threshold": 4.0,
+    },
+    {
+        "id": "services",
+        "group": "services",
+        "keywords": (
+            "services",
+            "service list",
+            "what do you do",
+            "what do you offer",
+            "what services",
+            "offerings",
+            "ki service",
+            "ki ki koro",
+            "ki offer koro",
+            "সার্ভিস",
+            "সেবা",
+        ),
+        "reply_en": (
+            "Drawn Dimension offers Web Design & Development, Graphic Design & Branding, "
+            "Process Flow Diagram (PFD), Piping and Instrumentation Diagram (P&ID), "
+            "AutoCAD Technical Drawing, 3D SolidWorks Modeling, HAZOP Study & Risk Analysis, "
+            "and small tools development and sales."
+        ),
+        "reply_bn": (
+            "Drawn Dimension provides Web Design & Development, Graphic Design & Branding, "
+            "PFD, P&ID, AutoCAD Technical Drawing, 3D SolidWorks Modeling, HAZOP Study & Risk Analysis, "
+            "and small tools development and sales."
+        ),
+        "context": (
+            "Core services: Web Design & Development, Graphic Design & Branding, Process Flow Diagram (PFD), "
+            "Piping and Instrumentation Diagram (P&ID), AutoCAD Technical Drawing, 3D SolidWorks Modeling, "
+            "HAZOP Study & Risk Analysis, and small tools development and sales."
+        ),
+        "threshold": 4.0,
+    },
+    {
+        "id": "history",
+        "group": "history",
+        "keywords": (
+            "when did you start",
+            "when started",
+            "company history",
+            "journey",
+            "timeline",
+            "milestones",
+            "origin story",
+            "kobe start",
+            "kokhon start",
+            "kobe shuru",
+            "history",
+            "শুরু",
+            "কখন শুরু",
+            "ইতিহাস",
+        ),
+        "reply_en": (
+            "Drawn Dimension started in 2022 with web design, added graphic design, PFD, P&ID, "
+            "and AutoCAD technical drawing services in 2024, then expanded into 3D SolidWorks "
+            "and small tools in 2025."
+        ),
+        "reply_bn": (
+            "Drawn Dimension 2022 সালে web design দিয়ে শুরু করে, 2024 সালে graphic design, PFD, P&ID, "
+            "আর AutoCAD services add করে, আর 2025 সালে 3D SolidWorks ও small tools-এ expand করে।"
+        ),
+        "context": (
+            "Timeline: Started with web design in 2022, expanded into graphic design, PFD, P&ID, "
+            "and AutoCAD services in 2024, and added 3D SolidWorks plus small tools in 2025."
+        ),
+        "threshold": 4.0,
+    },
+    {
+        "id": "mission",
+        "group": "mission",
+        "keywords": (
+            "mission",
+            "vision",
+            "core values",
+            "company values",
+            "why choose",
+            "what drives you",
+            "motive",
+            "mission vision",
+            "মিশন",
+            "ভিশন",
+            "ভ্যালু",
+        ),
+        "reply_en": (
+            "Mission: Deliver every client project with clean execution, accurate technical detail, and dependable quality. "
+            "Vision: Become a trusted leader in integrated engineering and creative services. "
+            "Core values: Precision, Innovation, Collaboration, and Excellence."
+        ),
+        "reply_bn": (
+            "Mission: প্রতিটি client project clean execution, accurate technical detail, আর dependable quality দিয়ে deliver করা। "
+            "Vision: integrated engineering ও creative services-এ trusted leader হওয়া। "
+            "Core values: Precision, Innovation, Collaboration, Excellence."
+        ),
+        "context": (
+            "Mission: clean execution, accurate technical detail, dependable quality. "
+            "Vision: trusted leader in integrated engineering and creative services. "
+            "Core values: Precision, Innovation, Collaboration, Excellence."
+        ),
+        "threshold": 4.0,
+    },
+    {
+        "id": "products",
+        "group": "products",
+        "keywords": (
+            "products",
+            "product categories",
+            "what products",
+            "digital products",
+            "tools",
+            "python tools",
+            "ecommerce website",
+            "wordpress website",
+            "products page",
+            "product ki",
+            "প্রোডাক্ট",
+            "টুলস",
+        ),
+        "reply_en": (
+            "Drawn Dimension's main product focus is ready-to-use digital solutions and tools. "
+            "Website product categories include WordPress Website, E-commerce Website, Portfolio Website, "
+            "Realstate Website, and Python Tools. Products page: /products."
+        ),
+        "reply_bn": (
+            "Drawn Dimension-এর main product focus হলো ready-to-use digital solutions and tools. "
+            "Product categories include WordPress Website, E-commerce Website, Portfolio Website, "
+            "Realstate Website, and Python Tools. Products page: /products."
+        ),
+        "context": (
+            "Products: ready-to-use digital solutions and tools. Categories include WordPress Website, "
+            "E-commerce Website, Portfolio Website, Realstate Website, and Python Tools. Products page /products."
+        ),
+        "threshold": 4.0,
+    },
+    {
+        "id": "portfolio",
+        "group": "portfolio",
+        "keywords": (
+            "portfolio",
+            "our works",
+            "previous work",
+            "past work",
+            "examples",
+            "case studies",
+            "work samples",
+            "show work",
+            "portfolio koi",
+            "কাজ",
+            "পোর্টফোলিও",
+        ),
+        "reply_en": "You can explore previous work and project examples on the portfolio page: /portfolio.",
+        "reply_bn": "Previous work আর project examples দেখতে portfolio page-এ যাও: /portfolio.",
+        "context": "Portfolio page: /portfolio for previous work and project examples.",
+        "threshold": 4.0,
+    },
+)
+
+
+def _score_lookup_keyword(normalized_query: str, query_tokens: tuple[str, ...], keyword: str) -> float:
+    normalized_keyword = _normalize_lookup_text(keyword)
+    if not normalized_keyword:
+        return 0.0
+
+    if normalized_keyword in normalized_query:
+        return 7.0 + float(len(normalized_keyword.split()))
+
+    keyword_tokens = normalized_keyword.split()
+    if not keyword_tokens:
+        return 0.0
+
+    match_score = 0.0
+    for keyword_token in keyword_tokens:
+        if keyword_token in query_tokens:
+            match_score += 1.0
+            continue
+
+        if len(keyword_token) < 4:
+            continue
+
+        for query_token in query_tokens:
+            if len(query_token) < 4:
+                continue
+            if SequenceMatcher(None, keyword_token, query_token).ratio() >= 0.88:
+                match_score += 0.7
+                break
+
+    required_score = 1.0 if len(keyword_tokens) == 1 else max(1.6, len(keyword_tokens) * 0.7)
+    if match_score >= required_score:
+        return match_score * 2.5
+
+    return 0.0
+
+
+def _match_company_facts(message: str) -> list[dict[str, Any]]:
+    normalized_query = _normalize_lookup_text(message)
+    query_tokens = _tokenize_lookup_text(message)
+    if not normalized_query or not query_tokens:
+        return []
+
+    matches: list[dict[str, Any]] = []
+    for item in COMPANY_FACT_LOOKUP:
+        best_score = max(
+            (_score_lookup_keyword(normalized_query, query_tokens, keyword) for keyword in item["keywords"]),
+            default=0.0,
+        )
+        if best_score >= float(item.get("threshold", 4.0)):
+            matches.append({"score": best_score, "item": item})
+
+    matches.sort(key=lambda entry: entry["score"], reverse=True)
+    return matches
+
+
+def build_relevant_company_context(message: str, limit: int = 4) -> str:
+    sections: list[str] = []
+    used_groups: set[str] = set()
+
+    for match in _match_company_facts(message):
+        item = match["item"]
+        group = str(item.get("group") or item["id"])
+        if group in used_groups:
+            continue
+        used_groups.add(group)
+        sections.append(f"- {item['context']}")
+        if len(sections) >= limit:
+            break
+
+    return "\n".join(sections)
+
+
+def get_company_fact_reply(message: str) -> str | None:
+    is_bangla = _prefers_bangla_reply(message)
+    responses: list[str] = []
+    used_groups: set[str] = set()
+
+    for match in _match_company_facts(message):
+        item = match["item"]
+        group = str(item.get("group") or item["id"])
+        if group in used_groups:
+            continue
+        used_groups.add(group)
+        responses.append(item["reply_bn"] if is_bangla else item["reply_en"])
+        if len(responses) >= 3:
+            break
+
+    if responses:
+        return "\n\n".join(responses)
+
+    return None
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -295,31 +807,19 @@ async def upload_file(file: UploadFile = File(...), request: Request = None):
         try:
             get_user(request)
         except Exception:
-             # Allow upload if no auth? Or strictly enforce?
-             # For CMS, we should enforce. 
-             pass
-
-    if not supabase_admin:
-        raise HTTPException(status_code=500, detail="Storage not configured")
+            pass
 
     try:
         file_content = await file.read()
-        filename = f"{int(time.time())}_{file.filename}"
-        
-        # Ensure bucket exists
-        ensure_bucket_exists(CMS_BUCKET)
-
-        # Upload
-        supabase_admin.storage.from_(CMS_BUCKET).upload(
-            file=file_content,
-            path=filename,
-            file_options={"content-type": file.content_type}
+        ext = re.sub(r"[^A-Za-z0-9]", "", (os.path.splitext(file.filename or "")[1].lstrip("."))) or "bin"
+        filename = normalize_object_path(f"misc/{int(time.time())}_{file.filename}", ext)
+        saved = await asyncio.to_thread(
+            store_uploaded_file,
+            buffer=file_content,
+            object_path=filename,
+            bucket_name=CMS_BUCKET,
         )
-        
-        # Get Public URL
-        public_url = supabase_admin.storage.from_(CMS_BUCKET).get_public_url(filename)
-        return {"url": public_url}
-        
+        return {"url": saved["public_url"]}
     except Exception as e:
         print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
@@ -338,22 +838,26 @@ async def admin_login(payload: AdminLoginRequest) -> dict[str, str]:
 
 @app.post("/api/admin/resolve-email")
 async def resolve_admin_email(payload: AdminResolveRequest) -> dict[str, str]:
-    if not supabase_admin:
-        raise HTTPException(status_code=500, detail="Missing SUPABASE_SERVICE_KEY")
+    if not is_database_configured():
+        raise HTTPException(status_code=500, detail="DATABASE_URL is not configured")
     username = payload.username.strip().lower()
     if not username:
         raise HTTPException(status_code=400, detail="Missing username")
     if "@" in username:
         return {"email": username}
     try:
-        response = await asyncio.to_thread(
-            lambda: supabase_admin.table("profiles")
-            .select("email")
-            .or_(f"email.ilike.{username}@%,full_name.ilike.%{username}%")
-            .limit(2)
-            .execute()
+        rows = await asyncio.to_thread(
+            fetch_all,
+            """
+            select email
+            from public.profiles
+            where email ilike %s or full_name ilike %s
+            order by created_at desc nulls last
+            limit 3
+            """,
+            (f"{username}@%", f"%{username}%"),
         )
-        matches = [m for m in (response.data or []) if m.get("email")]
+        matches = [m for m in rows if m.get("email")]
         if len(matches) == 1 and matches[0].get("email"):
             return {"email": matches[0]["email"]}
         if len(matches) > 1:
@@ -382,35 +886,81 @@ async def chat(payload: ChatRequest) -> dict[str, str]:
 
     model = os.getenv("GROQ_MODEL") or "llama-3.3-70b-versatile"
 
+    fact_reply = get_company_fact_reply(payload.message)
+    if fact_reply:
+        return {"reply": fact_reply}
+
+    relevant_company_context = build_relevant_company_context(payload.message)
+
     company_knowledge = (
-        "Company profile:\n"
+        "Company identity:\n"
         "- Brand: Drawn Dimension\n"
-        "- Positioning: Premium design and engineering services company\n"
-        "- Journey: Started with web design in 2022; expanded into engineering and product-focused services from 2024 onward\n"
-        "- Delivery standard: clean execution, accurate technical detail, and client-ready handover\n\n"
+        "- Positioning: Premium engineering, design, and digital solutions company\n"
+        "- Started in: 2022\n"
+        "- Origin story: Started with web design in 2022 and expanded into engineering, 3D, and product-focused work based on client needs\n"
+        "- Delivery focus: clean execution, accurate technical detail, and client-ready handover\n"
+        "- Global service: The company works with clients worldwide from Dhaka, Bangladesh\n\n"
+        "Official contact info:\n"
+        "- Email: drawndimensioninfo@gmail.com\n"
+        "- Response time: usually within 24 hours\n"
+        "- WhatsApp: +880 1775-119416\n"
+        "- WhatsApp link: https://wa.me/8801775119416\n"
+        "- Location: Dhaka, Bangladesh\n"
+        "- Business hours: 9:00 AM - 6:00 PM, Sunday to Thursday\n\n"
+        "Website pages and navigation:\n"
+        "- Home: /\n"
+        "- About: /about\n"
+        "- Services: /services\n"
+        "- Our Works / Portfolio: /portfolio\n"
+        "- Products: /products\n"
+        "- Reviews: /testimonials\n"
+        "- FAQ: /faq\n"
+        "- Contact: /contact\n"
+        "- Dashboard: /dashboard\n\n"
+        "Company timeline and milestones:\n"
+        "- 2022: Started with modern web design services\n"
+        "- 2024: Added graphic design, PFD, P&ID, and AutoCAD technical drawing services\n"
+        "- 2025: Added 3D SolidWorks workflows\n"
+        "- 2025: Started building and selling small tools\n"
+        "- Today: Focused on clean, accurate, premium project delivery\n\n"
         "Core services:\n"
         "- Web Design & Development\n"
         "- Graphic Design & Branding\n"
-        "- AutoCAD Technical Drawings\n"
+        "- Process Flow Diagram (PFD)\n"
+        "- Piping and Instrumentation Diagram (P&ID)\n"
+        "- AutoCAD Technical Drawing\n"
         "- 3D SolidWorks Modeling\n"
-        "- PFD & P&ID Diagrams\n"
         "- HAZOP Study & Risk Analysis\n"
         "- Small tools development and sales\n\n"
+        "What the company does:\n"
+        "- Builds clean, responsive websites focused on communication and conversion\n"
+        "- Creates brand-focused graphic design assets\n"
+        "- Produces accurate technical drawings and documentation for practical execution\n"
+        "- Develops detailed 3D models for validation, clarity, and planning\n"
+        "- Builds and sells practical small tools with reliability and value in mind\n\n"
+        "Mission, vision, and values:\n"
+        "- Mission: Submit every client project with clean execution, accurate technical detail, and dependable quality from concept to final delivery\n"
+        "- Vision: Be a trusted leader in integrated engineering and creative services, known for precision, reliability, and long-term client success\n"
+        "- Core values: Precision, Innovation, Collaboration, Excellence\n\n"
+        "Leadership team:\n"
+        "- Faisal Piyash: Chief Executive Officer (CEO)\n"
+        "- Muhammad Muntasir Mahamud: Chief Technical Officer (CTO)\n"
+        "- Mafruza Khanam Prottassha: Chief Marketing Officer (CMO)\n\n"
+        "Employee team:\n"
+        "- Sohel Rana: Process Engineer\n"
+        "- Abidur Rahman: Mechanical Engineer\n"
+        "- Md. Ashadu Hinu Sabbir: Graphics Design\n"
+        "- Alif Anam: Web Design\n"
+        "- Monir sahriyar: Process Engineer\n\n"
+        "Helpful FAQ facts:\n"
+        "- The company provides web design, graphic design, PFD/P&ID, AutoCAD drawing, SolidWorks 3D modeling, and small tools development and sales\n"
+        "- The team started in 2022 and expanded into engineering and product-focused services from 2024 onward\n"
+        "- The company delivers client-ready files and practical project handover\n"
+        "- Clients can discuss requirements, scope, timeline, and delivery format through the contact page or WhatsApp before starting\n\n"
         "Products and categories:\n"
         "- Main product focus: ready-to-use digital solutions and tools\n"
         "- Website product categories: WordPress Website, E-commerce Website, Portfolio Website, Realstate Website, Python Tools\n"
-        "- Products page: /products\n\n"
-        "Important website links:\n"
-        "- About page: /about\n"
-        "- Services page: /services\n"
         "- Products page: /products\n"
-        "- Portfolio page: /portfolio\n"
-        "- Contact page: /contact\n\n"
-        "Official contact info:\n"
-        "- Email: drawndimensioninfo@gmail.com\n"
-        "- WhatsApp: +880 1775-119416 (https://wa.me/8801775119416)\n"
-        "- Location: Dhaka, Bangladesh (global service available)\n"
-        "- Business hours: 9:00 AM - 6:00 PM (Sunday to Thursday)\n"
     )
 
     system_prompt = (
@@ -429,16 +979,32 @@ async def chat(payload: ChatRequest) -> dict[str, str]:
         "Company knowledge to use:\n"
         f"{company_knowledge}\n"
         "Behavior instructions:\n"
-        "- If user asks about the company, provide the profile summary from the knowledge above.\n"
-        "- If user asks about services, list relevant services and briefly explain suitable options.\n"
-        "- If user asks about products, explain product focus and categories, then direct to /products.\n"
-        "- If user asks how to contact, provide email, WhatsApp, business hours, location, and /contact.\n"
+        "- Before answering, check whether the question is about leadership, contact info, location, business hours, services, history, mission, team, products, or portfolio.\n"
+        "- If the answer exists in the company knowledge or relevant company context, answer directly and never say the information is unavailable.\n"
+        "- If user asks about the company, summarize the company identity, story, timeline, and delivery focus from the knowledge above.\n"
+        "- If user asks about services, list the relevant services and briefly explain the best fit.\n"
+        "- If user asks about products, explain the product focus and categories, then direct them to /products.\n"
+        "- If user asks about contact info, provide email, WhatsApp, location, business hours, response time, and /contact.\n"
+        "- If user asks about the CEO, CTO, CMO, leadership, or employees, provide the exact names and roles from the knowledge block.\n"
+        "- If user asks about mission, vision, values, or company history, answer from the knowledge block in a concise way.\n"
         "- If user asks to see previous work or examples, provide /portfolio.\n"
-        "- If user asks something unknown, say you can connect them to the human team via contact details.\n"
-        "- Never invent pricing, delivery promises, or capabilities that are not in the knowledge block.\n"
+        "- If user asks for reviews or testimonials, provide /testimonials.\n"
+        "- If user asks something unknown, say you can connect them to the human team via email or WhatsApp.\n"
+        "- Never invent pricing, exact delivery promises, addresses, names, or capabilities that are not in the knowledge block.\n"
     )
 
     messages = [{"role": "system", "content": system_prompt}]
+    if relevant_company_context:
+        messages.append(
+            {
+                "role": "system",
+                "content": (
+                    "Most relevant company facts for this query:\n"
+                    f"{relevant_company_context}\n"
+                    "Use these facts directly if they answer the question."
+                ),
+            }
+        )
     
     # Add history
     for message in payload.history:
@@ -450,7 +1016,7 @@ async def chat(payload: ChatRequest) -> dict[str, str]:
     body = {
         "model": model,
         "messages": messages,
-        "temperature": 0.7,
+        "temperature": 0.2,
         "max_tokens": 1024,
     }
 
@@ -542,6 +1108,55 @@ def _send_email_sync(username, password, msg):
         server.send_message(msg)
 
 
+def _decode_base64url_json(segment: str) -> dict[str, Any]:
+    padded = segment + "=" * ((4 - len(segment) % 4) % 4)
+    decoded = base64.urlsafe_b64decode(padded.encode("utf-8"))
+    parsed = json.loads(decoded.decode("utf-8"))
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _verify_hs256_jwt(token: str, secret: str) -> dict[str, Any] | None:
+    if not token or not secret:
+        return None
+
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+
+    header_segment, payload_segment, signature_segment = parts
+    try:
+        header = _decode_base64url_json(header_segment)
+        payload = _decode_base64url_json(payload_segment)
+    except Exception:
+        return None
+
+    if str(header.get("alg") or "").upper() != "HS256":
+        return None
+
+    signed = f"{header_segment}.{payload_segment}".encode("utf-8")
+    expected_signature = base64.urlsafe_b64encode(
+        hmac.new(secret.encode("utf-8"), signed, hashlib.sha256).digest()
+    ).decode("utf-8").rstrip("=")
+
+    if not hmac.compare_digest(expected_signature, signature_segment):
+        return None
+
+    exp = payload.get("exp")
+    if exp is not None:
+        try:
+            if float(exp) <= time.time():
+                return None
+        except Exception:
+            return None
+
+    return payload
+
+
+def _require_database() -> None:
+    if not is_database_configured():
+        raise HTTPException(status_code=500, detail="DATABASE_URL is not configured")
+
+
 # --- Helper to Verify Auth ---
 def get_user(request: Request):
     auth_header = request.headers.get("Authorization")
@@ -551,36 +1166,23 @@ def get_user(request: Request):
 
     if ADMIN_TOKEN and token == ADMIN_TOKEN:
         return {"admin": True}
-    
-    # Simple JWT decoding could be done here if needed, but verifying with Supabase is safer
-    try:
-        client = supabase_admin or supabase
-        user = client.auth.get_user(token)
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return user
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+
+    admin_payload = _verify_hs256_jwt(token, ADMIN_TOKEN)
+    if admin_payload and str(admin_payload.get("username") or "").strip():
+        return {"admin": True, **admin_payload}
+
+    site_payload = _verify_hs256_jwt(token, USER_AUTH_TOKEN)
+    if site_payload and str(site_payload.get("scope") or "").strip().lower() == "site_user":
+        return site_payload
+
+    raise HTTPException(status_code=401, detail="Invalid token")
 
 # --- Storage Helpers ---
 def ensure_bucket_exists(bucket_name: str) -> None:
-    if not supabase_admin:
-        raise HTTPException(
-            status_code=500,
-            detail="Missing SUPABASE_SERVICE_KEY for storage management",
-        )
-
     try:
-        existing = supabase_admin.storage.get_bucket(bucket_name)
-        if existing:
-            return
-    except Exception:
-        pass
-
-    try:
-        supabase_admin.storage.create_bucket(bucket_name, {"public": True})
+        ensure_media_bucket(bucket_name)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create bucket: {e}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to prepare storage: {e}") from e
 
 
 # --- Dashboard Stats ---
@@ -588,19 +1190,20 @@ def ensure_bucket_exists(bucket_name: str) -> None:
 async def get_dashboard_stats(request: Request):
     get_user(request)
     try:
+        _require_database()
         # Mock views for now as requested
         views = 12543 
         
         # Get counts
-        works = supabase.table("projects").select("id", count="exact").eq("status", "live").execute()
-        team = supabase.table("team_members").select("id", count="exact").eq("status", "live").execute()
-        products = supabase.table("products").select("id", count="exact").eq("status", "live").execute()
+        works = await asyncio.to_thread(count_records, "projects", status="live")
+        team = await asyncio.to_thread(count_records, "team_members", status="live")
+        products = await asyncio.to_thread(count_records, "products", status="live")
         
         return {
             "views": views,
-            "works": works.count,
-            "team_members": team.count,
-            "products": products.count
+            "works": works,
+            "team_members": team,
+            "products": products
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -618,11 +1221,8 @@ async def ensure_storage_bucket(request: Request):
 @app.get("/api/projects")
 async def get_projects(status: Optional[str] = None):
     try:
-        query = supabase.table("projects").select("*").order("created_at", desc=True)
-        if status:
-            query = query.eq("status", status)
-        response = await asyncio.to_thread(lambda: query.execute())
-        return response.data
+        _require_database()
+        return await asyncio.to_thread(select_records, "projects", status=status)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -630,15 +1230,13 @@ async def get_projects(status: Optional[str] = None):
 async def create_project(project: Project, request: Request):
     get_user(request)
     try:
+        _require_database()
         data = project.dict(exclude_none=True)
         # Ensure status is set
         if "status" not in data:
             data["status"] = "draft"
             
-        response = await asyncio.to_thread(
-            lambda: supabase.table("projects").insert(data).execute()
-        )
-        return response.data
+        return await asyncio.to_thread(insert_record, "projects", data)
     except Exception as e:
         print(f"Error creating project: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -647,11 +1245,9 @@ async def create_project(project: Project, request: Request):
 async def update_project(project_id: str, project: Project, request: Request):
     get_user(request)
     try:
+        _require_database()
         data = project.dict(exclude_none=True)
-        response = await asyncio.to_thread(
-            lambda: supabase.table("projects").update(data).eq("id", project_id).execute()
-        )
-        return response.data
+        return await asyncio.to_thread(update_record_by_id, "projects", project_id, data)
     except Exception as e:
          raise HTTPException(status_code=500, detail=str(e))
 
@@ -659,10 +1255,8 @@ async def update_project(project_id: str, project: Project, request: Request):
 async def delete_project(project_id: str, request: Request):
     get_user(request)
     try:
-        response = await asyncio.to_thread(
-            lambda: supabase.table("projects").delete().eq("id", project_id).execute()
-        )
-        return response.data
+        _require_database()
+        return await asyncio.to_thread(delete_record_by_id, "projects", project_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -671,11 +1265,8 @@ async def delete_project(project_id: str, request: Request):
 @app.get("/api/products")
 async def get_products(status: Optional[str] = None):
     try:
-        query = supabase.table("products").select("*").order("created_at", desc=True)
-        if status:
-            query = query.eq("status", status)
-        response = await asyncio.to_thread(lambda: query.execute())
-        return response.data
+        _require_database()
+        return await asyncio.to_thread(select_records, "products", status=status)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -683,13 +1274,11 @@ async def get_products(status: Optional[str] = None):
 async def create_product(product: Product, request: Request):
     get_user(request)
     try:
+        _require_database()
         data = product.dict(exclude_none=True)
         if "status" not in data:
             data["status"] = "draft"
-        response = await asyncio.to_thread(
-            lambda: supabase.table("products").insert(data).execute()
-        )
-        return response.data
+        return await asyncio.to_thread(insert_record, "products", data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -697,11 +1286,9 @@ async def create_product(product: Product, request: Request):
 async def update_product(product_id: str, product: Product, request: Request):
     get_user(request)
     try:
+        _require_database()
         data = product.dict(exclude_none=True)
-        response = await asyncio.to_thread(
-            lambda: supabase.table("products").update(data).eq("id", product_id).execute()
-        )
-        return response.data
+        return await asyncio.to_thread(update_record_by_id, "products", product_id, data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -709,10 +1296,8 @@ async def update_product(product_id: str, product: Product, request: Request):
 async def delete_product(product_id: str, request: Request):
     get_user(request)
     try:
-        response = await asyncio.to_thread(
-            lambda: supabase.table("products").delete().eq("id", product_id).execute()
-        )
-        return response.data
+        _require_database()
+        return await asyncio.to_thread(delete_record_by_id, "products", product_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -721,11 +1306,8 @@ async def delete_product(product_id: str, request: Request):
 @app.get("/api/team")
 async def get_team(status: Optional[str] = None):
     try:
-        query = supabase.table("team_members").select("*").order("created_at", desc=True)
-        if status:
-            query = query.eq("status", status)
-        response = await asyncio.to_thread(lambda: query.execute())
-        return response.data
+        _require_database()
+        return await asyncio.to_thread(select_records, "team_members", status=status)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -733,13 +1315,11 @@ async def get_team(status: Optional[str] = None):
 async def create_team_member(member: TeamMember, request: Request):
     get_user(request)
     try:
+        _require_database()
         data = member.dict(exclude_none=True)
         if "status" not in data:
             data["status"] = "draft"
-        response = await asyncio.to_thread(
-            lambda: supabase.table("team_members").insert(data).execute()
-        )
-        return response.data
+        return await asyncio.to_thread(insert_record, "team_members", data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -747,11 +1327,9 @@ async def create_team_member(member: TeamMember, request: Request):
 async def update_team_member(member_id: str, member: TeamMember, request: Request):
     get_user(request)
     try:
+        _require_database()
         data = member.dict(exclude_none=True)
-        response = await asyncio.to_thread(
-            lambda: supabase.table("team_members").update(data).eq("id", member_id).execute()
-        )
-        return response.data
+        return await asyncio.to_thread(update_record_by_id, "team_members", member_id, data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -759,10 +1337,8 @@ async def update_team_member(member_id: str, member: TeamMember, request: Reques
 async def delete_team_member(member_id: str, request: Request):
     get_user(request)
     try:
-        response = await asyncio.to_thread(
-            lambda: supabase.table("team_members").delete().eq("id", member_id).execute()
-        )
-        return response.data
+        _require_database()
+        return await asyncio.to_thread(delete_record_by_id, "team_members", member_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -774,33 +1350,20 @@ async def delete_team_member(member_id: str, request: Request):
 @app.get("/api/reviews")
 async def get_reviews(status: Optional[str] = None):
     try:
-        # Use admin client if available to bypass RLS on legacy tables
-        client = supabase_admin if supabase_admin else supabase
+        _require_database()
+        data: list[dict[str, Any]] = []
 
-        data = []
+        if await asyncio.to_thread(table_exists, "reviews"):
+            try:
+                data.extend(await asyncio.to_thread(select_records, "reviews", status=status))
+            except Exception:
+                pass
 
-        # Fetch from 'reviews' table if it exists.
-        try:
-            query_reviews = client.table("reviews").select("*").order("created_at", desc=True)
-            if status:
-                query_reviews = query_reviews.eq("status", status)
-            reviews_response = await asyncio.to_thread(lambda: query_reviews.execute())
-            if reviews_response.data:
-                data.extend(reviews_response.data)
-        except Exception:
-            pass
-
-        # Fetch ALL from 'testimonials' table (filtering in code to be safe with optional columns)
-        testimonials_response = await asyncio.to_thread(
-            lambda: client.table("testimonials").select("*").order("created_at", desc=True).execute()
-        )
-
-        # Process Testimonials (map to Review format)
-        if testimonials_response.data:
-            for t in testimonials_response.data:
+        if await asyncio.to_thread(table_exists, "testimonials"):
+            testimonials = await asyncio.to_thread(select_records, "testimonials", status=None)
+            for t in testimonials:
                 is_live = _is_live_review_row(t)
 
-                # Filter based on requested status
                 if status == "live" and not is_live:
                     continue
                 if status == "draft" and is_live:
@@ -808,7 +1371,6 @@ async def get_reviews(status: Optional[str] = None):
 
                 data.append(_map_testimonial_to_review(t))
 
-        # Sort combined by created_at desc
         data.sort(key=lambda x: x.get("created_at") or "", reverse=True)
         return data
 
@@ -820,29 +1382,24 @@ async def get_reviews(status: Optional[str] = None):
 async def create_review(review: Review, request: Request):
     get_user(request)
     try:
+        _require_database()
         data = review.dict(exclude_none=True)
         if "status" not in data:
             data["status"] = "draft"
 
-        # Primary target is the dedicated reviews table (if present).
-        try:
-            response = await asyncio.to_thread(
-                lambda: supabase.table("reviews").insert(data).execute()
-            )
-            return response.data
-        except Exception:
-            pass
+        if await asyncio.to_thread(table_exists, "reviews"):
+            try:
+                return await asyncio.to_thread(insert_record, "reviews", data)
+            except Exception:
+                pass
 
-        # Fallback target: testimonials table with schema variants.
         last_error: Exception | None = None
         for payload in _build_testimonial_insert_variants(data):
             try:
-                response_fallback = await asyncio.to_thread(
-                    lambda: supabase.table("testimonials").insert(payload).execute()
-                )
-                if response_fallback.data:
-                    return [_map_testimonial_to_review(response_fallback.data[0])]
-                return response_fallback.data
+                response_fallback = await asyncio.to_thread(insert_record, "testimonials", payload)
+                if response_fallback:
+                    return [_map_testimonial_to_review(response_fallback[0])]
+                return response_fallback
             except Exception as e:
                 last_error = e
 
@@ -854,37 +1411,31 @@ async def create_review(review: Review, request: Request):
 async def update_review(review_id: str, review: Review, request: Request):
     get_user(request)
     try:
+        _require_database()
         data = review.dict(exclude_none=True)
         
-        # Try updating 'reviews' table first
-        try:
-            response = await asyncio.to_thread(
-                lambda: supabase.table("reviews").update(data).eq("id", review_id).execute()
-            )
-            if response.data:
-                return response.data
-        except Exception:
-            pass
+        if await asyncio.to_thread(table_exists, "reviews"):
+            try:
+                response = await asyncio.to_thread(update_record_by_id, "reviews", review_id, data)
+                if response:
+                    return response
+            except Exception:
+                pass
 
-        # If not found or error, try 'testimonials' table with schema-aware field mapping.
-        row_response = await asyncio.to_thread(
-            lambda: (supabase_admin if supabase_admin else supabase)
-            .table("testimonials")
-            .select("*")
-            .eq("id", review_id)
-            .limit(1)
-            .execute()
-        )
-        existing_row = row_response.data[0] if row_response.data else None
+        existing_row = None
+        if await asyncio.to_thread(table_exists, "testimonials"):
+            existing_row = await asyncio.to_thread(
+                fetch_one,
+                "select * from public.testimonials where id = %s limit 1",
+                (review_id,),
+            )
 
         if existing_row:
             t_data = _build_testimonial_update_data(data, existing_row)
             if t_data:
-                response_t = await asyncio.to_thread(
-                    lambda: supabase.table("testimonials").update(t_data).eq("id", review_id).execute()
-                )
-                if response_t.data:
-                    return [_map_testimonial_to_review(response_t.data[0])]
+                response_t = await asyncio.to_thread(update_record_by_id, "testimonials", review_id, t_data)
+                if response_t:
+                    return [_map_testimonial_to_review(response_t[0])]
 
         raise HTTPException(status_code=404, detail="Review not found")
         
@@ -895,28 +1446,23 @@ async def update_review(review_id: str, review: Review, request: Request):
 async def delete_review(review_id: str, request: Request):
     get_user(request)
     try:
-        # Try deleting from 'reviews' table, but skip if table doesn't exist.
-        try:
-            response = await asyncio.to_thread(
-                lambda: supabase.table("reviews").delete().eq("id", review_id).execute()
-            )
-            if response.data:
-                return response.data
-        except Exception:
-            pass
+        _require_database()
+        if await asyncio.to_thread(table_exists, "reviews"):
+            try:
+                response = await asyncio.to_thread(delete_record_by_id, "reviews", review_id)
+                if response:
+                    return response
+            except Exception:
+                pass
 
-        # Try deleting from 'testimonials'
-        response_t = await asyncio.to_thread(
-            lambda: supabase.table("testimonials").delete().eq("id", review_id).execute()
-        )
-        if response_t.data:
-             return [{
-                    "status": "deleted",
-                    "id": review_id
-             }]
+        if await asyncio.to_thread(table_exists, "testimonials"):
+            response_t = await asyncio.to_thread(delete_record_by_id, "testimonials", review_id)
+            if response_t:
+                 return [{
+                        "status": "deleted",
+                        "id": review_id
+                 }]
 
-        # If neither returned data, it might not exist, but let's assume success or 404
-        # Just return empty list or success
         return []
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

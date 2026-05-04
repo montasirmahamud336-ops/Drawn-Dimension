@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { getApiBaseUrl, getChatApiBaseUrl } from "@/components/admin/adminAuth";
 
 interface AiMessage {
   id: string;
@@ -477,9 +477,7 @@ const ChatWidget = () => {
     setAiMessages(nextMessages);
 
     try {
-      const chatBase = ((import.meta as any).env?.VITE_CHAT_API_BASE_URL as string | undefined)
-        ?.trim()
-        .replace(/\/$/, "");
+      const chatBase = getChatApiBaseUrl().replace(/\/$/, "");
       const chatUrl = chatBase ? `${chatBase}/api/chat` : "/api/chat";
 
       const response = await fetch(chatUrl, {

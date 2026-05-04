@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, ClipboardList, CheckCircle2, Archive, Edit, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
+import { clearAdminToken, getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import WorkAssignForm, { WorkAssignmentItem } from "./WorkAssignForm";
 import { EmployeeItem } from "./EmployeeForm";
 
@@ -115,6 +115,12 @@ const formatOrderCode = (assignment: Pick<WorkAssignmentItem, "id" | "order_code
   return `ORD-${sanitized.slice(0, 8)}`;
 };
 
+const handleAdminUnauthorized = () => {
+  clearAdminToken();
+  toast.error("Session expired. Please login again.");
+  window.location.replace("/database/login?switch=1");
+};
+
 const WorkAssignManager = () => {
   const [assignments, setAssignments] = useState<WorkAssignmentItem[]>([]);
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
@@ -142,6 +148,11 @@ const WorkAssignManager = () => {
         },
       });
 
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
+
       if (!response.ok) {
         const message = await readErrorMessage(response, "Failed to fetch assignments");
         throw new Error(message);
@@ -167,6 +178,11 @@ const WorkAssignManager = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         const message = await readErrorMessage(response, "Failed to fetch employees");
@@ -216,6 +232,11 @@ const WorkAssignManager = () => {
         body: JSON.stringify({ status: "draft" }),
       });
 
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
+
       if (!response.ok) {
         throw new Error("Failed to move to draft");
       }
@@ -244,6 +265,11 @@ const WorkAssignManager = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Failed to delete assignment");
@@ -274,6 +300,11 @@ const WorkAssignManager = () => {
         body: JSON.stringify({ status: "assigned" }),
       });
 
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
+
       if (!response.ok) {
         throw new Error("Failed to restore");
       }
@@ -302,6 +333,11 @@ const WorkAssignManager = () => {
         },
         body: JSON.stringify({ status: "done" }),
       });
+
+      if (response.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Failed to mark done");

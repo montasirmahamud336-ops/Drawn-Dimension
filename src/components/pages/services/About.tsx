@@ -2,8 +2,6 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
 import PageHero from "@/components/shared/PageHero";
-import LeadershipTeam from "@/components/LeadershipTeam";
-import OurEmployeesSection from "@/components/OurEmployeesSection";
 import { motion, useInView } from "framer-motion";
 import { MouseEvent, useEffect, useMemo, useRef } from "react";
 import {
@@ -25,6 +23,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PremiumBackground from "@/components/shared/PremiumBackground";
+
+const SITE_ORIGIN = "https://www.drawndimension.com";
 
 const ABOUT_FAQ_ITEMS = [
   {
@@ -59,8 +59,7 @@ const About = () => {
     "Drawn Dimension is a premium design and engineering services company offering web design, graphic design, PFD/P&ID, AutoCAD technical drawing, SolidWorks 3D modeling, and clean project delivery.";
   const pageKeywords =
     "web design company, graphic design services, PFD, P&ID, AutoCAD technical drawing, SolidWorks 3D modeling, engineering design services, Bangladesh design company";
-  const canonicalUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/about` : "/about";
+  const canonicalUrl = `${SITE_ORIGIN}/about`;
 
   const scrollToSection = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     event.preventDefault();
@@ -111,13 +110,13 @@ const About = () => {
               "@type": "ListItem",
               position: 1,
               name: "Home",
-              item: typeof window !== "undefined" ? `${window.location.origin}/` : "/",
+              item: `${SITE_ORIGIN}/`,
             },
             {
               "@type": "ListItem",
               position: 2,
               name: "Services",
-              item: typeof window !== "undefined" ? `${window.location.origin}/services` : "/services",
+              item: `${SITE_ORIGIN}/services`,
             },
             {
               "@type": "ListItem",
@@ -376,7 +375,7 @@ const About = () => {
             actions={
               <>
                 <Link
-                  to="/contact"
+                  to="/start-project"
                   className="btn-primary inline-flex items-center justify-center gap-2 min-w-[200px]"
                 >
                   Get Started
@@ -419,6 +418,12 @@ const About = () => {
                     {item.label}
                   </a>
                 ))}
+                <Link
+                  to="/team"
+                  className="inline-flex items-center rounded-full border border-slate-300/85 dark:border-border/55 bg-background/45 px-4 py-1.5 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/45 hover:bg-primary/12 hover:shadow-[0_8px_24px_-16px_rgba(239,68,68,0.55)] transition-all duration-300"
+                >
+                  Meet the Team
+                </Link>
               </nav>
             </div>
           </section>
@@ -826,18 +831,6 @@ const About = () => {
             <div className="mx-auto mt-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-border/70 to-transparent" />
           </section>
 
-          {/* Leadership Team */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_18%,rgba(239,68,68,0.1),transparent_36%)] pointer-events-none" />
-            <LeadershipTeam compact />
-          </div>
-
-          {/* Our Employees */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(239,68,68,0.1),transparent_36%)] pointer-events-none" />
-            <OurEmployeesSection compact />
-          </div>
-
           {/* Final CTA */}
           <section
             id="contact-cta"
@@ -867,7 +860,7 @@ const About = () => {
                   </p>
 
                   <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-                    <Link to="/contact" className="btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto sm:min-w-[220px]">
+                    <Link to="/start-project" className="btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto sm:min-w-[220px]">
                       Start Your Project
                       <ArrowRight className="w-4 h-4" />
                     </Link>

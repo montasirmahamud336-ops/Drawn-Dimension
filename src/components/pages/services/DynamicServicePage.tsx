@@ -11,6 +11,7 @@ import HowWeWork from "@/components/shared/HowWeWork";
 import PricingCards from "@/components/shared/PricingCards";
 import PremiumBackground from "@/components/shared/PremiumBackground";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+import { useLiveData } from "@/hooks/useLiveData";
 import {
   type ApiServiceRecord,
   buildServiceCardFromApi,
@@ -22,14 +23,20 @@ import {
   buildServiceSectionLeftItemsFromApi,
   buildServiceSectionPanelItemsFromApi,
   findServiceBySlug,
+  normalizeServiceKey,
   slugifyServiceName,
 } from "@/components/shared/serviceCatalog";
+import { buildCardImageSources } from "@/components/shared/mediaUrl";
+import { getProjectPrimaryCardMedia } from "@/components/shared/projectMedia";
+import { getProjectCategoryLabel, projectMatchesService } from "@/components/shared/projectAssociations";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import PdfPreview from "@/components/shared/PdfPreview";
 import type { ServiceFaqRecord } from "@/components/shared/serviceContent";
 
 const featureIcons = [Code, Smartphone, Zap, Shield, Palette, Monitor];
 const whatsappUrl = "https://wa.me/8801775119416";
-const siteOrigin = "https://drawndimension.com";
+const siteOrigin = "https://www.drawndimension.com";
 const featureIconByKey = {
   code: Code,
   smartphone: Smartphone,
@@ -59,6 +66,93 @@ type ServiceSeoOverride = {
   whatsappLabel: string;
   schemaName: string;
   serviceType: string;
+};
+
+type RelatedProjectRecord = {
+  id: string | number;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  client?: string | null;
+  image_url?: string | null;
+  media?: Array<{ url?: string; type?: string; name?: string | null }> | null;
+  linked_service_ids?: unknown;
+  service_id?: unknown;
+};
+
+const RELATED_WORK_DESCRIPTION_LIMIT = 135;
+
+const getRelatedWorkDescriptionPreview = (value: unknown) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) {
+    return { text: "No description available.", truncated: false };
+  }
+
+  if (text.length <= RELATED_WORK_DESCRIPTION_LIMIT) {
+    return { text, truncated: false };
+  }
+
+  const shortened = text.slice(0, RELATED_WORK_DESCRIPTION_LIMIT).trimEnd().replace(/[.,;:!?-]+$/, "");
+  return { text: shortened, truncated: true };
+};
+
+const RelatedWorkMedia = ({ project, eagerImage }: { project: RelatedProjectRecord; eagerImage: boolean }) => {
+  const previewMedia = getProjectPrimaryCardMedia(project);
+  const imageSrc = previewMedia?.type === "image" ? previewMedia.url : "";
+  const imageSources = imageSrc ? buildCardImageSources(imageSrc) : null;
+  const [isImageReady, setIsImageReady] = useState(previewMedia?.type !== "image");
+
+  useEffect(() => {
+    setIsImageReady(previewMedia?.type !== "image");
+  }, [previewMedia?.type, imageSrc]);
+
+  return (
+    <div className="relative overflow-hidden aspect-video bg-muted/15">
+      {previewMedia?.type === "video" ? (
+        <video
+          src={previewMedia.url}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+          preload="none"
+        />
+      ) : previewMedia?.type === "pdf" ? (
+        <PdfPreview url={previewMedia.url} title={project.title} loading={eagerImage ? "eager" : "lazy"} />
+      ) : imageSrc ? (
+        <>
+          <div
+            className={`absolute inset-0 bg-muted/35 transition-opacity duration-300 ${isImageReady ? "opacity-0" : "opacity-100"}`}
+            aria-hidden="true"
+          />
+          <img
+            src={imageSources?.src ?? imageSrc}
+            srcSet={imageSources?.srcSet}
+            alt={project.title}
+            width={800}
+            height={600}
+            loading={eagerImage ? "eager" : "lazy"}
+            fetchpriority={eagerImage ? "high" : "low"}
+            decoding="async"
+            sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 33vw"
+            onLoad={() => setIsImageReady(true)}
+            onError={() => setIsImageReady(true)}
+            className={`h-full w-full object-cover transition-[transform,opacity] duration-300 group-hover:scale-[1.02] ${isImageReady ? "opacity-100" : "opacity-0"}`}
+          />
+        </>
+      ) : (
+        <div className="flex h-full items-center justify-center bg-muted/30 text-sm text-muted-foreground">
+          No preview
+        </div>
+      )}
+
+      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="absolute top-4 left-4">
+        <span className="text-xs px-3 py-1 rounded-full border border-primary/35 bg-primary/90 text-primary-foreground shadow-[0_8px_18px_rgba(239,68,68,0.35)]">
+          {getProjectCategoryLabel(project.category)}
+        </span>
+      </div>
+    </div>
+  );
 };
 
 const serviceSeoOverrides: ServiceSeoOverride[] = [
@@ -365,6 +459,11 @@ const toAbsoluteUrl = (path: string) => {
   return `${siteOrigin}${path.startsWith("/") ? path : `/${path}`}`;
 };
 
+const renderServiceTemplate = (value: string | null | undefined, serviceName: string, fallback: string) => {
+  const template = value?.trim() || fallback;
+  return template.replace(/\{\{\s*service\s*\}\}/gi, serviceName);
+};
+
 const findServiceSeoOverride = (slug: string, service?: ApiServiceRecord | null) => {
   const slugCandidates = new Set(
     [slug, service?.slug ?? "", service?.name ?? ""].map((value) => slugifyServiceName(value)).filter(Boolean)
@@ -383,6 +482,10 @@ const DynamicServicePage = () => {
   const [serviceFaqs, setServiceFaqs] = useState<ServiceFaqRecord[]>([]);
   const [faqLoading, setFaqLoading] = useState(false);
   const [faqLoadFailed, setFaqLoadFailed] = useState(false);
+  const { data: liveProjects, loading: relatedWorksLoading } = useLiveData("projects", {
+    cacheTimeMs: 120_000,
+    revalidate: false,
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -424,6 +527,22 @@ const DynamicServicePage = () => {
   const card = useMemo(() => (service ? buildServiceCardFromApi(service) : null), [service]);
   const featureCards = useMemo(() => (service ? buildServiceFeatureCardsFromApi(service) : []), [service]);
   const seoOverride = useMemo(() => findServiceSeoOverride(slug, service), [service, slug]);
+  const relatedWorks = useMemo(() => {
+    if (!service?.id) return [] as RelatedProjectRecord[];
+
+    const normalizedServiceKeys = new Set(
+      [service.name, service.slug ?? ""].map((value) => normalizeServiceKey(String(value ?? ""))).filter(Boolean)
+    );
+
+    return (liveProjects as RelatedProjectRecord[]).filter((project) => {
+      if (projectMatchesService(project, service.id)) {
+        return true;
+      }
+
+      const normalizedCategory = normalizeServiceKey(String(project?.category ?? ""));
+      return normalizedCategory.length > 0 && normalizedServiceKeys.has(normalizedCategory);
+    });
+  }, [liveProjects, service]);
 
   const heroTitle = seoOverride?.heroTitle || service?.hero_title?.trim() || service?.name || "Service";
   const heroBadge = service?.hero_badge?.trim() || "Digital Solutions";
@@ -449,7 +568,8 @@ const DynamicServicePage = () => {
     service?.cta_description?.trim() ||
     "Let's discuss your project and discover how our engineering expertise and creative innovation can help you achieve extraordinary results.";
   const ctaPrimaryLabel = seoOverride?.quoteLinkLabel || service?.cta_primary_label?.trim() || "Get Free Consultation";
-  const ctaPrimaryHref = service?.cta_primary_link?.trim() || "/contact";
+  const rawCtaPrimaryHref = service?.cta_primary_link?.trim() || "/start-project";
+  const ctaPrimaryHref = rawCtaPrimaryHref === "/contact" ? "/start-project" : rawCtaPrimaryHref;
   const ctaSecondaryLabel =
     seoOverride?.portfolioLinkLabel || service?.cta_secondary_label?.trim() || "View Our Portfolio";
   const ctaSecondaryHref = service?.cta_secondary_link?.trim() || "/portfolio";
@@ -457,6 +577,20 @@ const DynamicServicePage = () => {
   const faqTitle = seoOverride?.faqTitle || "Frequently Asked Questions";
   const faqLinkLabel = seoOverride?.faqLinkLabel || "View All FAQs";
   const blogLinkLabel = seoOverride?.blogLinkLabel || "Read Service Blog";
+  const relatedWorksBadge = service?.related_works_badge?.trim() || "Our Work";
+  const relatedWorksTitle = renderServiceTemplate(
+    service?.related_works_title,
+    service?.name || "Service",
+    "Related {{service}} Projects"
+  );
+  const relatedWorksDescription =
+    service?.related_works_description?.trim() ||
+    "Live works linked from CMS for this service page appear here automatically.";
+  const relatedWorksButtonLabel = service?.related_works_button_label?.trim() || "View All Works";
+  const relatedWorksButtonLink = service?.related_works_button_link?.trim() || "/portfolio";
+  const relatedWorksEmptyText =
+    service?.related_works_empty_text?.trim() ||
+    "No live works are linked to this service yet. Select this service while posting from CMS Live Work to show it here.";
 
   const deliverables = useMemo(() => (service ? buildServiceSectionLeftItemsFromApi(service) : []), [service]);
   const sideItems = useMemo(
@@ -764,7 +898,7 @@ const DynamicServicePage = () => {
                     <Link to="/services" className="btn-outline h-11 px-6">
                       Back To All Services
                     </Link>
-                    <Link to="/contact" className="btn-primary h-11 px-6">
+                    <Link to="/start-project" className="btn-primary h-11 px-6">
                       Contact Us
                     </Link>
                   </div>
@@ -780,7 +914,7 @@ const DynamicServicePage = () => {
                 actions={
                   <>
                     <Link
-                      to="/contact"
+                      to="/start-project"
                       className="btn-primary h-12 px-8 inline-flex items-center gap-2 min-w-[200px] justify-center shadow-[0_16px_34px_-18px_rgba(239,68,68,0.75)]"
                       aria-label={ctaPrimaryLabel}
                     >
@@ -898,7 +1032,142 @@ const DynamicServicePage = () => {
                 description={pricingDescription}
               />
 
-              <section className="section-padding pt-0 relative overflow-hidden">
+              <section className="section-padding pt-12 md:pt-16 relative overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_84%_18%,rgba(239,68,68,0.08),transparent_38%)]" />
+                <div className="container-narrow">
+                  <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="max-w-3xl">
+                      <span className="inline-flex items-center rounded-full border border-primary/35 bg-primary/10 px-4 py-1.5 text-primary font-semibold text-xs uppercase tracking-[0.16em]">
+                        {relatedWorksBadge}
+                      </span>
+                      <h2 className="text-[clamp(1.8rem,3.6vw,2.75rem)] font-bold mt-4 text-foreground leading-tight">
+                        {relatedWorksTitle}
+                      </h2>
+                      <p className="text-sm md:text-base text-muted-foreground mt-3 leading-relaxed">
+                        {relatedWorksDescription}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 lg:self-center lg:justify-end">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/85">
+                        {relatedWorks.length} Live {relatedWorks.length === 1 ? "Work" : "Works"}
+                      </p>
+                      <Link
+                        to={relatedWorksButtonLink}
+                        className="inline-flex h-12 items-center justify-center rounded-xl border border-primary/50 bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_36px_-18px_rgba(239,68,68,0.92)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_24px_44px_-18px_rgba(239,68,68,1)]"
+                      >
+                        {relatedWorksButtonLabel}
+                      </Link>
+                    </div>
+                  </div>
+
+                  {relatedWorksLoading ? (
+                    <div className="rounded-3xl border border-border/60 bg-background/55 p-6 text-sm text-muted-foreground">
+                      Loading related works...
+                    </div>
+                  ) : relatedWorks.length === 0 ? (
+                    <div className="rounded-3xl border border-dashed border-border/60 bg-background/55 p-6 text-sm text-muted-foreground">
+                      {relatedWorksEmptyText}
+                    </div>
+                  ) : relatedWorks.length === 1 ? (
+                    <div className="flex justify-center">
+                      <div className="w-full max-w-[460px]">
+                        {relatedWorks.map((project) => {
+                        const description = getRelatedWorkDescriptionPreview(project.description);
+
+                        return (
+                          <Link
+                            key={project.id}
+                            to={`/portfolio/${encodeURIComponent(String(project.id))}`}
+                            className="group block h-full"
+                          >
+                            <div className="glass-card dark:backdrop-blur-0 overflow-hidden h-full flex flex-col bg-[linear-gradient(158deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] border-border/60 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.7)]">
+                              <RelatedWorkMedia project={project} eagerImage />
+                              <div className="p-7 flex flex-1 flex-col">
+                                <h3 className="text-2xl font-semibold tracking-tight text-foreground mb-3 group-hover:text-primary transition-colors">
+                                  {project.title}
+                                </h3>
+                                <p className="text-sm md:text-base text-muted-foreground/95 leading-relaxed mb-8">
+                                  {description.text}
+                                  {description.truncated ? (
+                                    <span className="ml-1 font-medium text-foreground/90">Read more....</span>
+                                  ) : null}
+                                </p>
+                                <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/50 pt-4">
+                                  <span className="text-sm text-muted-foreground">
+                                    {project.client?.trim() || "Live project"}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                                    View Work
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative md:px-12">
+                      <Carousel opts={{ align: "start", loop: relatedWorks.length > 3 }} className="w-full">
+                        <CarouselContent className="md:items-stretch">
+                          {relatedWorks.map((project, index) => {
+                            const description = getRelatedWorkDescriptionPreview(project.description);
+
+                            return (
+                              <CarouselItem key={project.id} className="md:basis-1/2 xl:basis-[38%] 2xl:basis-[34%]">
+                                <Link
+                                  to={`/portfolio/${encodeURIComponent(String(project.id))}`}
+                                  className="group block h-full"
+                                >
+                                  <div className="glass-card dark:backdrop-blur-0 overflow-hidden h-full flex flex-col bg-[linear-gradient(158deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.08)_100%)] border-border/60 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.7)]">
+                                    <RelatedWorkMedia project={project} eagerImage={index < 2} />
+                                    <div className="p-6 flex flex-1 flex-col">
+                                      <h3
+                                        className="text-lg font-semibold tracking-tight text-foreground mb-2 min-h-14 overflow-hidden group-hover:text-primary transition-colors"
+                                        style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+                                      >
+                                        {project.title}
+                                      </h3>
+                                      <p
+                                        className="text-sm text-muted-foreground/95 leading-relaxed mb-6 min-h-[6.5rem] overflow-hidden"
+                                        style={{ display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}
+                                      >
+                                        {description.text}
+                                        {description.truncated ? (
+                                          <span className="ml-1 font-medium text-foreground/90">Read more....</span>
+                                        ) : null}
+                                      </p>
+                                      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/50 pt-4">
+                                        <span className="text-xs text-muted-foreground">
+                                          {project.client?.trim() || "Live project"}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                                          View Work
+                                          <ArrowRight className="w-3.5 h-3.5" />
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </Link>
+                              </CarouselItem>
+                            );
+                          })}
+                        </CarouselContent>
+                        {relatedWorks.length > 1 ? (
+                          <>
+                            <CarouselPrevious className="hidden md:inline-flex left-0 border-border/60 bg-background/85 hover:bg-primary hover:text-primary-foreground" />
+                            <CarouselNext className="hidden md:inline-flex right-0 border-border/60 bg-background/85 hover:bg-primary hover:text-primary-foreground" />
+                          </>
+                        ) : null}
+                      </Carousel>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="section-padding pt-12 md:pt-16 relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_18%_10%,rgba(239,68,68,0.08),transparent_38%)]" />
                 <div className="container-narrow">
                   <div className="glass-card p-4 md:p-6 border-border/60">

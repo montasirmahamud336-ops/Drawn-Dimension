@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent, type WheelEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -19,55 +19,48 @@ import {
   Building2,
   BadgeDollarSign,
   Timer,
+  ArrowLeft,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { getProjectPdfDocument, getProjectMediaList, type ProjectMediaItem } from "@/components/shared/projectMedia";
 import PdfPreview from "@/components/shared/PdfPreview";
 
+/* ═══════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════ */
+
 const normalizeCategory = (raw?: string | null) => {
   if (!raw) return "Uncategorized";
-  const value = raw.toLowerCase();
-  if (["web design", "web design & development", "web development"].some((v) => value.includes(v))) return "Web Design";
-  if (["autocad", "solidworks", "3d", "cad"].some((v) => value.includes(v))) return "CAD & 3D";
-  if (["pfd", "p&id", "hazop", "engineering"].some((v) => value.includes(v))) return "Engineering";
-  if (["branding", "graphic design"].some((v) => value.includes(v))) return "Branding";
+  const v = raw.toLowerCase();
+  if (["web design", "web design & development", "web development"].some((k) => v.includes(k))) return "Web Design";
+  if (["autocad", "solidworks", "3d", "cad"].some((k) => v.includes(k))) return "CAD & 3D";
+  if (["pfd", "p&id", "hazop", "engineering"].some((k) => v.includes(k))) return "Engineering";
+  if (["branding", "graphic design"].some((k) => v.includes(k))) return "Branding";
   return raw;
 };
 
-const asDisplayValue = (value: unknown) => {
-  if (value === null || value === undefined) return "Not Available";
-  const text = String(value).trim();
-  return text.length > 0 ? text : "Not Available";
+const display = (value: unknown) => {
+  if (value === null || value === undefined) return null;
+  const t = String(value).trim();
+  return t.length > 0 ? t : null;
 };
-
-const isFallbackValue = (value: string) => value === "Not Available";
 
 const getDescriptionParagraphs = (value: unknown): string[] => {
   const raw = String(value ?? "").trim();
   if (!raw) return ["No details available."];
-
   const normalized = raw.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ").trim();
-  const withManualBreaks = normalized
-    .split(/\n{1,}/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (withManualBreaks.length > 1) return withManualBreaks;
-
-  const sentenceMatches = normalized.match(/[^.!?]+[.!?]?/g);
-  const sentences = (sentenceMatches ?? [])
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-
+  const byBreak = normalized.split(/\n{1,}/).map((p) => p.trim()).filter(Boolean);
+  if (byBreak.length > 1) return byBreak;
+  const sentences = (normalized.match(/[^.!?]+[.!?]?/g) ?? []).map((s) => s.trim()).filter(Boolean);
   if (sentences.length <= 2) return [normalized];
-
   const paragraphs: string[] = [];
-  for (let index = 0; index < sentences.length; index += 2) {
-    paragraphs.push(sentences.slice(index, index + 2).join(" "));
-  }
-
+  for (let i = 0; i < sentences.length; i += 2) paragraphs.push(sentences.slice(i, i + 2).join(" "));
   return paragraphs;
 };
+
+/* ═══════════════════════════════════════════════════════════
+   COMPONENT
+   ═══════════════════════════════════════════════════════════ */
 
 const PortfolioDetails = () => {
   const { id } = useParams();
@@ -82,78 +75,66 @@ const PortfolioDetails = () => {
   const reopenBlockUntilRef = useRef(0);
   const navigate = useNavigate();
 
+  /* ── derived data ── */
+
   const project = useMemo(
     () => projects.find((item: any) => String(item.id) === String(id)),
-    [projects, id]
+    [projects, id],
   );
 
   const fallbackMedia: ProjectMediaItem = useMemo(
-    () => ({
-      url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&h=700&fit=crop",
-      type: "image",
-    }),
-    []
+    () => ({ url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&h=700&fit=crop", type: "image" }),
+    [],
   );
-  const media = useMemo(
-    () => (project ? getProjectMediaList(project) : []),
-    [project]
-  );
+
+  const media = useMemo(() => (project ? getProjectMediaList(project) : []), [project]);
   const effectiveMedia = media.length > 0 ? media : [fallbackMedia];
   const currentMedia = effectiveMedia[mediaIndex] ?? fallbackMedia;
   const hasManyMedia = effectiveMedia.length > 1;
   const pdfDocument = project ? getProjectPdfDocument(project) : null;
   const category = normalizeCategory(project?.category);
-  const descriptionParagraphs = useMemo(
-    () => getDescriptionParagraphs(project?.description),
-    [project?.description]
-  );
-  const createdBy = asDisplayValue(project?.creator);
-  const clientName = asDisplayValue(project?.client_name ?? project?.client);
-  const projectCost = asDisplayValue(project?.project_cost);
-  const projectDuration = asDisplayValue(project?.project_duration);
-  const detailCards = useMemo(
-    () => [
-      { label: "Created By", value: createdBy, icon: UserRound },
-      { label: "Client", value: clientName, icon: Building2 },
-      { label: "Project Cost", value: projectCost, icon: BadgeDollarSign },
-      { label: "Project Duration", value: projectDuration, icon: Timer },
-    ],
-    [createdBy, clientName, projectCost, projectDuration]
-  );
+  const descriptionParagraphs = useMemo(() => getDescriptionParagraphs(project?.description), [project?.description]);
 
-  useEffect(() => {
-    setMediaIndex(0);
-    setIsViewerOpen(false);
-  }, [project?.id]);
+  const createdBy = display(project?.creator);
+  const clientName = display(project?.client);
+  const projectCost = display(project?.project_cost);
+  const projectDuration = display(project?.project_duration);
+
+  const metaItems = useMemo(() => [
+    { label: "Created By", value: createdBy, icon: UserRound },
+    { label: "Client", value: clientName, icon: Building2 },
+    { label: "Budget", value: projectCost, icon: BadgeDollarSign },
+    { label: "Duration", value: projectDuration, icon: Timer },
+  ], [createdBy, clientName, projectCost, projectDuration]);
+
+  /* ── effects ── */
+
+  useEffect(() => { setMediaIndex(0); setIsViewerOpen(false); }, [project?.id]);
+
+  /* ── handlers ── */
 
   const closeViewer = useCallback((fromWheel = false) => {
     reopenBlockUntilRef.current = Date.now() + 260;
-    if (!fromWheel) {
-      isWheelClosingRef.current = false;
-      pendingWheelDeltaRef.current = 0;
-    }
+    if (!fromWheel) { isWheelClosingRef.current = false; pendingWheelDeltaRef.current = 0; }
     setIsViewerOpen(false);
   }, []);
 
-  const showPrevMedia = useCallback(() => {
+  const showPrev = useCallback(() => {
     if (!hasManyMedia) return;
     setDirection(-1);
     setMediaIndex((i) => (i - 1 + effectiveMedia.length) % effectiveMedia.length);
   }, [effectiveMedia.length, hasManyMedia]);
 
-  const showNextMedia = useCallback(() => {
+  const showNext = useCallback(() => {
     if (!hasManyMedia) return;
     setDirection(1);
     setMediaIndex((i) => (i + 1) % effectiveMedia.length);
   }, [effectiveMedia.length, hasManyMedia]);
 
-  const selectMedia = useCallback(
-    (index: number) => {
-      setDirection(index >= mediaIndex ? 1 : -1);
-      setMediaIndex(index);
-    },
-    [mediaIndex]
-  );
+  const selectMedia = useCallback((index: number) => {
+    setDirection(index >= mediaIndex ? 1 : -1);
+    setMediaIndex(index);
+  }, [mediaIndex]);
 
   const openViewer = useCallback(() => {
     if (Date.now() < reopenBlockUntilRef.current) return;
@@ -162,52 +143,34 @@ const PortfolioDetails = () => {
     setIsViewerOpen(true);
   }, []);
 
-  const requestViewerClose = useCallback(
-    (event?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
-      event?.preventDefault?.();
-      event?.stopPropagation?.();
-      closeViewer();
-    },
-    [closeViewer]
-  );
+  const requestViewerClose = useCallback((e?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    closeViewer();
+  }, [closeViewer]);
 
-  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
-    touchStartXRef.current = e.changedTouches[0]?.clientX ?? null;
-  };
-
-  const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+  /* touch */
+  const onTouchStart = (e: TouchEvent<HTMLDivElement>) => { touchStartXRef.current = e.changedTouches[0]?.clientX ?? null; };
+  const onTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
     if (!hasManyMedia || touchStartXRef.current === null) return;
-    const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
-    const delta = endX - touchStartXRef.current;
+    const delta = (e.changedTouches[0]?.clientX ?? touchStartXRef.current) - touchStartXRef.current;
     touchStartXRef.current = null;
     if (Math.abs(delta) < 40) return;
-    if (delta > 0) {
-      showPrevMedia();
-      return;
-    }
-    showNextMedia();
+    delta > 0 ? showPrev() : showNext();
   };
-
-  const handleViewerTouchStart = (e: TouchEvent<HTMLDivElement>) => {
-    viewerTouchStartXRef.current = e.changedTouches[0]?.clientX ?? null;
-  };
-
-  const handleViewerTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+  const onViewerTouchStart = (e: TouchEvent<HTMLDivElement>) => { viewerTouchStartXRef.current = e.changedTouches[0]?.clientX ?? null; };
+  const onViewerTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
     if (!hasManyMedia || viewerTouchStartXRef.current === null) return;
-    const endX = e.changedTouches[0]?.clientX ?? viewerTouchStartXRef.current;
-    const delta = endX - viewerTouchStartXRef.current;
+    const delta = (e.changedTouches[0]?.clientX ?? viewerTouchStartXRef.current) - viewerTouchStartXRef.current;
     viewerTouchStartXRef.current = null;
     if (Math.abs(delta) < 40) return;
-    if (delta > 0) {
-      showPrevMedia();
-      return;
-    }
-    showNextMedia();
+    delta > 0 ? showPrev() : showNext();
   };
 
-  const handleViewerWheel = (event: WheelEvent<HTMLDivElement>) => {
+  /* wheel on viewer */
+  const handleViewerWheel = (e: WheelEvent<HTMLDivElement>) => {
     if (isWheelClosingRef.current) return;
-    const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+    const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
     if (Math.abs(delta) < 1) return;
     isWheelClosingRef.current = true;
     pendingWheelDeltaRef.current = delta;
@@ -220,38 +183,26 @@ const PortfolioDetails = () => {
     isWheelClosingRef.current = false;
     pendingWheelDeltaRef.current = 0;
     if (Math.abs(delta) < 1) return;
-    requestAnimationFrame(() => {
-      window.scrollBy({ top: delta, behavior: "auto" });
-    });
+    requestAnimationFrame(() => window.scrollBy({ top: delta, behavior: "auto" }));
   }, [isViewerOpen]);
 
+  /* keyboard */
   useEffect(() => {
     if (!isViewerOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        closeViewer();
-        return;
-      }
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        showPrevMedia();
-      }
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        showNextMedia();
-      }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeViewer();
+      if (e.key === "ArrowLeft") { e.preventDefault(); showPrev(); }
+      if (e.key === "ArrowRight") { e.preventDefault(); showNext(); }
     };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [isViewerOpen, closeViewer, showPrev, showNext]);
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isViewerOpen, closeViewer, showPrevMedia, showNextMedia]);
+  /* ═══════════════════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════════════════ */
 
   return (
     <PageTransition>
@@ -259,360 +210,357 @@ const PortfolioDetails = () => {
         <div className={isViewerOpen ? "invisible pointer-events-none" : ""}>
           <Navigation />
         </div>
-        <main className="pt-32 pb-20">
-          <section className="section-padding">
-            <div className="container-narrow">
-              {loading ? (
-                <div className="flex justify-center items-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : !project ? (
-                <div className="glass-card p-8 text-center">
-                  <h1 className="text-2xl font-bold mb-4">Work not found</h1>
-                  <Button onClick={() => navigate("/portfolio")}>Back to Portfolio</Button>
-                </div>
-              ) : (
-                <>
-                <div className="relative overflow-hidden rounded-[26px] border border-slate-300/70 dark:border-border/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.94)_0%,rgba(249,249,252,0.96)_48%,rgba(255,244,244,0.9)_100%)] dark:bg-[linear-gradient(160deg,rgba(8,8,10,0.96)_0%,rgba(14,14,18,0.92)_48%,rgba(21,10,10,0.9)_100%)] shadow-[0_24px_60px_rgba(22,28,45,0.15)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.45)] before:pointer-events-none before:absolute before:inset-[1px] before:rounded-[24px] before:border before:border-black/[0.05] dark:before:border-white/[0.06] before:content-['']">
-                  <div className="pointer-events-none absolute -left-24 top-[-32%] h-72 w-72 rounded-full bg-primary/14 blur-3xl opacity-30 dark:opacity-50" />
-                  <div className="pointer-events-none absolute -right-20 bottom-[-36%] h-72 w-72 rounded-full bg-primary/10 blur-3xl opacity-25 dark:opacity-45" />
-                  <div
-                    className={`relative overflow-hidden border-b border-slate-300/70 dark:border-border/60 bg-black/10 dark:bg-black/25 group ${currentMedia.type === "pdf" ? "h-[70vh] min-h-[560px]" : "aspect-video"}`}
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd}
-                  >
-                    <AnimatePresence initial={false} mode="wait" custom={direction}>
-                      <motion.div
-                        key={`${currentMedia?.url || "media"}-${mediaIndex}`}
-                        custom={direction}
-                        initial={{ opacity: 0, x: direction > 0 ? 28 : -28 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: direction > 0 ? -28 : 28 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
-                        className="absolute inset-0"
-                      >
-                        {currentMedia?.type === "video" ? (
-                          <video src={currentMedia.url} className="w-full h-full object-cover" controls autoPlay muted loop playsInline />
-                        ) : currentMedia?.type === "pdf" ? (
-                          <div className="flex h-full w-full flex-col bg-white">
-                            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 text-slate-900">
-                              <div className="flex min-w-0 items-center gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                                  <FileText className="h-5 w-5" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-semibold">{project.title} PDF</p>
-                                  <p className="text-xs text-slate-500">Scroll inside the document to read the full file.</p>
-                                </div>
+
+        <main className="pt-28 pb-24">
+          {loading ? (
+            <div className="flex justify-center items-center py-32">
+              <Loader2 className="w-7 h-7 animate-spin text-primary" />
+            </div>
+          ) : !project ? (
+            <div className="flex flex-col items-center justify-center py-32 text-center px-6">
+              <h1 className="text-xl font-semibold">Work not found</h1>
+              <Button onClick={() => navigate("/portfolio")} variant="outline" className="mt-6 rounded-full">
+                Back to Portfolio
+              </Button>
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              {/* ──────────────────────────────────────────────
+                  BACK LINK
+                  ────────────────────────────────────────────── */}
+              <div className="max-w-[1200px] mx-auto px-6 mb-8">
+                <Link
+                  to="/portfolio"
+                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Portfolio
+                </Link>
+              </div>
+
+              {/* ──────────────────────────────────────────────
+                  MEDIA SECTION
+                  ────────────────────────────────────────────── */}
+              <section className="max-w-[1200px] mx-auto px-6">
+                <div
+                  className={`relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] group ${
+                    currentMedia.type === "pdf" ? "h-[70vh] min-h-[520px]" : "aspect-video"
+                  }`}
+                  onTouchStart={onTouchStart}
+                  onTouchEnd={onTouchEnd}
+                >
+                  <AnimatePresence initial={false} mode="wait" custom={direction}>
+                    <motion.div
+                      key={`${currentMedia?.url || "m"}-${mediaIndex}`}
+                      custom={direction}
+                      initial={{ opacity: 0, x: direction > 0 ? 24 : -24 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: direction > 0 ? -24 : 24 }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
+                      className="absolute inset-0"
+                    >
+                      {currentMedia?.type === "video" ? (
+                        <video src={currentMedia.url} className="w-full h-full object-cover" controls autoPlay muted loop playsInline />
+                      ) : currentMedia?.type === "pdf" ? (
+                        <div className="flex h-full w-full flex-col bg-white">
+                          <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3 text-slate-900">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                <FileText className="h-4 w-4" />
                               </div>
-                              <a
-                                href={currentMedia.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 transition-colors hover:border-primary hover:text-primary"
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" />
-                                Open PDF
-                              </a>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold">{project.title}</p>
+                                <p className="text-xs text-slate-500">Scroll to read the full document.</p>
+                              </div>
                             </div>
-                            <iframe
-                              src={`${currentMedia.url}#view=FitH`}
-                              title={`${project.title} PDF viewer`}
-                              className="h-full w-full bg-white"
-                            />
+                            <a href={currentMedia.url} target="_blank" rel="noreferrer"
+                              className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-primary hover:text-primary transition-colors">
+                              <ExternalLink className="h-3.5 w-3.5" /> Open PDF
+                            </a>
                           </div>
-                        ) : (
-                          <img src={currentMedia?.url} alt={project.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.015]" />
-                        )}
-                      </motion.div>
-                    </AnimatePresence>
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                    {currentMedia?.type === "image" && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={openViewer}
-                          className="absolute inset-0 z-10 cursor-zoom-in"
-                          aria-label="Open full image view"
-                        >
-                          <span className="sr-only">Open full image view</span>
-                        </button>
-                        <div className="pointer-events-none absolute right-4 bottom-4 z-20 inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/45 px-3 py-1.5 text-xs font-medium text-white/95 backdrop-blur-sm opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                          <Maximize2 className="w-3.5 h-3.5" />
-                          Full View
+                          <iframe src={`${currentMedia.url}#view=FitH`} title={`${project.title} PDF`} className="h-full w-full bg-white" />
                         </div>
-                      </>
+                      ) : (
+                        <img src={currentMedia?.url} alt={project.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.012]" />
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* bottom gradient + zoom hint */}
+                  {currentMedia?.type === "image" && (
+                    <>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                      <button type="button" onClick={openViewer} className="absolute inset-0 z-10 cursor-zoom-in" aria-label="Open full view" />
+                      <div className="pointer-events-none absolute right-4 bottom-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-[11px] font-medium text-white/90 backdrop-blur-sm opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <Maximize2 className="w-3 h-3" /> Expand
+                      </div>
+                    </>
+                  )}
+
+                  {/* nav arrows */}
+                  {hasManyMedia && (
+                    <>
+                      <button type="button" onClick={showPrev}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full border border-white/15 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-black/70">
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={showNext}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full border border-white/15 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-black/70">
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+
+                  {/* media counter */}
+                  {hasManyMedia && (
+                    <div className="absolute left-4 bottom-4 z-20 text-[11px] font-medium text-white/60 tabular-nums">
+                      {mediaIndex + 1} / {effectiveMedia.length}
+                    </div>
+                  )}
+                </div>
+
+                {/* thumbnails */}
+                {hasManyMedia && (
+                  <div className="flex gap-2.5 mt-3 overflow-x-auto pb-1">
+                    {effectiveMedia.map((item, index) => (
+                      <button
+                        key={`${item.url}-${index}`}
+                        type="button"
+                        onClick={() => selectMedia(index)}
+                        className={`relative shrink-0 w-20 h-[52px] rounded-lg overflow-hidden border transition-all duration-200 ${
+                          index === mediaIndex
+                            ? "border-primary/70 ring-1 ring-primary/40"
+                            : "border-white/[0.06] opacity-50 hover:opacity-80 hover:border-white/[0.12]"
+                        }`}
+                      >
+                        {item.type === "video" ? (
+                          <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                        ) : item.type === "pdf" ? (
+                          <PdfPreview url={item.url} title={`thumb ${index + 1}`} />
+                        ) : (
+                          <img src={item.url} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* ──────────────────────────────────────────────
+                  CONTENT — TWO COLUMN
+                  ────────────────────────────────────────────── */}
+              <section className="max-w-[1200px] mx-auto px-6 mt-14 md:mt-18">
+                <div className="grid lg:grid-cols-[1fr_340px] gap-12 lg:gap-16">
+
+                  {/* LEFT — title, description, CTA */}
+                  <div className="min-w-0">
+                    <span className="inline-block text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/70 border border-primary/15 px-2.5 py-[3px] rounded">
+                      {category}
+                    </span>
+
+                    <h1 className="text-3xl sm:text-4xl md:text-[2.6rem] font-bold tracking-[-0.03em] leading-[1.1] mt-5">
+                      {project.title}
+                    </h1>
+
+                    <div className="mt-7 space-y-4 text-[15.5px] leading-[1.78] text-foreground/65">
+                      {descriptionParagraphs.map((p, i) => (
+                        <p key={`${i}-${p.slice(0, 28)}`}>{p}</p>
+                      ))}
+                    </div>
+
+                    {/* PDF link */}
+                    {pdfDocument && (
+                      <a
+                        href={pdfDocument.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2.5 mt-8 px-4 py-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] text-[13px] font-medium text-foreground/70 hover:text-foreground hover:border-white/[0.12] hover:bg-white/[0.04] transition-all"
+                      >
+                        <FileText className="w-4 h-4 text-primary/70" />
+                        View Project PDF
+                        <ExternalLink className="w-3 h-3 text-muted-foreground/40" />
+                      </a>
                     )}
+
+                    {/* CTA */}
+                    <div className="flex flex-col sm:flex-row gap-3 mt-10 pt-8 border-t border-white/[0.05]">
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate("/portfolio")}
+                        className="rounded-lg border-white/[0.08] bg-transparent px-6 h-11 text-[13px] font-medium hover:bg-white/[0.04]"
+                      >
+                        All Projects
+                      </Button>
+                      <Button
+                        onClick={() => navigate("/start-project")}
+                        className="rounded-lg px-7 h-11 text-[13px] font-medium"
+                      >
+                        Discuss Your Project
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* RIGHT — metadata sidebar */}
+                  <aside className="lg:pt-[calc(10px+0.625rem)]">
+                    <div className="space-y-px rounded-xl border border-white/[0.06] overflow-hidden">
+                      {metaItems.map((item) => (
+                        <div
+                          key={item.label}
+                          className="flex items-start gap-4 px-5 py-4 bg-white/[0.015] hover:bg-white/[0.03] transition-colors"
+                        >
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-muted-foreground/50 mt-0.5">
+                            <item.icon className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground/40 font-medium">
+                              {item.label}
+                            </p>
+                            {item.value ? (
+                              <p className="text-[14px] font-medium text-foreground/85 mt-1 leading-snug break-words">
+                                {item.value}
+                              </p>
+                            ) : (
+                              <p className="text-[13px] text-muted-foreground/25 mt-1">—</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* inquiry card */}
+                    <div className="mt-4 rounded-xl border border-primary/10 bg-primary/[0.03] p-5">
+                      <p className="text-[13px] text-foreground/60 leading-relaxed">
+                        Need a similar execution for your project?
+                      </p>
+                      <Button
+                        onClick={() => navigate("/start-project")}
+                        className="w-full mt-4 rounded-lg h-10 text-[13px] font-medium"
+                      >
+                        Start a Conversation
+                      </Button>
+                    </div>
+                  </aside>
+                </div>
+              </section>
+            </motion.div>
+          )}
+        </main>
+
+        <Footer />
+
+        {/* ═══════════════════════════════════════════════════
+            FULL-SCREEN VIEWER
+            ═══════════════════════════════════════════════════ */}
+        {typeof document !== "undefined" &&
+          createPortal(
+            <AnimatePresence>
+              {isViewerOpen && currentMedia && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="fixed inset-0 z-[1000] overscroll-none bg-black/80 backdrop-blur-md"
+                  onWheel={handleViewerWheel}
+                >
+                  <button type="button" className="absolute inset-0 z-0 bg-transparent" onPointerDown={requestViewerClose} onClick={requestViewerClose} aria-label="Close" />
+
+                  <div className="relative z-10 h-full pointer-events-none">
+                    {/* top gradient */}
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/50 to-transparent" />
+
+                    {/* close button */}
+                    <button
+                      type="button"
+                      onPointerDown={requestViewerClose}
+                      onClick={requestViewerClose}
+                      className="pointer-events-auto absolute top-5 right-5 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white transition-colors hover:bg-white/10"
+                      aria-label="Close"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+
+                    {/* nav arrows */}
                     {hasManyMedia && (
                       <>
-                        <button
-                          type="button"
-                          onClick={showPrevMedia}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full border border-white/20 bg-black/60 text-white flex items-center justify-center transition-all duration-200 hover:bg-black/75 hover:scale-105"
-                          aria-label="Previous media"
-                        >
+                        <button type="button" onClick={showPrev}
+                          className="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2 z-40 hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white transition-colors hover:bg-black/60">
                           <ChevronLeft className="w-4 h-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={showNextMedia}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full border border-white/20 bg-black/60 text-white flex items-center justify-center transition-all duration-200 hover:bg-black/75 hover:scale-105"
-                          aria-label="Next media"
-                        >
+                        <button type="button" onClick={showNext}
+                          className="pointer-events-auto absolute right-4 top-1/2 -translate-y-1/2 z-40 hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white transition-colors hover:bg-black/60">
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       </>
                     )}
-                  </div>
-                  {hasManyMedia && (
-                    <div className="flex gap-3 overflow-x-auto px-5 py-4 border-b border-slate-300/70 dark:border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_100%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0)_100%)] sm:px-6">
-                      {effectiveMedia.map((item, index) => (
-                        <button
-                          key={`${item.url}-${index}`}
-                          type="button"
-                          onClick={() => selectMedia(index)}
-                          className={`relative shrink-0 w-24 h-16 rounded-xl overflow-hidden border transition-all duration-300 ${index === mediaIndex
-                            ? "border-primary ring-2 ring-primary/70 shadow-[0_10px_24px_rgba(239,68,68,0.28)]"
-                            : "border-border/60 hover:border-primary/45 hover:-translate-y-0.5"
-                            }`}
-                        >
-                          {item.type === "video" ? (
-                            <video src={item.url} className="w-full h-full object-cover" muted playsInline />
-                          ) : item.type === "pdf" ? (
-                            <PdfPreview url={item.url} title={`${project.title} thumbnail ${index + 1}`} />
-                          ) : (
-                            <img src={item.url} alt={`${project.title} thumbnail ${index + 1}`} className="w-full h-full object-cover" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
 
-                  <div className="relative p-5 sm:p-8 md:p-10 space-y-7">
-                    <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-primary/10 blur-3xl opacity-30 dark:opacity-55" />
-                    <div className="space-y-5 relative">
-                      <span className="inline-flex items-center rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] text-primary shadow-[0_0_22px_rgba(239,68,68,0.2)]">
-                        {category}
-                      </span>
-                      <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground leading-tight">{project.title}</h1>
-                      <div className="max-w-4xl space-y-4 text-[15px] sm:text-base leading-7 text-muted-foreground">
-                        {descriptionParagraphs.map((paragraph, index) => (
-                          <p key={`${index}-${paragraph.slice(0, 32)}`}>{paragraph}</p>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3.5 sm:grid-cols-2 md:gap-4">
-                      {detailCards.map((item) => (
-                        <motion.div
-                          key={item.label}
-                          initial={{ opacity: 0, y: 8 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true, margin: "-20px" }}
-                          transition={{ duration: 0.3, ease: "easeOut" }}
-                          className="group relative overflow-hidden rounded-2xl border border-slate-300/75 dark:border-border/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.84),rgba(255,255,255,0.62))] dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] px-5 py-4 backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-[0_14px_28px_rgba(239,68,68,0.14)]"
-                        >
-                          <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent transition-colors duration-300 group-hover:border-primary/25" />
-                          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-                            <span className="absolute -left-1/3 top-0 h-full w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent translate-x-0 transition-transform duration-700 ease-out group-hover:translate-x-[420%]" />
-                          </div>
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="min-w-0">
-                              <span className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                <item.icon className="h-3.5 w-3.5 text-primary/85" />
-                                {item.label}
-                              </span>
-                              <div className="mt-2">
-                                {isFallbackValue(item.value) ? (
-                                  <span className="inline-flex rounded-full border border-slate-300/80 dark:border-border/70 bg-white/75 dark:bg-background/45 px-3 py-1 text-xs font-medium text-muted-foreground">
-                                    {item.value}
-                                  </span>
-                                ) : (
-                                  <span className="text-[15px] sm:text-base font-semibold leading-tight text-foreground break-words">
-                                    {item.value}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    <div className="border-t border-slate-300/80 dark:border-border/60 pt-6">
-                      {pdfDocument && (
-                        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-300/75 dark:border-border/60 bg-white/70 dark:bg-background/35 px-4 py-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                            <FileText className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-foreground">Attached project PDF available</p>
-                            <p className="text-xs text-muted-foreground">Open the document in a separate tab if you want a larger reading view.</p>
-                          </div>
-                          <a
-                            href={pdfDocument.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-2 rounded-full border border-primary/45 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-primary transition-all duration-300 hover:bg-primary hover:text-primary-foreground"
+                    <div className="flex h-full flex-col">
+                      {/* main image */}
+                      <div className="flex-1 px-4 pt-14 pb-4 sm:px-10 sm:pt-20">
+                        <AnimatePresence initial={false} mode="wait" custom={direction}>
+                          <motion.div
+                            key={`v-${currentMedia.url}-${mediaIndex}`}
+                            custom={direction}
+                            initial={{ opacity: 0, x: direction > 0 ? 28 : -28 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: direction > 0 ? -28 : 28 }}
+                            transition={{ duration: 0.22, ease: "easeOut" }}
+                            className="h-full w-full flex items-center justify-center"
                           >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            Open PDF
-                          </a>
-                        </div>
-                      )}
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm text-muted-foreground">
-                          Need a similar execution plan for your project? Let&apos;s discuss your requirements.
-                        </p>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                          <Button
-                            variant="outline"
-                            onClick={() => navigate("/portfolio")}
-                            className="rounded-full border-slate-300/80 dark:border-border/70 bg-white/65 dark:bg-background/30 px-6 hover:bg-white/90 dark:hover:bg-background/60"
-                          >
-                            Back to Portfolio
-                          </Button>
-                          <Button
-                            onClick={() => navigate("/contact")}
-                            className="rounded-full px-7 shadow-[0_12px_26px_rgba(239,68,68,0.32)]"
-                          >
-                            Contact Us
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {typeof document !== "undefined" &&
-                  createPortal(
-                    <AnimatePresence>
-                      {isViewerOpen && currentMedia && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="fixed inset-0 z-[1000] overscroll-none bg-slate-950/55 dark:bg-black/45 backdrop-blur-xl"
-                          onWheel={handleViewerWheel}
-                        >
-                          <button
-                            type="button"
-                            className="absolute inset-0 z-0 bg-transparent"
-                            onPointerDown={requestViewerClose}
-                            onClick={requestViewerClose}
-                            aria-label="Close full view"
-                          />
-                          <div className="relative z-10 h-full pointer-events-none">
-                            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.16)_0%,rgba(255,255,255,0.04)_35%,rgba(0,0,0,0.48)_100%)] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.03)_35%,rgba(0,0,0,0.5)_100%)]" />
-                            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/55 to-transparent" />
-
-                            <button
-                              type="button"
-                              onPointerDown={requestViewerClose}
-                              onClick={requestViewerClose}
-                              className="pointer-events-auto absolute top-4 right-4 z-50 inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-200/65 dark:border-white/25 bg-white/90 dark:bg-black/75 text-slate-800 dark:text-white shadow-[0_10px_26px_rgba(0,0,0,0.25)] dark:shadow-[0_10px_26px_rgba(0,0,0,0.45)] transition-all duration-200 hover:bg-primary hover:border-primary/70 hover:text-primary-foreground"
-                              aria-label="Close full view"
+                            <div
+                              className="pointer-events-auto max-h-[calc(100dvh-10rem)] max-w-full"
+                              onTouchStart={onViewerTouchStart}
+                              onTouchEnd={onViewerTouchEnd}
                             >
-                              <X className="w-5 h-5" />
-                            </button>
-
-                            {hasManyMedia && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={showPrevMedia}
-                                  className="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2 z-40 hidden sm:inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-200/60 dark:border-white/20 bg-white/85 dark:bg-black/50 text-slate-800 dark:text-white transition-all duration-200 hover:bg-white dark:hover:bg-black/75"
-                                  aria-label="Previous media"
-                                >
-                                  <ChevronLeft className="w-5 h-5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={showNextMedia}
-                                  className="pointer-events-auto absolute right-4 top-1/2 -translate-y-1/2 z-40 hidden sm:inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-200/60 dark:border-white/20 bg-white/85 dark:bg-black/50 text-slate-800 dark:text-white transition-all duration-200 hover:bg-white dark:hover:bg-black/75"
-                                  aria-label="Next media"
-                                >
-                                  <ChevronRight className="w-5 h-5" />
-                                </button>
-                              </>
-                            )}
-
-                            <div className="flex h-full flex-col pointer-events-none">
-                              <div className="flex-1 px-4 pt-16 pb-5 sm:px-8 sm:pt-20">
-                                <AnimatePresence initial={false} mode="wait" custom={direction}>
-                                  <motion.div
-                                    key={`viewer-${currentMedia.url}-${mediaIndex}`}
-                                    custom={direction}
-                                    initial={{ opacity: 0, x: direction > 0 ? 34 : -34 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: direction > 0 ? -34 : 34 }}
-                                    transition={{ duration: 0.25, ease: "easeOut" }}
-                                    className="h-full w-full flex items-center justify-center"
-                                  >
-                                    <div
-                                      className="pointer-events-auto max-h-[calc(100dvh-11.5rem)] max-w-full"
-                                      onTouchStart={handleViewerTouchStart}
-                                      onTouchEnd={handleViewerTouchEnd}
-                                    >
-                                      {currentMedia.type === "video" ? (
-                                        <video
-                                          src={currentMedia.url}
-                                          className="h-auto w-auto max-h-[calc(100dvh-11.5rem)] max-w-full rounded-2xl object-contain shadow-[0_18px_44px_rgba(0,0,0,0.5)]"
-                                          controls
-                                          autoPlay
-                                          muted
-                                          loop
-                                          playsInline
-                                        />
-                                      ) : (
-                                        <img
-                                          src={currentMedia.url}
-                                          alt={project.title}
-                                          className="h-auto w-auto max-h-[calc(100dvh-11.5rem)] max-w-full rounded-2xl object-contain shadow-[0_18px_44px_rgba(0,0,0,0.5)]"
-                                        />
-                                      )}
-                                    </div>
-                                  </motion.div>
-                                </AnimatePresence>
-                              </div>
-
-                              <div className="pointer-events-auto border-t border-white/10 bg-black/55 px-4 py-3 sm:px-8 sm:py-4">
-                                <div className="mx-auto flex max-w-5xl gap-3 overflow-x-auto pb-1">
-                                  {effectiveMedia.map((item, index) => (
-                                    <button
-                                      key={`viewer-thumb-${item.url}-${index}`}
-                                      type="button"
-                                      onClick={() => selectMedia(index)}
-                                      className={`relative shrink-0 w-24 h-16 sm:w-[110px] sm:h-[72px] rounded-xl overflow-hidden border transition-all duration-300 ${index === mediaIndex
-                                        ? "border-primary ring-2 ring-primary/80 shadow-[0_10px_24px_rgba(239,68,68,0.32)]"
-                                        : "border-white/25 hover:border-primary/55"
-                                        }`}
-                                      aria-label={`Open media ${index + 1}`}
-                                    >
-                                      {item.type === "video" ? (
-                                        <video src={item.url} className="w-full h-full object-cover" muted playsInline />
-                                      ) : item.type === "pdf" ? (
-                                        <PdfPreview url={item.url} title={`${project.title} gallery thumbnail ${index + 1}`} />
-                                      ) : (
-                                        <img src={item.url} alt={`${project.title} gallery thumbnail ${index + 1}`} className="w-full h-full object-cover" />
-                                      )}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
+                              {currentMedia.type === "video" ? (
+                                <video src={currentMedia.url} className="h-auto w-auto max-h-[calc(100dvh-10rem)] max-w-full rounded-xl object-contain shadow-2xl" controls autoPlay muted loop playsInline />
+                              ) : (
+                                <img src={currentMedia.url} alt={project.title} className="h-auto w-auto max-h-[calc(100dvh-10rem)] max-w-full rounded-xl object-contain shadow-2xl" />
+                              )}
                             </div>
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+
+                      {/* bottom thumbnails */}
+                      {hasManyMedia && (
+                        <div className="pointer-events-auto border-t border-white/[0.06] bg-black/50 px-4 py-3 sm:px-10 sm:py-3.5">
+                          <div className="mx-auto flex max-w-4xl gap-2 overflow-x-auto pb-0.5">
+                            {effectiveMedia.map((item, index) => (
+                              <button
+                                key={`vt-${item.url}-${index}`}
+                                type="button"
+                                onClick={() => selectMedia(index)}
+                                className={`relative shrink-0 w-20 h-[52px] rounded-lg overflow-hidden border transition-all duration-200 ${
+                                  index === mediaIndex
+                                    ? "border-primary/70 ring-1 ring-primary/40"
+                                    : "border-white/15 opacity-40 hover:opacity-70 hover:border-white/30"
+                                }`}
+                                aria-label={`Media ${index + 1}`}
+                              >
+                                {item.type === "video" ? (
+                                  <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                                ) : item.type === "pdf" ? (
+                                  <PdfPreview url={item.url} title={`vt ${index + 1}`} />
+                                ) : (
+                                  <img src={item.url} alt={`Thumb ${index + 1}`} className="w-full h-full object-cover" />
+                                )}
+                              </button>
+                            ))}
                           </div>
-                        </motion.div>
+                        </div>
                       )}
-                    </AnimatePresence>,
-                    document.body
-                  )}
-                </>
+                    </div>
+                  </div>
+                </motion.div>
               )}
-            </div>
-          </section>
-        </main>
-        <Footer />
+            </AnimatePresence>,
+            document.body,
+          )}
       </PremiumBackground>
     </PageTransition>
   );

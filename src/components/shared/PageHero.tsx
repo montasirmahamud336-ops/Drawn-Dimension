@@ -20,13 +20,12 @@ const PageHero = ({ title, subtitle, description, actions }: PageHeroProps) => {
         hasActions ? "pb-10 md:pb-12" : "pb-20 md:pb-24"
       }`}
     >
+      {/* Clean background – no dark fade, just a soft top glow */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="hero-glow top-16 -left-28 opacity-55" />
+        {/* Soft primary glow top-left */}
         <div className="absolute top-[-9rem] right-[-11rem] w-[34rem] h-[34rem] rounded-full bg-primary/12 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(239,68,68,0.14),transparent_36%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_24%,rgba(14,165,233,0.08),transparent_34%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_34%,rgba(0,0,0,0.22)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:58px_58px] opacity-35" />
+        {/* Subtle radial accent – no dark overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(239,68,68,0.10),transparent_36%)]" />
       </div>
 
       <div className="container-narrow relative z-10">

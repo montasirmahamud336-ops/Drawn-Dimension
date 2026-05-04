@@ -10,6 +10,7 @@ import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
 import { Loader2, Upload, Users, X } from "lucide-react";
+import { COUNTRY_OPTIONS } from "@/data/countryOptions";
 
 interface TeamFormProps {
     open: boolean;
@@ -29,6 +30,7 @@ type TeamMemberSnapshot = {
     name?: string;
     role?: string;
     bio?: string | null;
+    country?: string | null;
     image_url?: string | null;
     media?: Array<{ url?: string; type?: string }> | null;
     linkedin_url?: string | null;
@@ -135,6 +137,7 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
             setValue("name", member.name || "");
             setValue("role", member.role || "");
             setValue("bio", member.bio || "");
+            setValue("country", member.country || "");
             setValue("linkedin_url", member.linkedin_url || "");
             setValue("twitter_url", member.twitter_url || "");
             setValue("facebook_url", member.facebook_url || "");
@@ -289,6 +292,7 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
             const name = typeof data.name === "string" ? data.name : "";
             const role = typeof data.role === "string" ? data.role : "";
             const bio = typeof data.bio === "string" ? data.bio : "";
+            const country = typeof data.country === "string" ? data.country.trim() : "";
             const linkedinUrl = typeof data.linkedin_url === "string" ? data.linkedin_url : "";
             const twitterUrl = typeof data.twitter_url === "string" ? data.twitter_url : "";
             const facebookUrl = typeof data.facebook_url === "string" ? data.facebook_url : "";
@@ -297,6 +301,7 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
                 name,
                 role,
                 bio: isEmployeeMode ? null : (bio || null),
+                country: isEmployeeMode ? (country || null) : null,
                 image_url: finalMedia[0]?.url || null,
                 media: finalMedia,
                 linkedin_url: isEmployeeMode ? null : (linkedinUrl || null),
@@ -485,6 +490,26 @@ const TeamForm = ({ open, onOpenChange, member, memberType, onSuccess }: TeamFor
                         )}
                         {errors.role && <span className="text-destructive text-sm">Role is required</span>}
                     </div>
+
+                    {isEmployeeMode && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="country">Country</Label>
+                            <Input
+                                id="country"
+                                list="team-country-options"
+                                {...register("country")}
+                                placeholder="e.g. Bangladesh"
+                            />
+                            <datalist id="team-country-options">
+                                {COUNTRY_OPTIONS.map((country) => (
+                                    <option key={country.code} value={country.name} />
+                                ))}
+                            </datalist>
+                            <p className="text-xs text-muted-foreground">
+                                This will show on the website card as "From Country Name".
+                            </p>
+                        </div>
+                    )}
 
                     {!isEmployeeMode && (
                         <>

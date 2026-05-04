@@ -81,7 +81,7 @@ const ServicesSection = ({ data }: ServicesSectionProps) => {
                 </div>
 
                 <Link
-                  to={service.link}
+                  to="/start-project"
                   className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold bg-secondary/85 text-secondary-foreground hover:bg-primary hover:text-primary-foreground border border-border hover:border-primary transition-all duration-300"
                 >
                   Get Started

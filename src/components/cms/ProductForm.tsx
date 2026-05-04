@@ -86,6 +86,8 @@ const ProductForm = ({ open, onOpenChange, product, onSuccess }: ProductFormProp
             setValue("description", product.description);
             setValue("price", product.price);
             setValue("category", normalizeProductCategoryOption(product.category));
+            setValue("live_link", product.live_link || "");
+            setValue("github_link", product.github_link || "");
             setExistingMedia(normalizeMedia(product));
         } else {
             reset();
@@ -162,6 +164,8 @@ const ProductForm = ({ open, onOpenChange, product, onSuccess }: ProductFormProp
                 image_url: finalMedia[0]?.url || null,
                 media: finalMedia,
                 category: data.category,
+                live_link: String(data.live_link ?? "").trim() || null,
+                github_link: String(data.github_link ?? "").trim() || null,
                 status: product?.status || "live",
             };
 
@@ -298,6 +302,17 @@ const ProductForm = ({ open, onOpenChange, product, onSuccess }: ProductFormProp
                     <div className="grid gap-2">
                         <Label htmlFor="description">Description</Label>
                         <Textarea id="description" {...register("description")} placeholder="Product Description" rows={3} />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="live_link">Live Link</Label>
+                            <Input id="live_link" {...register("live_link")} placeholder="https://..." />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="github_link">GitHub Link</Label>
+                            <Input id="github_link" {...register("github_link")} placeholder="https://github.com/..." />
+                        </div>
                     </div>
 
                     <DialogFooter>

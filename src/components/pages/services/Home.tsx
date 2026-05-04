@@ -1,6 +1,7 @@
 import PageTransition from "@/components/shared/PageTransition";
 import Navigation from "@/components/Navigation";
 import HeroSection from "@/components/HeroSection";
+import HomeMetricsSection from "@/components/HomeMetricsSection";
 import Footer from "@/components/Footer";
 import DeferredSection from "@/components/shared/DeferredSection";
 import PremiumBackground from "@/components/shared/PremiumBackground";
@@ -14,8 +15,10 @@ import {
 import { warmLiveData } from "@/hooks/useLiveData";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
+import { motion } from "framer-motion";
 
 const ServicesSection = lazy(() => import("@/components/ServicesSection"));
+const TrustedLogosSection = lazy(() => import("@/components/TrustedLogosSection"));
 const PortfolioSection = lazy(() => import("@/components/PortfolioSection"));
 const GlobalReachSection = lazy(() => import("@/components/GlobalReachSection"));
 const TestimonialSlider = lazy(() => import("@/components/shared/TestimonialSlider"));
@@ -30,14 +33,14 @@ const Home = () => {
   const [shouldLoadTestimonials, setShouldLoadTestimonials] = useState(false);
   const [homeSettings, setHomeSettings] = useState(DEFAULT_HOME_PAGE_SETTINGS);
 
+  /* ── prefetch (unchanged) ── */
   useEffect(() => {
     const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-    if (!isDesktop || connection?.saveData) {
-      return;
-    }
+    if (!isDesktop || connection?.saveData) return;
 
     const prefetchHomeSections = () => {
+      void import("@/components/TrustedLogosSection");
       void import("@/components/ServicesSection");
       void import("@/components/PortfolioSection");
       void import("@/components/GlobalReachSection");
@@ -57,41 +60,33 @@ const Home = () => {
 
     return () => {
       window.clearTimeout(timerId);
-      if (typeof idleId === "number") {
-        idleWindow.cancelIdleCallback?.(idleId);
-      }
+      if (typeof idleId === "number") idleWindow.cancelIdleCallback?.(idleId);
     };
   }, []);
 
+  /* ── settings fetch (unchanged) ── */
   useEffect(() => {
     let mounted = true;
     const controller = new AbortController();
 
     const loadSettings = async () => {
       try {
-        const res = await fetch(`${getApiBaseUrl()}/home-page-settings`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) {
-          throw new Error("Failed to load home page settings");
-        }
+        const res = await fetch(`${getApiBaseUrl()}/home-page-settings`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Failed to load");
         const payload = await res.json();
         if (!mounted) return;
         setHomeSettings(normalizeHomePageSettings(payload));
-      } catch (error) {
+      } catch {
         if (!mounted || controller.signal.aborted) return;
         setHomeSettings(DEFAULT_HOME_PAGE_SETTINGS);
       }
     };
 
     void loadSettings();
-
-    return () => {
-      mounted = false;
-      controller.abort();
-    };
+    return () => { mounted = false; controller.abort(); };
   }, []);
 
+  /* ── testimonials (unchanged) ── */
   const { data: testimonials = [] } = useQuery({
     queryKey: HOME_REVIEWS_QUERY_KEY,
     queryFn: fetchPublishedReviews,
@@ -102,23 +97,37 @@ const Home = () => {
   });
 
   useEffect(() => {
-    if (!shouldLoadTestimonials) {
-      return;
-    }
-
+    if (!shouldLoadTestimonials) return;
     const unsubscribe = subscribeToPublishedReviews(() => {
       void queryClient.invalidateQueries({ queryKey: HOME_REVIEWS_QUERY_KEY });
     });
-
     return unsubscribe;
   }, [queryClient, shouldLoadTestimonials]);
 
+  /* ── section order (unchanged) ── */
   const orderedSections = homeSettings.section_order.filter(
-    (id) => homeSettings.sections[id].enabled
+    (id) => homeSettings.sections[id].enabled,
   );
+  const visibleSections = orderedSections.filter((id) => id !== "key-metrics");
 
+  /* ── section nodes (unchanged) ── */
   const sectionNodes: Record<HomeSectionId, ReactNode> = {
-    hero: <HeroSection data={homeSettings.sections.hero} />,
+    hero: (
+      <HeroSection
+        data={homeSettings.sections.hero}
+        metricsData={homeSettings.sections["key-metrics"]}
+      />
+    ),
+    "key-metrics": (
+      <HomeMetricsSection data={homeSettings.sections["key-metrics"]} />
+    ),
+    "trusted-logos": (
+      <DeferredSection minHeight={220}>
+        <Suspense fallback={<div className="min-h-[220px]" />}>
+          <TrustedLogosSection data={homeSettings.sections["trusted-logos"]} />
+        </Suspense>
+      </DeferredSection>
+    ),
     services: (
       <DeferredSection minHeight={860}>
         <Suspense fallback={<div className="min-h-[860px]" />}>
@@ -184,14 +193,45 @@ const Home = () => {
     ),
   };
 
+  /* ═══════════════════════════════════════════════════════════
+     RENDER — hero immediate, rest scroll-triggered
+     ═══════════════════════════════════════════════════════════ */
+
   return (
     <PageTransition>
       <PremiumBackground>
         <Navigation />
         <main className="relative z-10">
-          {orderedSections.map((sectionId) => (
-            <Fragment key={sectionId}>{sectionNodes[sectionId]}</Fragment>
-          ))}
+          {visibleSections.map((sectionId) =>
+            sectionId === "hero" ? (
+              /* ── HERO: immediate animation, zero delay ── */
+              <motion.div
+                key={sectionId}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.55,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <Fragment>{sectionNodes[sectionId]}</Fragment>
+              </motion.div>
+            ) : (
+              /* ── OTHER SECTIONS: animate only when scrolled into view ── */
+              <motion.div
+                key={sectionId}
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{
+                  duration: 0.55,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <Fragment>{sectionNodes[sectionId]}</Fragment>
+              </motion.div>
+            ),
+          )}
         </main>
         <Footer />
       </PremiumBackground>

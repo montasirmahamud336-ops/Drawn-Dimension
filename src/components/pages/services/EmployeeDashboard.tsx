@@ -1,7 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { BarChart3, Camera, CheckCircle2, Clock3, ListTodo, Loader2, LogOut, Paperclip, Save, Send, Sparkles, Wallet } from "lucide-react";
+import { BarChart3, Camera, CheckCircle2, ListTodo, Loader2, LogOut, Paperclip, Save, Send, Sparkles, Wallet } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -11,9 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EMPLOYEE_DASHBOARD_PATH, setPreferredDashboardPath } from "@/components/shared/dashboardPath";
 
@@ -44,6 +44,9 @@ interface EmployeeAssignment {
   employee_submission_file_url: string | null;
   employee_submission_at: string | null;
   created_at?: string;
+  updated_at?: string;
+  completed_at?: string | null;
+  paid_at?: string | null;
 }
 
 interface EmployeeChatMessage {
@@ -63,11 +66,53 @@ type SubmissionDraft = {
   fileUrl: string;
 };
 
-type AssignmentView = "all" | "active" | "submitted" | "completed";
+type AssignmentView = "all" | "paid" | "unpaid" | "completed";
 
 const defaultSubmissionDraft: SubmissionDraft = {
   note: "",
   fileUrl: "",
+};
+
+const assignmentViewOptions: Array<{ key: AssignmentView; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "paid", label: "Paid" },
+  { key: "unpaid", label: "Unpaid" },
+  { key: "completed", label: "Completed" },
+];
+
+const assignmentViewDetails: Record<
+  AssignmentView,
+  {
+    eyebrow: string;
+    title: string;
+    description: string;
+    emptyTitle: string;
+  }
+> = {
+  all: {
+    eyebrow: "Assignment Slide",
+    title: "All Active Work",
+    description: "Browse every non-draft assignment in one focused panel without stretching the dashboard page.",
+    emptyTitle: "No assignments yet.",
+  },
+  paid: {
+    eyebrow: "Payment Complete",
+    title: "Paid Assignment List",
+    description: "Every work item where payment status is already marked paid.",
+    emptyTitle: "No paid assignments found yet.",
+  },
+  unpaid: {
+    eyebrow: "Pending Settlement",
+    title: "Unpaid Assignment List",
+    description: "All assignments that still need payment follow-up, collected in one clean side panel.",
+    emptyTitle: "No unpaid assignments right now.",
+  },
+  completed: {
+    eyebrow: "Completed Work",
+    title: "Completed Assignment List",
+    description: "Works already marked done in CMS, including ones that may still be awaiting payment.",
+    emptyTitle: "No completed assignments yet.",
+  },
 };
 
 const parseApiError = async (response: Response, fallback: string) => {
@@ -127,18 +172,14 @@ const formatPaymentAmount = (value: unknown) => {
   return `BDT ${formatted}`;
 };
 
-const buildSafeFileName = (value: string) =>
-  value
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-zA-Z0-9._-]/g, "")
-    .slice(0, 120) || "file";
+const getMonthlyIncomeReferenceDate = (assignment: EmployeeAssignment) => {
+  const rawValue = assignment.created_at ?? null;
 
-const truncateText = (value: string | null | undefined, max = 140) => {
-  const text = String(value ?? "").trim();
-  if (!text) return "-";
-  if (text.length <= max) return text;
-  return `${text.slice(0, max - 1)}...`;
+  if (!rawValue) return null;
+
+  const parsedDate = new Date(rawValue);
+  if (Number.isNaN(parsedDate.getTime())) return null;
+  return parsedDate;
 };
 
 const EmployeeDashboard = () => {
@@ -167,6 +208,7 @@ const EmployeeDashboard = () => {
   const [submissionDrafts, setSubmissionDrafts] = useState<Record<string, SubmissionDraft>>({});
   const [submittingAssignmentId, setSubmittingAssignmentId] = useState<string | null>(null);
   const [assignmentView, setAssignmentView] = useState<AssignmentView>("all");
+  const [assignmentPanelOpen, setAssignmentPanelOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<EmployeeChatMessage[]>([]);
   const [loadingChat, setLoadingChat] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
@@ -180,7 +222,6 @@ const EmployeeDashboard = () => {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const chatAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const completedFocusRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isAdminPreview) return;
@@ -351,14 +392,6 @@ const EmployeeDashboard = () => {
     return () => window.cancelAnimationFrame(id);
   }, [showInboxFullView]);
 
-  useEffect(() => {
-    if (assignmentView !== "completed") return;
-    const id = window.requestAnimationFrame(() => {
-      completedFocusRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [assignmentView]);
-
   const activeAssignments = useMemo(
     () => assignments.filter((item) => item.status !== "done" && item.status !== "draft"),
     [assignments]
@@ -380,21 +413,22 @@ const EmployeeDashboard = () => {
     [assignments]
   );
 
+  const paidAssignments = useMemo(
+    () => nonDraftAssignments.filter((item) => item.payment_status === "paid"),
+    [nonDraftAssignments]
+  );
+
+  const unpaidAssignments = useMemo(
+    () => nonDraftAssignments.filter((item) => item.payment_status === "unpaid"),
+    [nonDraftAssignments]
+  );
+
   const assignmentsInView = useMemo(() => {
-    if (assignmentView === "active") return activeAssignments;
-    if (assignmentView === "submitted") return submittedAssignments;
+    if (assignmentView === "paid") return paidAssignments;
+    if (assignmentView === "unpaid") return unpaidAssignments;
     if (assignmentView === "completed") return doneAssignments;
     return nonDraftAssignments;
-  }, [assignmentView, activeAssignments, submittedAssignments, doneAssignments, nonDraftAssignments]);
-
-  const latestCompletedAssignment = useMemo(() => {
-    if (doneAssignments.length === 0) return null;
-    return [...doneAssignments].sort((a, b) => {
-      const aTime = new Date(a.employee_submission_at ?? a.created_at ?? 0).getTime();
-      const bTime = new Date(b.employee_submission_at ?? b.created_at ?? 0).getTime();
-      return bTime - aTime;
-    })[0];
-  }, [doneAssignments]);
+  }, [assignmentView, doneAssignments, nonDraftAssignments, paidAssignments, unpaidAssignments]);
 
   const totalTrackedAssignments = nonDraftAssignments.length;
 
@@ -418,6 +452,47 @@ const EmployeeDashboard = () => {
     return total;
   }, [assignments]);
 
+  const { totalIncomeAmount, monthlyIncomeAmount, monthlyIncomeCount } = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    let totalIncome = 0;
+    let monthlyIncome = 0;
+    let monthlyCount = 0;
+
+    doneAssignments.forEach((assignment) => {
+      const amount = parsePaymentAmount(assignment.payment_amount);
+      if (amount === null) return;
+
+      totalIncome += amount;
+
+      const incomeDate = getMonthlyIncomeReferenceDate(assignment);
+      if (!incomeDate) return;
+
+      if (incomeDate >= monthStart && incomeDate < nextMonthStart) {
+        monthlyIncome += amount;
+        monthlyCount += 1;
+      }
+    });
+
+    return {
+      totalIncomeAmount: totalIncome,
+      monthlyIncomeAmount: monthlyIncome,
+      monthlyIncomeCount: monthlyCount,
+    };
+  }, [doneAssignments]);
+
+  const incomeMonthLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-BD", {
+        month: "long",
+        year: "numeric",
+      }).format(new Date()),
+    []
+  );
+
+  const assignmentPreview = useMemo(() => activeAssignments.slice(0, 3), [activeAssignments]);
+
   const hasProfileChanges = useMemo(() => {
     if (!employee) return false;
     const currentMobile = profileDraft.mobile.trim();
@@ -432,7 +507,7 @@ const EmployeeDashboard = () => {
     const file = event.target.files?.[0];
     event.target.value = "";
 
-    if (!file || !employee) return;
+    if (!file || !employee || !session?.access_token) return;
 
     if (!file.type.startsWith("image/")) {
       toast({
@@ -455,20 +530,27 @@ const EmployeeDashboard = () => {
 
     setUploadingAvatar(true);
     try {
-      const fileExt = file.name.split(".").pop() || "jpg";
-      const filePath = `employees/${employee.id}/profile-${Date.now()}.${fileExt}`;
+      const apiBase = getApiBaseUrl();
+      const formData = new FormData();
+      formData.append("file", file);
 
-      const { error: uploadError } = await supabase.storage
-        .from("cms-uploads")
-        .upload(filePath, file, { upsert: true });
+      const response = await fetch(`${apiBase}/employee/profile/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
 
-      if (uploadError) {
-        throw new Error(uploadError.message);
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Failed to upload profile image"));
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("cms-uploads").getPublicUrl(filePath);
+      const payload = await response.json();
+      const publicUrl = String(payload?.publicUrl ?? "").trim();
+      if (!publicUrl) {
+        throw new Error("Missing uploaded profile image URL");
+      }
 
       setProfileDraft((prev) => ({ ...prev, profile_image_url: publicUrl }));
       toast({
@@ -543,6 +625,18 @@ const EmployeeDashboard = () => {
     }));
   };
 
+  const openAssignmentPanel = useCallback((view: AssignmentView) => {
+    setAssignmentView(view);
+    setAssignmentPanelOpen(true);
+  }, []);
+
+  const handleAssignmentPanelChange = useCallback((open: boolean) => {
+    setAssignmentPanelOpen(open);
+    if (!open) {
+      setAssignmentView("all");
+    }
+  }, []);
+
   const handleSubmitAssignment = async (assignmentId: string) => {
     if (isAdminPreview) return;
     if (!session?.access_token) return;
@@ -616,7 +710,7 @@ const EmployeeDashboard = () => {
     const file = event.target.files?.[0];
     event.target.value = "";
 
-    if (!file || !employee) return;
+    if (!file || !employee || !session?.access_token) return;
 
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
@@ -630,19 +724,27 @@ const EmployeeDashboard = () => {
 
     setUploadingChatAttachment(true);
     try {
-      const safeName = buildSafeFileName(file.name);
-      const filePath = `employees/${employee.id}/chat/${Date.now()}-${safeName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("cms-uploads")
-        .upload(filePath, file, { upsert: true });
+      const apiBase = getApiBaseUrl();
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if (uploadError) {
-        throw new Error(uploadError.message);
+      const response = await fetch(`${apiBase}/employee/chat/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Could not upload file"));
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("cms-uploads").getPublicUrl(filePath);
+      const payload = await response.json();
+      const publicUrl = String(payload?.publicUrl ?? "").trim();
+      if (!publicUrl) {
+        throw new Error("Missing uploaded attachment URL");
+      }
 
       setChatAttachment({
         url: publicUrl,
@@ -721,6 +823,180 @@ const EmployeeDashboard = () => {
     navigate("/");
   };
 
+const renderAssignmentList = () => {
+  if (loading) {
+    return (
+      <div className="py-12 text-center">
+        <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+        <p className="mt-2 text-sm text-muted-foreground">Loading assignments...</p>
+      </div>
+    );
+  }
+
+  if (!employee) {
+    return (
+      <div className="py-12 text-center text-sm text-muted-foreground">
+        No employee profile mapped yet. Contact admin.
+      </div>
+    );
+  }
+
+  if (assignmentsInView.length === 0) {
+    return (
+      <div className="py-10">
+        <div className="mx-auto max-w-md rounded-2xl border border-dashed border-border/50 bg-card/30 px-6 py-10 text-center">
+          <ListTodo className="mx-auto h-5 w-5 text-muted-foreground mb-3" />
+          <p className="font-medium">{assignmentViewDetails[assignmentView].emptyTitle}</p>
+          <p className="text-xs text-muted-foreground mt-1">Try another filter later.</p>
+          {assignmentView !== "all" && (
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => setAssignmentView("all")}>
+              View All
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {assignmentsInView.map((assignment) => {
+        const isDone = assignment.status === "done";
+        const isSubmitted = assignment.employee_submission_status === "submitted";
+
+        const accentColor = isDone
+          ? "border-l-green-400"
+          : isSubmitted
+            ? "border-l-violet-400"
+            : "border-l-blue-400";
+
+        const badgeStyle = isDone
+          ? "bg-green-500/10 text-green-400 border-green-500/20"
+          : isSubmitted
+            ? "bg-violet-500/10 text-violet-400 border-violet-500/20"
+            : "bg-blue-500/10 text-blue-400 border-blue-500/20";
+
+        return (
+          <motion.div
+            key={assignment.id}
+            whileHover={{ y: -1, scale: 1.005 }}
+            transition={{ duration: 0.15 }}
+            className={`group relative overflow-hidden rounded-xl border border-border/50 ${accentColor} bg-card/60 backdrop-blur-sm p-3.5 shadow-sm hover:shadow-md transition-shadow`}
+          >
+            {/* Main row */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-sm font-semibold truncate">{assignment.work_title}</h3>
+                  <Badge className={`text-[10px] px-1.5 py-0 leading-tight border ${badgeStyle}`}>
+                    {isDone ? "Done" : isSubmitted ? "Submitted" : "Assigned"}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                  <span>Duration: <span className="font-medium text-foreground/80">{assignment.work_duration}</span></span>
+                  <span className="flex items-center gap-1">
+                    Payment: <span className="font-semibold text-foreground/90">{formatPaymentAmount(assignment.payment_amount)}</span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] leading-none px-1 py-0 border ${
+                        assignment.payment_status === "paid"
+                          ? "border-emerald-500/30 text-emerald-400"
+                          : "border-amber-500/30 text-amber-400"
+                      }`}
+                    >
+                      {assignment.payment_status}
+                    </Badge>
+                  </span>
+                </div>
+
+                {assignment.work_details && (
+                  <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-2">{assignment.work_details}</p>
+                )}
+              </div>
+
+              {/* Time & countdown */}
+              <div className="flex-shrink-0 text-right">
+                <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">Remaining</span>
+                <span
+                  className={`text-sm font-bold tabular-nums ${
+                    isDone
+                      ? "text-green-400"
+                      : formatTimeRemaining(assignment.countdown_end_at, assignment.status, nowTick) === "Expired"
+                        ? "text-destructive"
+                        : "text-primary"
+                  }`}
+                >
+                  {formatTimeRemaining(assignment.countdown_end_at, assignment.status, nowTick)}
+                </span>
+                {assignment.revision_due_at && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Rev: {new Date(assignment.revision_due_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Submission info if already submitted */}
+            {(assignment.employee_submission_note || assignment.employee_submission_file_url) && (
+              <div className="mt-3 rounded-lg border border-border/40 bg-background/40 p-2.5 text-xs space-y-1">
+                {assignment.employee_submission_note && (
+                  <p className="text-muted-foreground line-clamp-2">{assignment.employee_submission_note}</p>
+                )}
+                {assignment.employee_submission_file_url && (
+                  <a href={assignment.employee_submission_file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline break-all">
+                    <Paperclip className="h-3 w-3" /> Link
+                  </a>
+                )}
+                {assignment.employee_submission_at && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Submitted: {new Date(assignment.employee_submission_at).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Submission form for active assignments */}
+            {assignment.status !== "done" && !isAdminPreview && (
+              <div className="mt-3 pt-3 border-t border-border/40">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                  <div className="space-y-2">
+                    <Textarea
+                      rows={2}
+                      value={submissionDrafts[assignment.id]?.note ?? ""}
+                      onChange={(e) => setSubmissionDraftValue(assignment.id, { note: e.target.value })}
+                      placeholder="Add a short note..."
+                      className="text-xs"
+                    />
+                    <Input
+                      value={submissionDrafts[assignment.id]?.fileUrl ?? ""}
+                      onChange={(e) => setSubmissionDraftValue(assignment.id, { fileUrl: e.target.value })}
+                      placeholder="Delivery link (optional)"
+                      className="text-xs"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-9 self-end"
+                    onClick={() => handleSubmitAssignment(assignment.id)}
+                    disabled={submittingAssignmentId === assignment.id}
+                  >
+                    {submittingAssignmentId === assignment.id ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Send className="w-3.5 h-3.5 mr-1" />
+                    )}
+                    Submit
+                  </Button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+};
   if (authLoading && !isAdminPreview) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -862,30 +1138,30 @@ const EmployeeDashboard = () => {
               <div className="lg:col-span-2 grid md:grid-cols-3 gap-4">
                 {([
                   {
-                    key: "active" as const,
-                    label: "Active",
-                    count: activeAssignments.length,
-                    note: "Running assignments",
-                    icon: Clock3,
-                    iconClass: "bg-blue-500/20 text-blue-400",
-                    progressClass: "bg-blue-400/90",
-                    selectedClass: "border-blue-400/40 bg-blue-500/10 shadow-[0_18px_60px_-40px_rgba(59,130,246,0.85)]",
+                    key: "paid" as const,
+                    label: "Paid",
+                    count: paidAssignments.length,
+                    note: "Payment completed works",
+                    icon: Wallet,
+                    iconClass: "bg-emerald-500/20 text-emerald-400",
+                    progressClass: "bg-emerald-400/90",
+                    selectedClass: "border-emerald-400/40 bg-emerald-500/10 shadow-[0_18px_60px_-40px_rgba(16,185,129,0.85)]",
                   },
                   {
-                    key: "submitted" as const,
-                    label: "Submitted",
-                    count: submittedAssignments.length,
-                    note: "Awaiting completion",
+                    key: "unpaid" as const,
+                    label: "Unpaid",
+                    count: unpaidAssignments.length,
+                    note: "Pending payment works",
                     icon: Send,
-                    iconClass: "bg-violet-500/20 text-violet-400",
-                    progressClass: "bg-violet-400/90",
-                    selectedClass: "border-violet-400/40 bg-violet-500/10 shadow-[0_18px_60px_-40px_rgba(139,92,246,0.85)]",
+                    iconClass: "bg-amber-500/20 text-amber-400",
+                    progressClass: "bg-amber-400/90",
+                    selectedClass: "border-amber-400/40 bg-amber-500/10 shadow-[0_18px_60px_-40px_rgba(245,158,11,0.85)]",
                   },
                   {
                     key: "completed" as const,
                     label: "Completed",
                     count: doneAssignments.length,
-                    note: "Delivered successfully",
+                    note: "All CMS marked done works",
                     icon: CheckCircle2,
                     iconClass: "bg-green-500/20 text-green-400",
                     progressClass: "bg-green-400/90",
@@ -894,16 +1170,13 @@ const EmployeeDashboard = () => {
                 ]).map((metric) => {
                   const Icon = metric.icon;
                   const isSelected = assignmentView === metric.key;
-                  const denominator =
-                    metric.key === "submitted"
-                      ? Math.max(activeAssignments.length, 1)
-                      : Math.max(totalTrackedAssignments, 1);
+                  const denominator = Math.max(totalTrackedAssignments, 1);
                   const progress = metric.count === 0 ? 0 : Math.max(14, Math.round((metric.count / denominator) * 100));
                   return (
                     <button
                       key={metric.key}
                       type="button"
-                      onClick={() => setAssignmentView(metric.key)}
+                      onClick={() => openAssignmentPanel(metric.key)}
                       className="text-left"
                     >
                       <Card
@@ -921,7 +1194,7 @@ const EmployeeDashboard = () => {
                           <p className="mt-2 text-sm text-muted-foreground">{metric.label}</p>
                           <p className="mt-1 text-xs text-muted-foreground/80">{metric.note}</p>
                           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">
-                            {isSelected ? "Focused" : "Click to focus"}
+                            {isSelected ? "Slide open" : "Open slide"}
                           </p>
                           <div className="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
                             <div
@@ -941,7 +1214,7 @@ const EmployeeDashboard = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="grid md:grid-cols-3 gap-3"
+              className="grid gap-3 md:grid-cols-2 xl:grid-cols-5"
             >
               <Card className="border border-emerald-400/25 bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent">
                 <CardContent className="p-4">
@@ -981,82 +1254,228 @@ const EmployeeDashboard = () => {
                   </p>
                 </CardContent>
               </Card>
+
+              <Card className="border border-sky-400/25 bg-gradient-to-br from-sky-500/20 via-sky-500/10 to-transparent">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-[0.14em] text-sky-200/90">Total Income</p>
+                    <Wallet className="w-4 h-4 text-sky-300" />
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold">{formatPaymentAmount(totalIncomeAmount)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {doneAssignments.length} completed work{doneAssignments.length === 1 ? "" : "s"} counted lifetime
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-rose-400/25 bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-transparent">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-[0.14em] text-rose-200/90">Monthly Income</p>
+                    <Sparkles className="w-4 h-4 text-rose-300" />
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold">{formatPaymentAmount(monthlyIncomeAmount)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {monthlyIncomeCount} completed work{monthlyIncomeCount === 1 ? "" : "s"} in {incomeMonthLabel}
+                  </p>
+                </CardContent>
+              </Card>
             </motion.section>
-
-            {assignmentView === "completed" && (
-              <motion.section
-                ref={completedFocusRef}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-green-400/30 bg-gradient-to-r from-green-500/15 via-emerald-500/10 to-green-500/5 p-4 md:p-5"
-              >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-green-300/90">Completed Focus</p>
-                    <h3 className="text-lg font-semibold mt-1">Latest completed work details</h3>
-                  </div>
-                  <Badge className="bg-green-500/20 text-green-200 border border-green-300/30 hover:bg-green-500/25">
-                    {doneAssignments.length} Completed
-                  </Badge>
-                </div>
-
-                {latestCompletedAssignment ? (
-                  <div className="mt-4 rounded-xl border border-green-300/30 bg-black/20 p-4">
-                    <div className="grid gap-3 md:grid-cols-[1.2fr_2fr_auto_auto] md:items-start">
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.16em] text-green-200/70">Work</p>
-                        <p className="font-semibold mt-1">{latestCompletedAssignment.work_title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Duration: {latestCompletedAssignment.work_duration}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.16em] text-green-200/70">Details</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {truncateText(latestCompletedAssignment.work_details, 220)}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.16em] text-green-200/70">Payment</p>
-                        <p className="text-sm font-medium mt-1">
-                          {formatPaymentAmount(latestCompletedAssignment.payment_amount)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {latestCompletedAssignment.payment_status}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.16em] text-green-200/70">Submitted</p>
-                        <p className="text-sm mt-1">
-                          {latestCompletedAssignment.employee_submission_at
-                            ? new Date(latestCompletedAssignment.employee_submission_at).toLocaleString()
-                            : "-"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-4">No completed work found yet.</p>
-                )}
-              </motion.section>
-            )}
 
             <Card className="glass-card border-border/60 overflow-hidden">
               <CardHeader className="border-b border-border/40 bg-gradient-to-r from-card/70 via-card/40 to-primary/5">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div>
-                    <CardTitle>Assigned Work Details</CardTitle>
+                    <CardTitle>Assignment Center</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Paid, unpaid, completed, or the full work list now opens in a smooth slide-over panel so the dashboard stays cleaner and easier to scan.
+                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80 mt-2">
+                      {totalTrackedAssignments} tracked assignment{totalTrackedAssignments === 1 ? "" : "s"} ready for quick slide view
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {assignmentViewOptions.map((view) => {
+                      const isActiveView = assignmentPanelOpen && assignmentView === view.key;
+                      return (
+                        <button
+                          key={view.key}
+                          type="button"
+                          onClick={() => openAssignmentPanel(view.key)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            isActiveView
+                              ? "border-primary/60 bg-primary/20 text-primary"
+                              : "border-border/60 bg-background/40 text-muted-foreground hover:border-primary/35 hover:text-foreground"
+                          }`}
+                        >
+                          {view.key === "all" ? "Open Full List" : `Open ${view.label}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {loading ? (
+                  <div className="py-10 text-center text-muted-foreground">Loading assignment launcher...</div>
+                ) : !employee ? (
+                  <div className="py-10 text-center text-muted-foreground">
+                    Your login email is not mapped to any employee yet. Please contact admin.
+                  </div>
+                ) : (
+                  <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                    <div className="rounded-[28px] border border-primary/20 bg-gradient-to-br from-primary/10 via-white/[0.04] to-transparent p-5">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-primary/80">Focused View</p>
+                      <h3 className="mt-3 text-2xl font-semibold tracking-tight">Open assignments in a smoother side panel</h3>
+                      <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+                        Click any bucket and review the full list in a clean slide. The page stays light, while every submission field and work detail stays available inside the panel.
+                      </p>
+
+                      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-200/90">Paid Works</p>
+                          <p className="mt-2 text-2xl font-semibold">{paidAssignments.length}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Completed payments, one tap away</p>
+                        </div>
+                        <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-amber-200/90">Unpaid Works</p>
+                          <p className="mt-2 text-2xl font-semibold">{unpaidAssignments.length}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Pending settlement grouped together</p>
+                        </div>
+                        <div className="rounded-2xl border border-green-400/25 bg-green-500/10 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-green-200/90">Completed</p>
+                          <p className="mt-2 text-2xl font-semibold">{doneAssignments.length}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Finished works in their own focused view</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {assignmentViewOptions.map((view) => (
+                          <Button
+                            key={view.key}
+                            type="button"
+                            variant={view.key === "all" ? "default" : "outline"}
+                            className={view.key === "all" ? "" : "border-border/60 bg-background/30"}
+                            onClick={() => openAssignmentPanel(view.key)}
+                          >
+                            {view.key === "all" ? "Open Full Slide" : `Show ${view.label}`}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[28px] border border-border/60 bg-background/35 p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">Quick Preview</p>
+                          <h3 className="mt-2 text-lg font-semibold">Live assigned works</h3>
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => openAssignmentPanel("all")}>
+                          View Slide
+                        </Button>
+                      </div>
+
+                      {assignmentPreview.length === 0 ? (
+                        <div className="mt-6 rounded-2xl border border-dashed border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
+                          No live assigned work right now.
+                        </div>
+                      ) : (
+                        <div className="mt-5 space-y-3">
+                          {assignmentPreview.map((assignment) => (
+                            <button
+                              key={assignment.id}
+                              type="button"
+                              onClick={() => openAssignmentPanel("all")}
+                              className="w-full rounded-2xl border border-border/60 bg-card/60 p-4 text-left transition-all duration-300 hover:border-primary/35 hover:bg-card/80"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-medium">{assignment.work_title}</p>
+                                  <p className="mt-1 text-sm text-muted-foreground">Duration: {assignment.work_duration}</p>
+                                </div>
+                                <Badge
+                                  className={assignment.employee_submission_status === "submitted"
+                                    ? "bg-violet-500/15 text-violet-500"
+                                    : "bg-blue-500/15 text-blue-500"
+                                  }
+                                >
+                                  {assignment.employee_submission_status === "submitted" ? "submitted" : "assigned"}
+                                </Badge>
+                              </div>
+                              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                <span>{formatPaymentAmount(assignment.payment_amount)}</span>
+                                <span>{formatTimeRemaining(assignment.countdown_end_at, assignment.status, nowTick)}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* REPLACED Sheet with Dialog for popup modal */}
+<Dialog open={assignmentPanelOpen} onOpenChange={handleAssignmentPanelChange}>
+  <DialogContent
+    className="w-full max-w-none border border-border/60 bg-background/95 p-0 text-foreground backdrop-blur-2xl sm:max-w-2xl lg:max-w-4xl max-h-[90vh] overflow-y-auto"
+  >
+    <DialogHeader className="gap-4 border-b border-border/50 bg-gradient-to-r from-card/90 via-card/70 to-primary/10 px-6 py-6 pr-14">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-2">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-primary/80">
+            {assignmentViewDetails[assignmentView].eyebrow}
+          </p>
+          <DialogTitle className="text-2xl tracking-tight">{assignmentViewDetails[assignmentView].title}</DialogTitle>
+          <DialogDescription className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            {assignmentViewDetails[assignmentView].description}
+          </DialogDescription>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
+            Showing {assignmentsInView.length} assignment{assignmentsInView.length === 1 ? "" : "s"}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {assignmentViewOptions.map((view) => {
+            const isActiveView = assignmentView === view.key;
+            return (
+              <button
+                key={view.key}
+                type="button"
+                onClick={() => setAssignmentView(view.key)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  isActiveView
+                    ? "border-primary/60 bg-primary/20 text-primary"
+                    : "border-border/60 bg-background/40 text-muted-foreground hover:border-primary/35 hover:text-foreground"
+                }`}
+              >
+                {view.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </DialogHeader>
+
+    <div className="px-6 py-6">{renderAssignmentList()}</div>
+  </DialogContent>
+</Dialog>
+
+            {false && (
+              <Card className="hidden">
+              <CardHeader className="border-b border-border/40 bg-gradient-to-r from-card/70 via-card/40 to-primary/5">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <CardTitle>Work Details</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
                       {assignmentView === "all"
-                        ? "Overview of all active and completed work."
-                        : assignmentView === "active"
-                          ? "Only in-progress assignments are shown."
-                          : assignmentView === "submitted"
-                            ? "Only submitted assignments awaiting completion are shown."
-                          : "Completed assignments with delivery history are shown."}
+                        ? "Overview of all non-draft work assignments."
+                        : assignmentView === "paid"
+                          ? "Showing every work where payment status is marked paid."
+                          : assignmentView === "unpaid"
+                            ? "Showing every work where payment is still unpaid."
+                            : "Showing every work marked done from CMS, including unpaid ones."}
                     </p>
                     <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80 mt-2">
                       Showing {assignmentsInView.length} assignment{assignmentsInView.length === 1 ? "" : "s"}
@@ -1065,8 +1484,8 @@ const EmployeeDashboard = () => {
                   <div className="flex flex-wrap gap-2">
                     {([
                       { key: "all" as const, label: "All" },
-                      { key: "active" as const, label: "Active" },
-                      { key: "submitted" as const, label: "Submitted" },
+                      { key: "paid" as const, label: "Paid" },
+                      { key: "unpaid" as const, label: "Unpaid" },
                       { key: "completed" as const, label: "Completed" },
                     ]).map((view) => {
                       const isActiveView = assignmentView === view.key;
@@ -1104,10 +1523,10 @@ const EmployeeDashboard = () => {
                       <p className="text-base font-medium">
                         {assignmentView === "completed"
                           ? "No completed assignments yet."
-                          : assignmentView === "submitted"
-                            ? "No submitted assignments yet."
-                            : assignmentView === "active"
-                              ? "No active assignments right now."
+                          : assignmentView === "paid"
+                            ? "No paid assignments found yet."
+                            : assignmentView === "unpaid"
+                              ? "No unpaid assignments right now."
                               : "No assignments yet."}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -1251,7 +1670,8 @@ const EmployeeDashboard = () => {
                   </div>
                 )}
               </CardContent>
-            </Card>
+              </Card>
+            )}
 
             {!isAdminPreview && (
               <Card

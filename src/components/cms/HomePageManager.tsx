@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GripVertical, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Loader2, Plus, RotateCcw, Save, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,18 +7,26 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
+import { ensureCmsBucket, uploadCmsFile } from "@/integrations/supabase/storage";
+import { resolveCmsMediaUrl } from "@/components/shared/mediaUrl";
 import { moveItemById } from "./reorderUtils";
+import { scrollCmsMainToTop } from "./cmsScroll";
 import {
   DEFAULT_HOME_PAGE_SETTINGS,
   HOME_SECTION_LABELS,
   HOME_SECTION_ORDER,
+  MAX_HOME_HERO_SOFTWARE_LOGOS,
+  MAX_HOME_TRUSTED_LOGOS,
   normalizeHomePageSettings,
   type HomeHeroCard,
+  type HomeHeroSoftwareItem,
+  type HomeMetricItem,
   type HomePageSettings,
   type HomeReasonCard,
   type HomeSectionId,
   type HomeServiceCard,
   type HomeStatItem,
+  type HomeTrustedLogoItem,
   type HomeValueCard,
 } from "@/components/shared/homePageSettings";
 
@@ -30,6 +38,114 @@ const textToList = (value: string) =>
     .filter(Boolean);
 
 const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
+const clampMetricFontSize = (value: string, fallback: number, min: number, max: number) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+};
+const MAX_TRUSTED_LOGO_BYTES = 2 * 1024 * 1024;
+const MAX_HERO_SOFTWARE_LOGO_BYTES = 2 * 1024 * 1024;
+const HERO_SOFTWARE_DRAFT_KEY = "cms-home-hero-software-draft";
+const getHeroSoftwareStrip = (settings: HomePageSettings) =>
+  settings.sections.hero.software_strip ?? DEFAULT_HOME_PAGE_SETTINGS.sections.hero.software_strip;
+const getHeroSoftwareItems = (settings: HomePageSettings) => {
+  const strip = getHeroSoftwareStrip(settings);
+  return Array.isArray(strip.items) ? strip.items : [];
+};
+const buildSoftwareNameFromFile = (fileName: string) => {
+  const base = fileName.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+  return base || "Software";
+};
+const scrollHeroSoftwareItemIntoView = (itemId: string) => {
+  if (typeof window === "undefined") return;
+
+  window.setTimeout(() => {
+    const row = window.document.querySelector<HTMLElement>(`[data-hero-software-item="${itemId}"]`);
+    row?.scrollIntoView({ block: "center", behavior: "auto" });
+  }, 60);
+};
+const scrollTrustedLogoIntoView = (itemId: string) => {
+  if (typeof window === "undefined") return;
+
+  window.setTimeout(() => {
+    const row = window.document.querySelector<HTMLElement>(`[data-trusted-logo-item="${itemId}"]`);
+    row?.scrollIntoView({ block: "center", behavior: "auto" });
+  }, 60);
+};
+const readHeroSoftwareDraft = () => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(HERO_SOFTWARE_DRAFT_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    return normalizeHomePageSettings({
+      sections: {
+        hero: {
+          software_strip: parsed,
+        },
+      },
+    }).sections.hero.software_strip;
+  } catch {
+    return null;
+  }
+};
+const persistHeroSoftwareDraft = (settings: HomePageSettings) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.setItem(
+      HERO_SOFTWARE_DRAFT_KEY,
+      JSON.stringify(getHeroSoftwareStrip(settings))
+    );
+  } catch {
+    // ignore session storage issues
+  }
+};
+const clearHeroSoftwareDraft = () => {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.removeItem(HERO_SOFTWARE_DRAFT_KEY);
+  } catch {
+    // ignore session storage issues
+  }
+};
+const mergeHeroSoftwareDraft = (settings: HomePageSettings) => {
+  const draft = readHeroSoftwareDraft();
+  if (!draft) {
+    return { settings, restoredDraft: false };
+  }
+
+  const merged: HomePageSettings = {
+    ...settings,
+    sections: {
+      ...settings.sections,
+      hero: {
+        ...settings.sections.hero,
+        software_strip: draft,
+      },
+    },
+  };
+
+  const restoredDraft =
+    JSON.stringify(draft) !== JSON.stringify(settings.sections.hero.software_strip);
+
+  return { settings: merged, restoredDraft };
+};
+
+const normalizeCmsHomePageSettings = (value: unknown) =>
+  normalizeHomePageSettings(value, { preserveIncompleteHeroCards: true });
+const getIncompleteHeroCardIndexes = (settings: HomePageSettings) =>
+  settings.sections.hero.cards.reduce<number[]>((indexes, card, index) => {
+    if (!card.title.trim()) {
+      indexes.push(index + 1);
+    }
+    return indexes;
+  }, []);
 
 const HomePageManager = () => {
   const apiBase = getApiBaseUrl();
@@ -39,6 +155,8 @@ const HomePageManager = () => {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [draggingId, setDraggingId] = useState<HomeSectionId | null>(null);
+  const [uploadingHeroSoftwareId, setUploadingHeroSoftwareId] = useState<string | null>(null);
+  const [uploadingLogoId, setUploadingLogoId] = useState<string | null>(null);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -48,12 +166,15 @@ const HomePageManager = () => {
         throw new Error("Failed to load home page settings");
       }
       const payload = await res.json();
-      const normalized = normalizeHomePageSettings(payload);
-      setSettings(normalized);
-      setDirty(false);
+      const normalized = normalizeCmsHomePageSettings(payload);
+      const { settings: merged, restoredDraft } = mergeHeroSoftwareDraft(normalized);
+      setSettings(merged);
+      setDirty(restoredDraft);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not load home page settings");
-      setSettings(DEFAULT_HOME_PAGE_SETTINGS);
+      const { settings: merged, restoredDraft } = mergeHeroSoftwareDraft(DEFAULT_HOME_PAGE_SETTINGS);
+      setSettings(merged);
+      setDirty(restoredDraft);
     } finally {
       setLoading(false);
     }
@@ -62,6 +183,10 @@ const HomePageManager = () => {
   useEffect(() => {
     void loadSettings();
   }, []);
+
+  useEffect(() => {
+    scrollCmsMainToTop();
+  }, [activeTab]);
 
   const requireToken = () => {
     const token = getAdminToken();
@@ -73,6 +198,7 @@ const HomePageManager = () => {
   const updateSettings = (updater: (prev: HomePageSettings) => HomePageSettings) => {
     setSettings((prev) => {
       const next = updater(prev);
+      persistHeroSoftwareDraft(next);
       return next;
     });
     setDirty(true);
@@ -115,9 +241,20 @@ const HomePageManager = () => {
   const saveSettings = async () => {
     const token = requireToken();
     if (!token) return;
+
+    const incompleteHeroCardIndexes = getIncompleteHeroCardIndexes(settings);
+    if (incompleteHeroCardIndexes.length > 0) {
+      const cardLabel =
+        incompleteHeroCardIndexes.length === 1
+          ? `Hero card ${incompleteHeroCardIndexes[0]}`
+          : `Hero cards ${incompleteHeroCardIndexes.join(", ")}`;
+      toast.error(`${cardLabel} need a title before saving.`);
+      return;
+    }
+
     setSaving(true);
     try {
-      const payload = normalizeHomePageSettings(settings);
+      const payload = normalizeCmsHomePageSettings(settings);
       const res = await fetch(`${apiBase}/home-page-settings`, {
         method: "PATCH",
         headers: {
@@ -131,8 +268,9 @@ const HomePageManager = () => {
         throw new Error(body?.message || "Failed to save home page settings");
       }
       const data = await res.json();
-      const normalized = normalizeHomePageSettings(data);
+      const normalized = normalizeCmsHomePageSettings(data);
       setSettings(normalized);
+      clearHeroSoftwareDraft();
       setDirty(false);
       toast.success("Home page updated");
     } catch (error) {
@@ -195,6 +333,330 @@ const HomePageManager = () => {
         },
       };
     });
+
+  const updateHeroSoftwareStripEnabled = (enabled: boolean) => {
+    updateSettings((prev) => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        hero: {
+          ...prev.sections.hero,
+          software_strip: {
+            ...getHeroSoftwareStrip(prev),
+            enabled,
+          },
+        },
+      },
+    }));
+  };
+
+  const updateHeroSoftwareItem = (index: number, patch: Partial<HomeHeroSoftwareItem>) => {
+    updateSettings((prev) => {
+      const items = [...getHeroSoftwareItems(prev)];
+      if (!items[index]) {
+        return prev;
+      }
+
+      items[index] = { ...items[index], ...patch };
+      return {
+        ...prev,
+        sections: {
+          ...prev.sections,
+          hero: {
+            ...prev.sections.hero,
+            software_strip: {
+              ...getHeroSoftwareStrip(prev),
+              items,
+            },
+          },
+        },
+      };
+    });
+  };
+
+  const updateKeyMetric = (index: number, patch: Partial<HomeMetricItem>) => {
+    updateSettings((prev) => {
+      const items = [...prev.sections["key-metrics"].items];
+      if (!items[index]) {
+        return prev;
+      }
+
+      items[index] = { ...items[index], ...patch };
+      return {
+        ...prev,
+        sections: {
+          ...prev.sections,
+          "key-metrics": {
+            ...prev.sections["key-metrics"],
+            items,
+          },
+        },
+      };
+    });
+  };
+
+  const addHeroSoftwareItem = () => {
+    if (getHeroSoftwareItems(settings).length >= MAX_HOME_HERO_SOFTWARE_LOGOS) {
+      toast.error(`You can add up to ${MAX_HOME_HERO_SOFTWARE_LOGOS} hero software logos`);
+      return;
+    }
+
+    const nextId = createId("hero-software");
+    updateSettings((prev) => ({
+      ...prev,
+        sections: {
+          ...prev.sections,
+          hero: {
+            ...prev.sections.hero,
+            software_strip: {
+              ...getHeroSoftwareStrip(prev),
+              items: [
+                ...getHeroSoftwareItems(prev),
+                { id: nextId, name: "", image_url: "" },
+              ],
+            },
+        },
+      },
+    }));
+
+    scrollHeroSoftwareItemIntoView(nextId);
+  };
+
+  const removeHeroSoftwareItem = (index: number) =>
+    updateSettings((prev) => ({
+      ...prev,
+        sections: {
+          ...prev.sections,
+          hero: {
+            ...prev.sections.hero,
+            software_strip: {
+              ...getHeroSoftwareStrip(prev),
+              items: getHeroSoftwareItems(prev).filter((_, currentIndex) => currentIndex !== index),
+            },
+          },
+        },
+    }));
+
+  const moveHeroSoftwareItem = (index: number, direction: -1 | 1) =>
+    updateSettings((prev) => {
+      const items = [...getHeroSoftwareItems(prev)];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= items.length) {
+        return prev;
+      }
+
+      const [moved] = items.splice(index, 1);
+      items.splice(targetIndex, 0, moved);
+
+      return {
+        ...prev,
+        sections: {
+          ...prev.sections,
+          hero: {
+            ...prev.sections.hero,
+            software_strip: {
+              ...getHeroSoftwareStrip(prev),
+              items,
+            },
+          },
+        },
+      };
+    });
+
+  const handleHeroSoftwareUpload = async (itemId: string, file: File | null | undefined) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > MAX_HERO_SOFTWARE_LOGO_BYTES) {
+      toast.error("Image size must be 2MB or less");
+      return;
+    }
+
+    const token = requireToken();
+    if (!token) return;
+
+    setUploadingHeroSoftwareId(itemId);
+    try {
+      await ensureCmsBucket();
+      const extension = (file.name.split(".").pop() || "png").replace(/[^a-zA-Z0-9]/g, "") || "png";
+      const uploadPath = `home/hero-software-strip/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+      const publicUrl = await uploadCmsFile(file, uploadPath);
+      const fallbackName = buildSoftwareNameFromFile(file.name);
+
+      updateSettings((prev) => ({
+        ...prev,
+        sections: {
+          ...prev.sections,
+          hero: {
+            ...prev.sections.hero,
+            software_strip: {
+              ...getHeroSoftwareStrip(prev),
+              items: getHeroSoftwareItems(prev).map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      name: item.name.trim() || fallbackName,
+                      image_url: String(publicUrl).trim(),
+                    }
+                  : item
+              ),
+            },
+          },
+        },
+      }));
+
+      scrollHeroSoftwareItemIntoView(itemId);
+      toast.success("Hero software logo uploaded. Click Save Changes to keep it.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload hero software logo");
+    } finally {
+      setUploadingHeroSoftwareId(null);
+    }
+  };
+
+  const updateTrustedLogosField = (
+    key: keyof HomePageSettings["sections"]["trusted-logos"],
+    value: string | boolean
+  ) => {
+    updateSettings((prev) => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        "trusted-logos": {
+          ...prev.sections["trusted-logos"],
+          [key]: value,
+        },
+      },
+    }));
+  };
+
+  const updateTrustedLogo = (index: number, patch: Partial<HomeTrustedLogoItem>) => {
+    updateSettings((prev) => {
+      const logos = [...prev.sections["trusted-logos"].logos];
+      if (!logos[index]) {
+        return prev;
+      }
+      logos[index] = { ...logos[index], ...patch };
+      return {
+        ...prev,
+        sections: {
+          ...prev.sections,
+          "trusted-logos": {
+            ...prev.sections["trusted-logos"],
+            logos,
+          },
+        },
+      };
+    });
+  };
+
+  const addTrustedLogo = () => {
+    if (settings.sections["trusted-logos"].logos.length >= MAX_HOME_TRUSTED_LOGOS) {
+      toast.error(`You can add up to ${MAX_HOME_TRUSTED_LOGOS} trusted logos`);
+      return;
+    }
+
+    const nextId = createId("trusted-logo");
+    updateSettings((prev) => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        "trusted-logos": {
+          ...prev.sections["trusted-logos"],
+          logos: [
+            ...prev.sections["trusted-logos"].logos,
+            { id: nextId, name: "", image_url: "", link: "" },
+          ],
+        },
+      },
+    }));
+
+    scrollTrustedLogoIntoView(nextId);
+  };
+
+  const removeTrustedLogo = (index: number) =>
+    updateSettings((prev) => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        "trusted-logos": {
+          ...prev.sections["trusted-logos"],
+          logos: prev.sections["trusted-logos"].logos.filter((_, currentIndex) => currentIndex !== index),
+        },
+      },
+    }));
+
+  const moveTrustedLogo = (index: number, direction: -1 | 1) =>
+    updateSettings((prev) => {
+      const logos = [...prev.sections["trusted-logos"].logos];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= logos.length) {
+        return prev;
+      }
+
+      const [moved] = logos.splice(index, 1);
+      logos.splice(targetIndex, 0, moved);
+
+      return {
+        ...prev,
+        sections: {
+          ...prev.sections,
+          "trusted-logos": {
+            ...prev.sections["trusted-logos"],
+            logos,
+          },
+        },
+      };
+    });
+
+  const handleTrustedLogoUpload = async (logoId: string, file: File | null | undefined) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > MAX_TRUSTED_LOGO_BYTES) {
+      toast.error("Image size must be 2MB or less");
+      return;
+    }
+
+    const token = requireToken();
+    if (!token) return;
+
+    setUploadingLogoId(logoId);
+    try {
+      await ensureCmsBucket();
+      const extension = (file.name.split(".").pop() || "png").replace(/[^a-zA-Z0-9]/g, "") || "png";
+      const uploadPath = `home/trusted-logos/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+      const publicUrl = await uploadCmsFile(file, uploadPath);
+
+      updateSettings((prev) => ({
+        ...prev,
+        sections: {
+          ...prev.sections,
+          "trusted-logos": {
+            ...prev.sections["trusted-logos"],
+            logos: prev.sections["trusted-logos"].logos.map((logo) =>
+              logo.id === logoId ? { ...logo, image_url: publicUrl } : logo
+            ),
+          },
+        },
+      }));
+
+      scrollTrustedLogoIntoView(logoId);
+      toast.success("Trusted logo uploaded");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload trusted logo");
+    } finally {
+      setUploadingLogoId(null);
+    }
+  };
 
   const updateServicesField = (key: keyof HomePageSettings["sections"]["services"], value: string | boolean) => {
     updateSettings((prev) => ({
@@ -480,8 +942,12 @@ const HomePageManager = () => {
 
   const resetToDefaults = () => {
     setSettings(DEFAULT_HOME_PAGE_SETTINGS);
+    persistHeroSoftwareDraft(DEFAULT_HOME_PAGE_SETTINGS);
     setDirty(true);
   };
+
+  const heroSoftwareStrip = getHeroSoftwareStrip(settings);
+  const heroSoftwareItems = getHeroSoftwareItems(settings);
 
   return (
     <div className="space-y-6">
@@ -652,6 +1118,247 @@ const HomePageManager = () => {
                 </div>
               ))}
             </div>
+
+            <div className="space-y-3 rounded-xl border border-border/60 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-sm font-medium">Hero Software Stripe</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Add up to 5 software logos for the small hero stripe. This stays separate from Trusted Logos.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={heroSoftwareStrip.enabled}
+                      onCheckedChange={updateHeroSoftwareStripEnabled}
+                    />
+                    <span className="text-sm text-muted-foreground">Show stripe</span>
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={addHeroSoftwareItem}
+                    className="gap-1"
+                    disabled={heroSoftwareItems.length >= MAX_HOME_HERO_SOFTWARE_LOGOS}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Logo
+                  </Button>
+                </div>
+              </div>
+
+              {heroSoftwareItems.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/60 p-5 text-sm text-muted-foreground">
+                  No hero software logos added yet.
+                </div>
+              ) : (
+                heroSoftwareItems.map((item, index) => {
+                  const previewUrl = resolveCmsMediaUrl(item.image_url);
+
+                  return (
+                    <div
+                      key={item.id}
+                      data-hero-software-item={item.id}
+                      className="rounded-xl border border-border/60 p-3 space-y-3"
+                    >
+                      <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
+                        <div className="w-full max-w-[220px] rounded-2xl border border-border/60 bg-card/50 px-4 py-4">
+                          <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/70">
+                            {previewUrl ? (
+                              <img
+                                src={previewUrl}
+                                alt={item.name || "Hero software logo"}
+                                className="max-h-16 max-w-[160px] object-contain"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No preview yet</span>
+                            )}
+                          </div>
+                          <p className="mt-3 text-xs font-medium text-foreground">
+                            {item.image_url ? "Logo uploaded" : "No logo uploaded"}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground break-all">
+                            {item.image_url || "Upload a logo image or paste a direct logo URL."}
+                          </p>
+                          {previewUrl ? (
+                            <a
+                              href={previewUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex text-xs font-medium text-primary hover:underline"
+                            >
+                              Open uploaded logo
+                            </a>
+                          ) : null}
+                        </div>
+
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            value={item.name}
+                            onChange={(event) => updateHeroSoftwareItem(index, { name: event.target.value })}
+                            placeholder="Software name"
+                          />
+                          <Input
+                            value={item.image_url}
+                            onChange={(event) => updateHeroSoftwareItem(index, { image_url: event.target.value })}
+                            placeholder="Logo image URL"
+                          />
+
+                          <div className="flex flex-wrap gap-2">
+                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50">
+                              {uploadingHeroSoftwareId === item.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Upload className="w-4 h-4" />
+                              )}
+                              {item.image_url ? "Replace Logo" : "Upload Logo"}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                disabled={uploadingHeroSoftwareId === item.id}
+                                onChange={(event) => {
+                                  event.currentTarget.blur();
+                                  void handleHeroSoftwareUpload(item.id, event.target.files?.[0]);
+                                  event.currentTarget.value = "";
+                                }}
+                              />
+                            </label>
+
+                            {item.image_url ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => updateHeroSoftwareItem(index, { image_url: "" })}
+                              >
+                                Clear Logo
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 xl:flex-col">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            onClick={() => moveHeroSoftwareItem(index, -1)}
+                            disabled={index === 0}
+                            title="Move up"
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            onClick={() => moveHeroSoftwareItem(index, 1)}
+                            disabled={index === heroSoftwareItems.length - 1}
+                            title="Move down"
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            onClick={() => removeHeroSoftwareItem(index)}
+                            title="Remove"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "key-metrics" && (
+          <div className="space-y-4">
+            {settings.sections["key-metrics"].items.map((metric, index) => (
+              <div key={metric.id} className="space-y-3 rounded-xl border border-border/60 p-4">
+                <div className="text-sm font-medium">{metric.label || metric.id}</div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <Input
+                    value={metric.label}
+                    onChange={(event) => updateKeyMetric(index, { label: event.target.value })}
+                    placeholder="Label"
+                  />
+                  <Input
+                    value={metric.value}
+                    onChange={(event) => updateKeyMetric(index, { value: event.target.value })}
+                    placeholder="Value"
+                  />
+                </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Label font size (px)</p>
+                    <Input
+                      type="number"
+                      min={10}
+                      max={32}
+                      value={metric.label_font_size_px}
+                      onChange={(event) =>
+                        updateKeyMetric(index, {
+                          label_font_size_px: clampMetricFontSize(
+                            event.target.value,
+                            metric.label_font_size_px,
+                            10,
+                            32
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Label color</p>
+                    <Input
+                      type="color"
+                      value={metric.label_color}
+                      className="cursor-pointer p-1"
+                      onChange={(event) => updateKeyMetric(index, { label_color: event.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Value font size (px)</p>
+                    <Input
+                      type="number"
+                      min={16}
+                      max={72}
+                      value={metric.value_font_size_px}
+                      onChange={(event) =>
+                        updateKeyMetric(index, {
+                          value_font_size_px: clampMetricFontSize(
+                            event.target.value,
+                            metric.value_font_size_px,
+                            16,
+                            72
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Value color</p>
+                    <Input
+                      type="color"
+                      value={metric.value_color}
+                      className="cursor-pointer p-1"
+                      onChange={(event) => updateKeyMetric(index, { value_color: event.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -767,6 +1474,153 @@ const HomePageManager = () => {
                   placeholder="Secondary button link"
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "trusted-logos" && (
+          <div className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-3">
+              <Input
+                value={settings.sections["trusted-logos"].badge}
+                onChange={(event) => updateTrustedLogosField("badge", event.target.value)}
+                placeholder="Badge"
+              />
+              <Input
+                value={settings.sections["trusted-logos"].title}
+                onChange={(event) => updateTrustedLogosField("title", event.target.value)}
+                placeholder="Title"
+              />
+            </div>
+            <Textarea
+              rows={3}
+              value={settings.sections["trusted-logos"].description}
+              onChange={(event) => updateTrustedLogosField("description", event.target.value)}
+              placeholder="Section description"
+            />
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium">Trusted Logos</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Add brand logos that should appear in the homepage logo slider.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addTrustedLogo}
+                  className="gap-1"
+                  disabled={settings.sections["trusted-logos"].logos.length >= MAX_HOME_TRUSTED_LOGOS}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Logo
+                </Button>
+              </div>
+
+              {settings.sections["trusted-logos"].logos.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/60 p-5 text-sm text-muted-foreground">
+                  No trusted logos added yet.
+                </div>
+              ) : (
+                settings.sections["trusted-logos"].logos.map((logo, index) => {
+                  const previewUrl = resolveCmsMediaUrl(logo.image_url);
+
+                  return (
+                  <div
+                    key={logo.id}
+                    data-trusted-logo-item={logo.id}
+                    className="rounded-xl border border-border/60 p-3 space-y-3"
+                  >
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
+                      <div className="flex h-24 w-full max-w-[220px] items-center justify-center rounded-2xl border border-border/60 bg-card/50 px-4">
+                        {previewUrl ? (
+                          <img
+                            src={previewUrl}
+                            alt={logo.name || `Trusted logo ${index + 1}`}
+                            className="max-h-14 w-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No logo uploaded</span>
+                        )}
+                      </div>
+
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          value={logo.name}
+                          onChange={(event) => updateTrustedLogo(index, { name: event.target.value })}
+                          placeholder="Company name"
+                        />
+                        <Input
+                          value={logo.link}
+                          onChange={(event) => updateTrustedLogo(index, { link: event.target.value })}
+                          placeholder="Website link (optional)"
+                        />
+                        <Input
+                          value={logo.image_url}
+                          onChange={(event) => updateTrustedLogo(index, { image_url: event.target.value })}
+                          placeholder="Logo image URL"
+                        />
+
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50">
+                          {uploadingLogoId === logo.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Upload className="w-4 h-4" />
+                          )}
+                          {logo.image_url ? "Replace Logo" : "Upload Logo"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            disabled={uploadingLogoId === logo.id}
+                            onChange={(event) => {
+                              event.currentTarget.blur();
+                              void handleTrustedLogoUpload(logo.id, event.target.files?.[0]);
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      <div className="flex gap-2 xl:flex-col">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => moveTrustedLogo(index, -1)}
+                          disabled={index === 0}
+                          title="Move up"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => moveTrustedLogo(index, 1)}
+                          disabled={index === settings.sections["trusted-logos"].logos.length - 1}
+                          title="Move down"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => removeTrustedLogo(index)}
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+                })
+              )}
             </div>
           </div>
         )}

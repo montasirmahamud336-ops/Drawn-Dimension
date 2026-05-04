@@ -7,8 +7,9 @@ import PremiumBackground from "@/components/shared/PremiumBackground";
 import PageHero from "@/components/shared/PageHero";
 import { useLiveData } from "@/hooks/useLiveData";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { buildCardImageSources } from "@/components/shared/mediaUrl";
+import { GitHubIcon } from "@/components/shared/socialIcons";
 
 type MediaItem = {
   url: string;
@@ -39,6 +40,11 @@ const formatPrice = (value: unknown) => {
   return `$${num.toFixed(2)}`;
 };
 
+const normalizeOptionalLink = (value: unknown) => {
+  const text = String(value ?? "").trim();
+  return text.length > 0 ? text : "";
+};
+
 const ProductDetails = () => {
   const { id } = useParams();
   const { data: products, loading } = useLiveData("products");
@@ -52,6 +58,8 @@ const ProductDetails = () => {
 
   const media = product ? getMediaList(product) : [];
   const currentMedia = media[mediaIndex];
+  const liveLink = normalizeOptionalLink(product?.live_link);
+  const githubLink = normalizeOptionalLink(product?.github_link);
   const imageSources = useMemo(
     () =>
       currentMedia?.type === "image" && currentMedia?.url
@@ -144,6 +152,27 @@ const ProductDetails = () => {
                     <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Category: {product.category || "Uncategorized"}</p>
                     <h1 className="text-3xl font-bold">{product.name}</h1>
                     <p className="text-muted-foreground leading-relaxed">{product.description || "No details available."}</p>
+
+                    {liveLink || githubLink ? (
+                      <div className="flex flex-wrap gap-3">
+                        {liveLink ? (
+                          <a href={liveLink} target="_blank" rel="noreferrer">
+                            <Button type="button" variant="outline" className="gap-2">
+                              <ExternalLink className="w-4 h-4" />
+                              Live Preview
+                            </Button>
+                          </a>
+                        ) : null}
+                        {githubLink ? (
+                          <a href={githubLink} target="_blank" rel="noreferrer">
+                            <Button type="button" variant="outline" className="gap-2">
+                              <GitHubIcon className="w-4 h-4" />
+                              Source Code
+                            </Button>
+                          </a>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     <div className="flex items-center justify-between border-t border-border/60 pt-5">
                       <div>

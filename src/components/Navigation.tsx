@@ -236,7 +236,7 @@ const Navigation = () => {
                 width={48}
                 height={48}
                 loading="eager"
-                fetchPriority="high"
+                fetchpriority="high"      // ✅ fixed: lowercase
                 decoding="async"
                 className="w-12 h-12 object-contain"
               />
@@ -340,7 +340,7 @@ const Navigation = () => {
             ) : (
               <div className="flex items-center gap-2">
                 <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-                  <Link to="/contact" className="btn-outline h-10 min-w-[118px] px-4 py-2 text-sm rounded-lg">
+                  <Link to="/start-project" className="btn-outline h-10 min-w-[118px] px-4 py-2 text-sm rounded-lg">
                     Get Started
                   </Link>
                 </motion.div>
@@ -496,7 +496,7 @@ const Navigation = () => {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2 mt-4">
-                  <Link to="/contact" className="btn-outline text-center h-11">
+                  <Link to="/start-project" className="btn-outline text-center h-11">
                     Get Started
                   </Link>
                   <Link to="/auth?mode=signup" className="btn-primary text-center h-11">

@@ -6,8 +6,9 @@ import PageHero from "@/components/shared/PageHero";
 import HowWeWork from "@/components/shared/HowWeWork";
 import PricingCards from "@/components/shared/PricingCards";
 import { motion } from "framer-motion";
-import { Palette, Image, FileImage, Share2, Printer, Sparkles, CheckCircle, Instagram, Facebook, Linkedin, Twitter } from "lucide-react";
+import { Palette, Image, FileImage, Share2, Printer, Sparkles, CheckCircle } from "lucide-react";
 import PremiumBackground from "@/components/shared/PremiumBackground";
+import { FacebookIcon, InstagramIcon, LinkedInIcon, TwitterIcon } from "@/components/shared/socialIcons";
 
 const GraphicDesign = () => {
   const features = [
@@ -22,10 +23,10 @@ const GraphicDesign = () => {
   const services = ["Logo Design & Branding", "Business Cards & Stationery", "Brochures & Catalogs", "Flyers & Posters", "Social Media Graphics", "Presentation Design", "Packaging Design", "Trade Show Materials"];
 
   const platforms = [
-    { icon: Instagram, name: "Instagram", description: "Posts, Stories, Reels" },
-    { icon: Facebook, name: "Facebook", description: "Posts, Covers, Ads" },
-    { icon: Linkedin, name: "LinkedIn", description: "Professional Graphics" },
-    { icon: Twitter, name: "Twitter", description: "Headers, Posts" },
+    { icon: InstagramIcon, name: "Instagram", description: "Posts, Stories, Reels" },
+    { icon: FacebookIcon, name: "Facebook", description: "Posts, Covers, Ads" },
+    { icon: LinkedInIcon, name: "LinkedIn", description: "Professional Graphics" },
+    { icon: TwitterIcon, name: "Twitter", description: "Headers, Posts" },
   ];
 
   const steps = [

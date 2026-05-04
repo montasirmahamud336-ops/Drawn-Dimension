@@ -28,6 +28,7 @@ import formMessagesRoutes from "./routes/formMessages.js";
 import liveChatRequestsRoutes from "./routes/liveChatRequests.js";
 import headerFooterSettingsRoutes from "./routes/headerFooterSettings.js";
 import homePageSettingsRoutes from "./routes/homePageSettings.js";
+import inquiriesRoutes from "./routes/inquiries.js";
 
 const app = express();
 const isLoopbackHost = (host: string) =>
@@ -159,6 +160,7 @@ app.use(formMessagesRoutes);
 app.use(liveChatRequestsRoutes);
 app.use(headerFooterSettingsRoutes);
 app.use(homePageSettingsRoutes);
+app.use(inquiriesRoutes);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
