@@ -121,6 +121,11 @@ export const resolveCmsMediaUrl = (rawUrl: string | null | undefined) => {
     return url;
   }
 
+  // Rewrite legacy Supabase storage URLs to local/VPS media path
+  if (url.includes(".supabase.co/storage/v1/object/public/")) {
+    url = url.replace(/^https?:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\//, "/media/");
+  }
+
   // Handle bare filenames like '1772029652709-2jl4eo3qglb.jpeg'
   if (!url.startsWith("/") && !url.startsWith("http://") && !url.startsWith("https://")) {
     url = `/media/cms-uploads/${url}`;
