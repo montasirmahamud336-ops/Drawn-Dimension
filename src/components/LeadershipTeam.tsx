@@ -4,6 +4,7 @@ import { MouseEvent, useState } from "react";
 import { useLiveData } from "@/hooks/useLiveData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FacebookIcon, LinkedInIcon, TwitterIcon } from "@/components/shared/socialIcons";
+import { resolveCmsMediaUrl } from "@/components/shared/mediaUrl";
 
 type MediaItem = {
   url: string;
@@ -22,11 +23,11 @@ const getMediaList = (item: any): MediaItem[] => {
   if (Array.isArray(item?.media) && item.media.length > 0) {
     return item.media
       .filter((m: any) => typeof m?.url === "string" && m.url.length > 0)
-      .map((m: any) => ({ url: m.url, type: m.type === "video" ? "video" : "image" }));
+      .map((m: any) => ({ url: resolveCmsMediaUrl(m.url), type: m.type === "video" ? "video" : "image" }));
   }
 
   if (item?.image_url) {
-    return [{ url: item.image_url, type: detectMediaType(item.image_url) }];
+    return [{ url: resolveCmsMediaUrl(item.image_url), type: detectMediaType(item.image_url) }];
   }
 
   return [];

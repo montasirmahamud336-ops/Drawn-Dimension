@@ -15,9 +15,7 @@ const normalizeConfiguredHost = (value?: string) => {
   }
 };
 const configuredApiHost = normalizeConfiguredHost((import.meta as any).env?.VITE_API_BASE_URL as string | undefined);
-const shouldUseLocalMediaProxy = () =>
-  typeof window !== "undefined" &&
-  isLoopbackHost(window.location.hostname.toLowerCase());
+const shouldUseLocalMediaProxy = () => false;
 const isProductionWebsiteHost = (host: string) =>
   host === "drawndimension.com" || host === "www.drawndimension.com";
 const buildLocalProxyUrl = (pathname: string, search = "") =>
@@ -116,11 +114,16 @@ export const optimizeImageUrl = (
 
 export const resolveCmsMediaUrl = (rawUrl: string | null | undefined) => {
   if (!rawUrl || typeof rawUrl !== "string") return "";
-  const url = rawUrl.trim();
+  let url = rawUrl.trim();
   if (!url) return "";
 
   if (url.startsWith("data:") || url.startsWith("blob:")) {
     return url;
+  }
+
+  // Handle bare filenames like '1772029652709-2jl4eo3qglb.jpeg'
+  if (!url.startsWith("/") && !url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `/media/cms-uploads/${url}`;
   }
 
   try {
@@ -145,6 +148,10 @@ export const resolveCmsMediaUrl = (rawUrl: string | null | undefined) => {
   } catch {
     if (shouldUseLocalMediaProxy() && url.startsWith("/media/")) {
       return buildLocalProxyUrl(url);
+    }
+    
+    if (url.startsWith("/media/")) {
+      return buildCanonicalMediaUrl(url);
     }
 
     return url;

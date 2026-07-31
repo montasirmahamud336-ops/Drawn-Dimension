@@ -8,6 +8,7 @@ import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import TeamForm from "./TeamForm";
 import { moveItemById } from "./reorderUtils";
+import { resolveCmsMediaUrl } from "@/components/shared/mediaUrl";
 
 const TeamManager = () => {
     const [members, setMembers] = useState<any[]>([]);
@@ -239,7 +240,7 @@ const TeamManager = () => {
                         >
                             <div className={`${isEmployeeMode ? "aspect-square" : "aspect-[4/3]"} relative overflow-hidden bg-muted`}>
                                 {member.image_url ? (
-                                    <img src={member.image_url} alt={member.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                    <img src={resolveCmsMediaUrl(member.image_url)} alt={member.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                 ) : (
                                     <div className="flex items-center justify-center h-full text-muted-foreground bg-secondary/50">
                                         <Users className="w-12 h-12 opacity-20" />
