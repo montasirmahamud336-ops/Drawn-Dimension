@@ -334,8 +334,8 @@ After a deploy, test:
 
 
 
-scp -r .\dist root@63.250.47.127:/root/
-S3yv9YFL1Qa99xYfb0
+ssh root@192.64.118.232
+2SdtvYnL414Xx04MkR
 
 mkdir -p /var/www/vhosts/drawndimension.com/public_html
 rm -rf /var/www/vhosts/drawndimension.com/public_html/*
@@ -456,7 +456,7 @@ tar.exe -a -c -f server-node.zip `
   --exclude "server-node/.env" `
   --exclude "server-node/data" `
   server-node
-scp .\website-dist.zip .\server-node.zip root@63.250.47.127:/tmp/
+scp .\website-dist.zip .\server-node.zip root@192.64.118.232:/tmp/
 ```
 
 VPS:
