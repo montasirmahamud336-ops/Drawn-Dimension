@@ -66,12 +66,13 @@ const CustomCursor = () => {
     <>
       {/* Main cursor dot */}
       <motion.div
-        className="fixed top-0 left-0 w-3 h-3 bg-primary rounded-full pointer-events-none z-[10001] mix-blend-difference"
+        className="fixed top-0 left-0 w-3 h-3 bg-primary rounded-full pointer-events-none z-[10001] shadow-sm transform-gpu will-change-transform"
         style={{
           x: cursorX,
           y: cursorY,
           translateX: "-50%",
           translateY: "-50%",
+          opacity: hasMouseMoved ? 1 : 0,
         }}
         animate={{
           scale: isHovering ? 0.5 : 1,
@@ -80,16 +81,16 @@ const CustomCursor = () => {
       />
       {/* Outer ring */}
       <motion.div
-        className="fixed top-0 left-0 w-8 h-8 border-2 border-primary rounded-full pointer-events-none z-[10000]"
+        className="fixed top-0 left-0 w-8 h-8 border-2 border-primary/80 rounded-full pointer-events-none z-[10000] transform-gpu will-change-transform"
         style={{
           x: ringX,
           y: ringY,
           translateX: "-50%",
           translateY: "-50%",
+          opacity: hasMouseMoved ? (isHovering ? 0.5 : 0.3) : 0,
         }}
         animate={{
           scale: isHovering ? 1.5 : 1,
-          opacity: isHovering ? 0.5 : 0.3,
         }}
         transition={{ type: "spring", stiffness: 250, damping: 20 }}
       />

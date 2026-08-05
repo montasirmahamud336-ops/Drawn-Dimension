@@ -35,13 +35,25 @@ if (!hasDatabaseUrl) {
   }
 }
 
+const nodeEnv = process.env.NODE_ENV ?? "development";
+
+if (nodeEnv === "production" && !process.env.USER_AUTH_TOKEN) {
+  throw new Error("Missing required env var in production: USER_AUTH_TOKEN");
+}
+
+if (nodeEnv !== "production" && !process.env.USER_AUTH_TOKEN) {
+  console.warn(
+    "SECURITY WARNING: USER_AUTH_TOKEN is not defined in environment. Falling back to ADMIN_TOKEN for local development."
+  );
+}
+
 export const env = {
-  nodeEnv: process.env.NODE_ENV ?? "development",
+  nodeEnv,
   port: Number(process.env.PORT ?? 4000),
   adminUsername: process.env.ADMIN_USERNAME!,
   adminPassword: process.env.ADMIN_PASSWORD!,
   adminToken: process.env.ADMIN_TOKEN!,
-  userAuthToken: process.env.USER_AUTH_TOKEN ?? process.env.ADMIN_TOKEN!,
+  userAuthToken: process.env.USER_AUTH_TOKEN || process.env.ADMIN_TOKEN!,
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY ?? "",

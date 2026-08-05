@@ -93,9 +93,9 @@ const Blog = () => {
     () =>
       selectedSlug
         ? services.find(
-            (s) =>
-              slugifyServiceName((s.slug || s.name || "").trim()) === selectedSlug,
-          ) || null
+          (s) =>
+            slugifyServiceName((s.slug || s.name || "").trim()) === selectedSlug,
+        ) || null
         : null,
     [selectedSlug, services],
   );
@@ -166,11 +166,10 @@ const Blog = () => {
               <div className="flex items-center gap-4 overflow-x-auto pb-2 no-scrollbar">
                 <button
                   onClick={() => setSearchParams({})}
-                  className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
-                    !selectedService
-                      ? "bg-primary text-white shadow-lg shadow-primary/25"
-                      : "bg-card border border-border hover:bg-muted/70 dark:bg-white/5 dark:hover:bg-white/10"
-                  }`}
+                  className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 ${!selectedService
+                    ? "bg-primary text-white shadow-lg shadow-primary/25"
+                    : "bg-card border border-border hover:bg-muted/70 dark:bg-white/5 dark:hover:bg-white/10"
+                    }`}
                 >
                   <BookOpen className="w-4 h-4" />
                   All Articles
@@ -185,11 +184,10 @@ const Blog = () => {
                     <button
                       key={service.id}
                       onClick={() => setSearchParams({ service: slug })}
-                      className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
-                        active
-                          ? "bg-primary text-white shadow-lg shadow-primary/25"
-                          : "bg-card border border-border hover:bg-muted/70 dark:bg-white/5 dark:hover:bg-white/10"
-                      }`}
+                      className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${active
+                        ? "bg-primary text-white shadow-lg shadow-primary/25"
+                        : "bg-card border border-border hover:bg-muted/70 dark:bg-white/5 dark:hover:bg-white/10"
+                        }`}
                     >
                       {service.name}
                       <span className="ml-1.5 text-xs opacity-80">({count})</span>

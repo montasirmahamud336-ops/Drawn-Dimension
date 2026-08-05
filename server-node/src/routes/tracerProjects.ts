@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
-import { deleteRow, insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { deleteRow, insertRow, selectRows, updateRow } from "../lib/database.js";
 
 const router = Router();
 

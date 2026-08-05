@@ -1,14 +1,12 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
-import PageHero from "@/components/shared/PageHero";
-import PremiumBackground from "@/components/shared/PremiumBackground";
 import ReviewCard from "@/components/shared/ReviewCard";
 import AddReviewForm from "@/components/shared/AddReviewForm";
 import { fetchPublishedReviews, subscribeToPublishedReviews } from "@/components/shared/reviews";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, Layers, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 
@@ -48,83 +46,115 @@ const AllReviews = () => {
 
   return (
     <PageTransition>
-      <PremiumBackground>
+      <div className="min-h-screen bg-background">
         <Navigation />
-        <main>
-          <PageHero
-            title="All Client Reviews"
-            subtitle="Service-wise Results"
-            description="Browse every review grouped by service so you can compare quality across each offering."
-          />
 
-          <section className="section-padding pt-0 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(239,68,68,0.12),transparent_34%)] pointer-events-none" />
-            <div className="absolute -bottom-20 left-[-8%] w-[22rem] h-[22rem] rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <div className="glass-panel p-4 border-border/55 bg-gradient-to-br from-background/80 to-primary/[0.05] mb-8">
-                <Link
-                  to="/testimonials"
-                  className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+        <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto">
+          {/* ─── Hero Banner Card (Matches Dashboard Banner) ───────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative mb-8 overflow-hidden rounded-3xl bg-card border-[2.5px] border-border/70 dark:border-border p-6 md:p-8 shadow-md"
+          >
+            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+
+            <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex items-start gap-5">
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                  className="hidden sm:flex w-14 h-14 rounded-2xl bg-primary/10 items-center justify-center flex-shrink-0"
                 >
-                  Back to main reviews
-                </Link>
+                  <Layers className="w-7 h-7 text-primary" />
+                </motion.div>
+                <div>
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-primary/10 text-primary rounded-full">
+                      Service Breakdown
+                    </span>
+                    <span className="px-3 py-1 text-[11px] font-bold bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 rounded-full">
+                      {groupedReviews.length} Service Categories
+                    </span>
+                  </div>
+                  <h1 className="text-3xl md:text-4xl font-bold text-foreground mt-2 tracking-tight">
+                    All Client Reviews
+                  </h1>
+                  <p className="text-muted-foreground mt-2 text-sm md:text-base max-w-2xl">
+                    Browse every review grouped by service so you can evaluate performance and satisfaction across each engineering discipline.
+                  </p>
+                </div>
               </div>
 
-              {isLoading ? (
-                <div className="glass-card p-10 text-center text-muted-foreground flex items-center justify-center gap-3">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  Loading reviews...
-                </div>
-              ) : null}
-
-              {isError ? (
-                <div className="glass-card p-10 text-center text-muted-foreground">
-                  Reviews are temporarily unavailable. Please try again shortly.
-                </div>
-              ) : null}
-
-              {!isLoading && !isError && !groupedReviews.length ? (
-                <div className="glass-card p-10 text-center text-muted-foreground">
-                  No published reviews yet.
-                </div>
-              ) : null}
-
-              {!isLoading && !isError && groupedReviews.length ? (
-                <div className="space-y-10">
-                  {groupedReviews.map((group, groupIndex) => (
-                    <motion.section
-                      key={group.service}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.4, delay: groupIndex * 0.05 }}
-                    >
-                      <div className="mb-5 flex items-center justify-between gap-3 flex-wrap glass-card border-border/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01)_45%,rgba(239,68,68,0.08)_100%)] px-5 py-4">
-                        <h2 className="text-xl md:text-2xl font-semibold text-foreground">{group.service}</h2>
-                        <span className="text-xs px-3 py-1.5 rounded-full border border-primary/35 bg-primary/10 text-primary font-semibold tracking-wide uppercase">
-                          {group.reviews.length} review{group.reviews.length > 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-                        {group.reviews.map((review, reviewIndex) => (
-                          <ReviewCard key={review.id} review={review} index={reviewIndex} />
-                        ))}
-                      </div>
-                    </motion.section>
-                  ))}
-                </div>
-              ) : null}
-
-              <AddReviewForm
-                onSubmitted={() => {
-                  void queryClient.invalidateQueries({ queryKey: REVIEWS_QUERY_KEY });
-                }}
-              />
+              <div className="flex items-center gap-3 flex-wrap">
+                <Link
+                  to="/testimonials"
+                  className="px-5 py-3 bg-card border border-border/80 dark:border-border rounded-2xl text-foreground font-semibold text-sm hover:bg-muted/80 transition-all duration-200 ease-out hover:scale-[1.03] active:scale-[0.98] shadow-sm flex items-center gap-2"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back to Main Reviews</span>
+                </Link>
+              </div>
             </div>
-          </section>
+          </motion.div>
+
+          {/* ─── Review Groups ───────────────────────────────────────────── */}
+          {isLoading ? (
+            <div className="rounded-2xl border-[2.5px] border-border/70 bg-card p-10 text-center text-muted-foreground flex items-center justify-center gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              Loading reviews...
+            </div>
+          ) : null}
+
+          {isError ? (
+            <div className="rounded-2xl border-[2.5px] border-border/70 bg-card p-10 text-center text-muted-foreground">
+              Reviews are temporarily unavailable. Please try again shortly.
+            </div>
+          ) : null}
+
+          {!isLoading && !isError && !groupedReviews.length ? (
+            <div className="rounded-2xl border-[2.5px] border-border/70 bg-card p-10 text-center text-muted-foreground">
+              No published reviews yet.
+            </div>
+          ) : null}
+
+          {!isLoading && !isError && groupedReviews.length ? (
+            <div className="space-y-10 mb-12">
+              {groupedReviews.map((group, groupIndex) => (
+                <motion.section
+                  key={group.service}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: groupIndex * 0.05 }}
+                >
+                  <div className="mb-5 flex items-center justify-between gap-3 flex-wrap rounded-2xl border-[2.5px] border-border/70 dark:border-border bg-card px-6 py-4 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">{group.service}</h2>
+                    </div>
+                    <span className="text-xs px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary font-bold tracking-wider uppercase">
+                      {group.reviews.length} review{group.reviews.length > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                    {group.reviews.map((review, reviewIndex) => (
+                      <ReviewCard key={review.id} review={review} index={reviewIndex} />
+                    ))}
+                  </div>
+                </motion.section>
+              ))}
+            </div>
+          ) : null}
+
+          <AddReviewForm
+            onSubmitted={() => {
+              void queryClient.invalidateQueries({ queryKey: REVIEWS_QUERY_KEY });
+            }}
+          />
         </main>
         <Footer />
-      </PremiumBackground>
+      </div>
     </PageTransition>
   );
 };

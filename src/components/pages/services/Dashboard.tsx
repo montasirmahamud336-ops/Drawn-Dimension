@@ -1,4 +1,4 @@
-﻿import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
@@ -15,19 +15,22 @@ import {
   Save,
   Sparkles,
   X,
+  Clock,
+  Activity,
+  Briefcase,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
-import PremiumBackground from "@/components/shared/PremiumBackground";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
-import { CLIENT_DASHBOARD_PATH, EMPLOYEE_DASHBOARD_PATH, setPreferredDashboardPath } from "@/components/shared/dashboardPath";
+import { CLIENT_DASHBOARD_PATH, setPreferredDashboardPath } from "@/components/shared/dashboardPath";
+import { resolveCmsMediaUrl } from "@/components/shared/mediaUrl";
 
 interface Quote {
   id: string;
@@ -124,6 +127,7 @@ const Dashboard = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [avatarFullView, setAvatarFullView] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -199,133 +203,106 @@ const Dashboard = () => {
       !mappedProfile.job_role.trim() &&
       !mappedProfile.bio.trim() &&
       !mappedProfile.avatar_url;
-    setIsEditingProfile(isProfileEmpty);
 
-    if (quotesResult.status === "rejected") {
+    if (isProfileEmpty) {
+      setIsEditingProfile(true);
+    }
+
+    if (quotesResult.status === "fulfilled") {
+      setQuotes(quotesResult.value);
+    } else {
       toast({
-        title: "Quotes load warning",
+        title: "Quotes load error",
         description: quotesResult.reason instanceof Error ? quotesResult.reason.message : "Failed to load quotes",
         variant: "destructive",
       });
+    }
+
+    if (employeeDashboard.status === "fulfilled" && employeeDashboard.value) {
+      setEmployeeProfile(employeeDashboard.value.employee ?? null);
+      setEmployeeAssignments(employeeDashboard.value.assignments ?? []);
     } else {
-      setQuotes(Array.isArray(quotesResult.value) ? quotesResult.value : []);
+      setEmployeeProfile(null);
+      setEmployeeAssignments([]);
     }
 
-    const employeeData =
-      employeeDashboard.status === "fulfilled"
-        ? ((employeeDashboard.value ?? {}) as {
-            employee?: EmployeeProfile | null;
-            assignments?: EmployeeAssignment[];
-          })
-        : ({} as {
-            employee?: EmployeeProfile | null;
-            assignments?: EmployeeAssignment[];
-          });
-    if (employeeData.employee) {
-      setPreferredDashboardPath(EMPLOYEE_DASHBOARD_PATH);
-      navigate(EMPLOYEE_DASHBOARD_PATH, { replace: true });
-      setLoadingEmployeeData(false);
-      setLoading(false);
-      return;
-    }
-    setEmployeeProfile(employeeData.employee ?? null);
-    setEmployeeAssignments(Array.isArray(employeeData.assignments) ? employeeData.assignments : []);
-
-    setLoadingEmployeeData(false);
     setLoading(false);
-  }, [navigate, session?.access_token, toast, user]);
+    setLoadingEmployeeData(false);
+  }, [user, session, toast]);
 
   useEffect(() => {
-    if (user) {
-      void loadData();
-    }
-  }, [loadData, user]);
-
-  const persistProfile = async (nextDraft: ProfileDraft, successMessage?: string) => {
-    if (!user || !session?.access_token) return false;
-
-    const payload = {
-      email: nextDraft.email?.trim() || user.email || null,
-      full_name: nextDraft.full_name.trim() || null,
-      company: nextDraft.company.trim() || null,
-      avatar_url: nextDraft.avatar_url,
-      bio: nextDraft.bio.trim() || null,
-      job_role: nextDraft.job_role.trim() || null,
-    };
-
-    const response = await fetch(`${getApiBaseUrl()}/me/profile`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      toast({
-        title: "Profile update failed",
-        description: await parseApiError(response, "Profile update failed"),
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    const data = (await response.json().catch(() => null)) as Profile | null;
-    if (data) {
-      const mappedProfile = mapProfileToDraft(data, user.email);
-      setProfileDraft(mappedProfile);
-      setSavedProfile(mappedProfile);
-    }
-
-    if (successMessage) {
-      toast({ title: successMessage });
-    }
-
-    return true;
-  };
+    void loadData();
+  }, [loadData]);
 
   const handleProfileSave = async () => {
+    if (!session?.access_token) return;
+
     setSavingProfile(true);
-    const saved = await persistProfile(profileDraft, "Profile updated successfully");
-    setSavingProfile(false);
-    if (saved) {
+    try {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/me/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          full_name: profileDraft.full_name,
+          email: profileDraft.email,
+          company: profileDraft.company,
+          avatar_url: profileDraft.avatar_url,
+          bio: profileDraft.bio,
+          job_role: profileDraft.job_role,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Failed to update profile"));
+      }
+
+      const updated = (await response.json()) as Profile;
+      const mapped = mapProfileToDraft(updated, user?.email);
+      setProfileDraft(mapped);
+      setSavedProfile(mapped);
       setIsEditingProfile(false);
+
+      toast({
+        title: "Profile saved",
+        description: "Your details have been updated successfully.",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Save error",
+        description: error instanceof Error ? error.message : "Failed to save profile",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProfile(false);
     }
   };
 
   const handleAvatarUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file || !user || !session?.access_token || !isEditingProfile) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Invalid file",
-        description: "Please upload an image file.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const maxSize = 4 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast({
-        title: "File too large",
-        description: "Please upload an image under 4MB.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!file || !session?.access_token) return;
 
     setUploadingAvatar(true);
     try {
       const apiBase = getApiBaseUrl();
+      const ensureRes = await fetch(`${apiBase}/storage/ensure`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!ensureRes.ok) {
+        throw new Error(await parseApiError(ensureRes, "Failed to initialize avatar storage"));
+      }
+
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(`${apiBase}/me/profile/avatar-upload`, {
+      const uploadRes = await fetch(`${apiBase}/storage/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -333,18 +310,16 @@ const Dashboard = () => {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error(await parseApiError(response, "Photo upload failed"));
+      if (!uploadRes.ok) {
+        throw new Error(await parseApiError(uploadRes, "Failed to upload photo"));
       }
 
-      const payload = await response.json();
-      const publicUrl = String(payload?.publicUrl ?? "").trim();
-      if (!publicUrl) {
-        throw new Error("Missing uploaded photo URL");
+      const payload = (await uploadRes.json()) as { url?: string };
+      if (!payload.url) {
+        throw new Error("Upload response did not return a valid file URL");
       }
 
-      const nextDraft = { ...profileDraft, avatar_url: publicUrl };
-      setProfileDraft(nextDraft);
+      setProfileDraft((prev) => ({ ...prev, avatar_url: payload.url ?? null }));
       toast({
         title: "Photo ready",
         description: "Click Save Profile to apply your new photo.",
@@ -367,6 +342,11 @@ const Dashboard = () => {
 
   const handleStartEditing = () => {
     setIsEditingProfile(true);
+  };
+
+  const handleAvatarPickerOpen = () => {
+    setIsEditingProfile(true);
+    avatarInputRef.current?.click();
   };
 
   const handleCancelEditing = () => {
@@ -442,13 +422,13 @@ const Dashboard = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
-        return "bg-green-500/15 text-green-300 border-green-500/30";
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-0";
       case "pending":
-        return "bg-amber-500/15 text-amber-300 border-amber-500/30";
+        return "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-0";
       case "overdue":
-        return "bg-red-500/15 text-red-300 border-red-500/30";
+        return "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-0";
       default:
-        return "bg-muted/30 text-muted-foreground border-border";
+        return "bg-muted text-muted-foreground border-0";
     }
   };
 
@@ -464,391 +444,475 @@ const Dashboard = () => {
 
   return (
     <PageTransition>
-      <PremiumBackground>
+      <div className="min-h-screen bg-background">
         <Navigation />
 
-        <main className="pt-28 pb-20 px-4">
-          <div className="container-narrow">
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative overflow-hidden rounded-3xl border border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.18),transparent_58%),linear-gradient(145deg,hsl(var(--card)/0.95),hsl(var(--card)/0.78))] p-6 md:p-8 mb-8"
-            >
-              <div className="absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/15 blur-3xl" />
-              <div className="absolute -left-20 -bottom-20 h-52 w-52 rounded-full bg-primary/10 blur-3xl" />
+        <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto">
+          {/* ─── Welcome Banner ──────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative mb-8 overflow-hidden rounded-3xl bg-card border-[2.5px] border-border/70 dark:border-border p-6 md:p-8 shadow-md"
+          >
+            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/4" />
 
-              <div className="relative z-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+            <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex items-start gap-5">
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                  className="hidden sm:flex w-14 h-14 rounded-2xl bg-primary/10 items-center justify-center flex-shrink-0"
+                >
+                  <Sparkles className="w-7 h-7 text-primary" />
+                </motion.div>
                 <div>
-                  <p className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-primary/80 mb-3">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Client Workspace
-                  </p>
-                  <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-                    Welcome back, {profileDraft.full_name || "there"}
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-primary/10 text-primary rounded-full">
+                      Client Workspace
+                    </span>
+                    <span className="px-3 py-1 text-[11px] font-bold bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 rounded-full">
+                      {profileCompleteness}% Profile Complete
+                    </span>
+                  </div>
+                  <h1 className="text-3xl md:text-4xl font-bold text-foreground mt-2 tracking-tight">
+                    Welcome back, {profileDraft.full_name.split(" ")[0] || "there"}!
                   </h1>
-                  <p className="text-muted-foreground max-w-2xl">
-                    Manage your quotes, keep your profile polished, and showcase who you are in one place.
+                  <p className="text-muted-foreground mt-2 text-sm md:text-base">
+                    Manage your quotes, keep your profile polished, and track your active engineering projects.
                   </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <Badge className="border-primary/30 bg-primary/15 text-primary px-3 py-1.5 rounded-full">
-                    {profileCompleteness}% profile complete
-                  </Badge>
-                  <Button variant="outline" onClick={handleSignOut}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </Button>
                 </div>
               </div>
-            </motion.section>
 
-            <div className="grid xl:grid-cols-12 gap-6">
-              <motion.aside
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="xl:col-span-4 space-y-6"
-              >
-                <Card className="glass-card border-border/60 overflow-hidden">
-                  <div className="h-1.5 w-full bg-gradient-to-r from-primary/80 via-red-400/70 to-primary/80" />
-                  <CardContent className="p-6">
-                    <div className="flex gap-4">
-                      <div className="relative">
-                        <div className="h-24 w-24 rounded-2xl border border-border/70 bg-secondary/50 overflow-hidden flex items-center justify-center text-2xl font-semibold text-foreground">
-                          {profileDraft.avatar_url ? (
-                            <img
-                              src={profileDraft.avatar_url}
-                              alt="Profile"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            initials
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => avatarInputRef.current?.click()}
-                          className="absolute -bottom-2 -right-2 h-9 w-9 rounded-xl border border-primary/30 bg-primary/15 text-primary flex items-center justify-center hover:bg-primary/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          aria-label="Upload profile photo"
-                          disabled={!isEditingProfile || uploadingAvatar || savingProfile}
-                        >
-                          {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                        </button>
-                        <input
-                          ref={avatarInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                          className="hidden"
-                          disabled={!isEditingProfile}
-                        />
-                      </div>
-
-                      <div className="min-w-0">
-                        <h2 className="text-xl font-semibold text-foreground truncate">
-                          {profileDraft.full_name || "Set your name"}
-                        </h2>
-                        <p className="text-sm text-muted-foreground mt-1 truncate">
-                          {profileDraft.job_role || "Add your current role"}
-                        </p>
-                        <p className="text-xs text-muted-foreground/90 mt-2 break-all">{profileDraft.email || user?.email}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 space-y-4">
-                      <div>
-                        <label htmlFor="profile-fullname" className="text-sm font-medium text-foreground">Full Name</label>
-                        <input
-                          id="profile-fullname"
-                          type="text"
-                          value={profileDraft.full_name}
-                          onChange={(event) => setProfileDraft((prev) => ({ ...prev, full_name: event.target.value }))}
-                          className={`mt-2 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 ${!isEditingProfile ? "opacity-85 cursor-default" : ""}`}
-                          placeholder="Your full name"
-                          readOnly={!isEditingProfile}
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="profile-role" className="text-sm font-medium text-foreground inline-flex items-center gap-2">
-                          <BriefcaseBusiness className="w-4 h-4 text-primary" />
-                          Current Role
-                        </label>
-                        <input
-                          id="profile-role"
-                          type="text"
-                          value={profileDraft.job_role}
-                          onChange={(event) => setProfileDraft((prev) => ({ ...prev, job_role: event.target.value }))}
-                          className={`mt-2 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 ${!isEditingProfile ? "opacity-85 cursor-default" : ""}`}
-                          placeholder="Product Designer, Mechanical Engineer, etc."
-                          readOnly={!isEditingProfile}
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="profile-bio" className="text-sm font-medium text-foreground">Bio</label>
-                        <textarea
-                          id="profile-bio"
-                          rows={4}
-                          value={profileDraft.bio}
-                          onChange={(event) => setProfileDraft((prev) => ({ ...prev, bio: event.target.value }))}
-                          className={`mt-2 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none ${!isEditingProfile ? "opacity-85 cursor-default" : ""}`}
-                          placeholder="Write a short professional bio about yourself"
-                          readOnly={!isEditingProfile}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-6 flex flex-wrap gap-3">
-                      {isEditingProfile ? (
-                        <>
-                          <Button onClick={handleProfileSave} disabled={savingProfile || uploadingAvatar || !hasProfileChanges}>
-                            {savingProfile ? (
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                              <Save className="w-4 h-4 mr-2" />
-                            )}
-                            Save Profile
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleCancelEditing}
-                            disabled={savingProfile || uploadingAvatar}
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Cancel
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleRemovePhoto}
-                            disabled={!profileDraft.avatar_url || savingProfile || uploadingAvatar}
-                          >
-                            Remove Photo
-                          </Button>
-                        </>
-                      ) : (
-                        <Button type="button" onClick={handleStartEditing}>
-                          <PencilLine className="w-4 h-4 mr-2" />
-                          Edit Profile
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-card border-primary/20">
-                  <CardContent className="p-5">
-                    <h3 className="font-semibold text-foreground mb-2">Profile Tips</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Add your photo, role, and bio so your dashboard feels personal and ready for future team collaboration features.
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.aside>
-
-              <section className="xl:col-span-8 space-y-6">
-                {employeeProfile && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.08 }}
-                  >
-                    <Card className="glass-card border-green-500/30 overflow-hidden">
-                      <CardHeader className="border-b border-border/50 bg-green-500/5">
-                        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                          <div>
-                            <CardTitle className="text-2xl">Employee Work Dashboard</CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {employeeProfile.name} ({employeeProfile.profession})
-                            </p>
-                          </div>
-                          <Badge className="border-green-500/25 bg-green-500/10 text-green-400">
-                            {employeeAssignments.filter((item) => item.status !== "draft").length} tasks
-                          </Badge>
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="p-6">
-                        {loadingEmployeeData ? (
-                          <div className="space-y-4">
-                            {[1, 2].map((item) => (
-                              <Skeleton key={item} className="h-20 w-full rounded-xl" />
-                            ))}
-                          </div>
-                        ) : employeeAssignments.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No assigned work yet.</p>
-                        ) : (
-                          <div className="space-y-3">
-                            {employeeAssignments.map((assignment) => (
-                              <div
-                                key={assignment.id}
-                                className={`rounded-xl border px-4 py-3 ${
-                                  assignment.status === "done"
-                                    ? "border-green-500/40 bg-green-500/10"
-                                    : "border-border/70 bg-card/60"
-                                }`}
-                              >
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                  <h4 className="font-semibold text-foreground">{assignment.work_title}</h4>
-                                  <Badge className={assignment.status === "done" ? "bg-green-500/15 text-green-400" : "bg-blue-500/15 text-blue-400"}>
-                                    {assignment.status === "done" ? "Done" : "Assigned"}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">Duration: {assignment.work_duration}</p>
-                                {assignment.revision_due_at && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Revision: {new Date(assignment.revision_due_at).toLocaleString()}
-                                  </p>
-                                )}
-                                {assignment.work_details && (
-                                  <p className="text-sm text-muted-foreground mt-2">{assignment.work_details}</p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )}
-
-                <motion.div
-                  initial={{ opacity: 0, y: 18 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4"
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSignOut}
+                  className="px-5 py-3 bg-card border border-border/80 dark:border-border rounded-2xl text-foreground font-semibold text-sm hover:bg-muted/80 transition-all duration-200 ease-out hover:scale-[1.03] active:scale-[0.98] shadow-sm"
                 >
-                  <Card className="glass-card border-border/60 hover:border-primary/35 transition-colors">
-                    <CardContent className="p-5">
-                      <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center mb-4">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                      <p className="text-sm text-muted-foreground">Total Quotes</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="glass-card border-border/60 hover:border-primary/35 transition-colors">
-                    <CardContent className="p-5">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-4">
-                        <Clock3 className="w-5 h-5" />
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{stats.pendingCount}</p>
-                      <p className="text-sm text-muted-foreground">Pending</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="glass-card border-border/60 hover:border-primary/35 transition-colors">
-                    <CardContent className="p-5">
-                      <div className="w-10 h-10 rounded-xl bg-green-500/20 text-green-400 flex items-center justify-center mb-4">
-                        <CheckCircle2 className="w-5 h-5" />
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{stats.paidCount}</p>
-                      <p className="text-sm text-muted-foreground">Paid</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="glass-card border-border/60 hover:border-primary/35 transition-colors">
-                    <CardContent className="p-5">
-                      <div className="w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center mb-4">
-                        <DollarSign className="w-5 h-5" />
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{formatCurrency(stats.outstanding, "USD")}</p>
-                      <p className="text-sm text-muted-foreground">Outstanding</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                >
-                  <Card className="glass-card border-border/60 overflow-hidden">
-                    <CardHeader className="border-b border-border/50 bg-background/40">
-                      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                        <div>
-                          <CardTitle className="text-2xl">Your Quotes</CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Track quote status and payment readiness in one place.
-                          </p>
-                        </div>
-                        <Badge className="border-primary/25 bg-primary/10 text-primary">
-                          Paid Total: {formatCurrency(stats.paidAmount, "USD")}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="p-6">
-                      {loading ? (
-                        <div className="space-y-4">
-                          {[1, 2, 3].map((i) => (
-                            <Skeleton key={i} className="h-24 w-full rounded-xl" />
-                          ))}
-                        </div>
-                      ) : quotes.length === 0 ? (
-                        <div className="text-center py-16">
-                          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                            <FileText className="w-8 h-8 text-primary/80" />
-                          </div>
-                          <h3 className="text-xl font-semibold text-foreground mb-2">No quotes yet</h3>
-                          <p className="text-muted-foreground mb-5 max-w-md mx-auto">
-                            When your first quote is created, it will appear here with status, due date, and payment actions.
-                          </p>
-                          <Button onClick={() => navigate("/start-project")}>Request a Quote</Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {quotes.map((quote) => (
-                            <div
-                              key={quote.id}
-                              className="rounded-2xl border border-border/70 bg-card/60 px-5 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-3 mb-2">
-                                  <h4 className="font-semibold text-foreground text-lg truncate">{quote.title}</h4>
-                                  <Badge className={getStatusColor(quote.status || "draft")}>
-                                    {quote.status || "Draft"}
-                                  </Badge>
-                                </div>
-
-                                {quote.description && (
-                                  <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{quote.description}</p>
-                                )}
-
-                                <p className="text-xs text-muted-foreground">
-                                  Created: {new Date(quote.created_at).toLocaleDateString()}
-                                  {quote.due_date ? ` | Due: ${new Date(quote.due_date).toLocaleDateString()}` : ""}
-                                </p>
-                              </div>
-
-                              <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-                                <p className="text-2xl font-bold text-foreground">
-                                  {formatCurrency(quote.amount, quote.currency || "USD")}
-                                </p>
-                                {quote.status === "pending" && (
-                                  <Button onClick={() => handlePayQuote(quote)}>Pay Now</Button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </section>
+                  <div className="flex items-center gap-2">
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </div>
+                </button>
+              </div>
             </div>
+          </motion.div>
+
+          {/* ─── KPI Grid ─────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          >
+            {[
+              {
+                title: "Total Quotes",
+                value: stats.total,
+                subtitle: `${stats.pendingCount} pending review`,
+                icon: FileText,
+                color: "blue",
+              },
+              {
+                title: "Pending Quotes",
+                value: stats.pendingCount,
+                subtitle: "Awaiting response",
+                icon: Clock3,
+                color: "amber",
+              },
+              {
+                title: "Paid Quotes",
+                value: stats.paidCount,
+                subtitle: `${formatCurrency(stats.paidAmount, "USD")} completed`,
+                icon: CheckCircle2,
+                color: "emerald",
+              },
+              {
+                title: "Outstanding",
+                value: formatCurrency(stats.outstanding, "USD"),
+                subtitle: "Pending payment",
+                icon: DollarSign,
+                color: "rose",
+              },
+            ].map((kpi, idx) => {
+              const Icon = kpi.icon;
+              const colorMap: Record<string, { bg: string; icon: string }> = {
+                blue: {
+                  bg: "bg-blue-100/80 dark:bg-blue-950/30",
+                  icon: "text-blue-700 dark:text-blue-400",
+                },
+                amber: {
+                  bg: "bg-amber-100/80 dark:bg-amber-950/30",
+                  icon: "text-amber-700 dark:text-amber-400",
+                },
+                emerald: {
+                  bg: "bg-emerald-100/80 dark:bg-emerald-950/30",
+                  icon: "text-emerald-700 dark:text-emerald-400",
+                },
+                rose: {
+                  bg: "bg-rose-100/80 dark:bg-rose-950/30",
+                  icon: "text-rose-700 dark:text-rose-400",
+                },
+              };
+              const colors = colorMap[kpi.color];
+
+              return (
+                <div
+                  key={idx}
+                  className="group relative bg-card border-[2.5px] border-border/70 dark:border-border rounded-xl p-4 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg cursor-pointer overflow-hidden shadow-md"
+                >
+                  <div className="absolute top-0 right-0 w-20 h-20 opacity-[0.06] dark:opacity-[0.10] group-hover:opacity-[0.12] dark:group-hover:opacity-[0.16] transition-opacity pointer-events-none">
+                    <Icon className="w-full h-full text-foreground" strokeWidth={1.5} />
+                  </div>
+
+                  <div className="relative">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`w-9 h-9 rounded-lg ${colors.bg} flex items-center justify-center`}>
+                        <Icon className={`w-4 h-4 ${colors.icon}`} />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-foreground mb-0.5 tracking-tight">
+                        {kpi.value}
+                      </p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {kpi.title}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {kpi.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-b-xl" />
+                </div>
+              );
+            })}
+          </motion.div>
+
+          {/* ─── Profile + Quotes Section ────────────────────── */}
+          <div className="grid lg:grid-cols-3 gap-6 mb-8 items-stretch">
+            {/* Profile Card */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 }}
+              className="lg:col-span-1 flex flex-col"
+            >
+              <div className="bg-card border-[2.5px] border-border/70 dark:border-border rounded-3xl overflow-hidden h-full flex flex-col shadow-md">
+                <div className="relative h-28 bg-gradient-to-br from-primary to-primary/80 flex-shrink-0" />
+
+                <div className="relative px-6 pb-6 flex-1 flex flex-col">
+                  <div className="relative -mt-14 mb-4 flex justify-center">
+                    <div className="relative">
+                      <div
+                        className="w-28 h-28 rounded-full border-[5px] border-background bg-muted overflow-hidden flex items-center justify-center shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => profileDraft.avatar_url && setAvatarFullView(true)}
+                      >
+                        {profileDraft.avatar_url ? (
+                          <img
+                            src={resolveCmsMediaUrl(profileDraft.avatar_url)}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-4xl font-bold text-muted-foreground">
+                            {initials}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAvatarPickerOpen}
+                        disabled={uploadingAvatar || savingProfile}
+                        className="absolute -bottom-1 -right-1 w-9 h-9 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-all duration-200 ease-out hover:scale-110 active:scale-90 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-background"
+                      >
+                        {uploadingAvatar ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4" />
+                        )}
+                      </button>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-bold text-foreground">
+                      {profileDraft.full_name || "Set Your Name"}
+                    </h3>
+                    <div className="flex items-center justify-center gap-2 mt-1">
+                      <Briefcase className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        {profileDraft.job_role || "Add current role"}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {profileDraft.email || user?.email}
+                    </p>
+                  </div>
+
+                  {/* Profile Form */}
+                  <div className="space-y-3 flex-1">
+                    <div>
+                      <label className="block text-[11px] font-bold text-foreground mb-1 uppercase tracking-wider">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={profileDraft.full_name}
+                        onChange={(e) => setProfileDraft((prev) => ({ ...prev, full_name: e.target.value }))}
+                        placeholder="Your full name"
+                        readOnly={!isEditingProfile}
+                        className={`w-full bg-muted rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none transition-all ${
+                          isEditingProfile
+                            ? "!ring-0 !ring-offset-0 focus-visible:!ring-0 focus-visible:border-primary/50 focus-visible:shadow-[0_0_5px_rgba(220,38,38,0.4),0_0_15px_rgba(220,38,38,0.2),0_0_30px_rgba(220,38,38,0.1)]"
+                            : "opacity-85 cursor-default"
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-foreground mb-1 uppercase tracking-wider">
+                        Current Role
+                      </label>
+                      <input
+                        type="text"
+                        value={profileDraft.job_role}
+                        onChange={(e) => setProfileDraft((prev) => ({ ...prev, job_role: e.target.value }))}
+                        placeholder="Product Designer, Engineer..."
+                        readOnly={!isEditingProfile}
+                        className={`w-full bg-muted rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none transition-all ${
+                          isEditingProfile
+                            ? "!ring-0 !ring-offset-0 focus-visible:!ring-0 focus-visible:border-primary/50 focus-visible:shadow-[0_0_5px_rgba(220,38,38,0.4),0_0_15px_rgba(220,38,38,0.2),0_0_30px_rgba(220,38,38,0.1)]"
+                            : "opacity-85 cursor-default"
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-foreground mb-1 uppercase tracking-wider">
+                        Bio
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={profileDraft.bio}
+                        onChange={(e) => setProfileDraft((prev) => ({ ...prev, bio: e.target.value }))}
+                        placeholder="Write a short bio..."
+                        readOnly={!isEditingProfile}
+                        className={`w-full bg-muted rounded-lg px-3 py-2 text-xs text-foreground resize-none focus:outline-none transition-all ${
+                          isEditingProfile
+                            ? "!ring-0 !ring-offset-0 focus-visible:!ring-0 focus-visible:border-primary/50 focus-visible:shadow-[0_0_5px_rgba(220,38,38,0.4),0_0_15px_rgba(220,38,38,0.2),0_0_30px_rgba(220,38,38,0.1)]"
+                            : "opacity-85 cursor-default"
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Profile Action Buttons */}
+                  <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-border">
+                    {isEditingProfile ? (
+                      <>
+                        <Button
+                          size="sm"
+                          className="flex-1 rounded-lg text-xs h-9 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 ease-out hover:shadow-[0_0_8px_rgba(220,38,38,0.4),0_0_20px_rgba(220,38,38,0.2)] active:scale-[0.97]"
+                          onClick={handleProfileSave}
+                          disabled={savingProfile || uploadingAvatar || !hasProfileChanges}
+                        >
+                          {savingProfile ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5 mr-1.5" />
+                          )}
+                          Save Profile
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-lg text-xs h-9"
+                          onClick={handleCancelEditing}
+                          disabled={savingProfile || uploadingAvatar}
+                        >
+                          <X className="w-3.5 h-3.5 mr-1" />
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full rounded-lg text-xs h-9 font-semibold"
+                        onClick={handleStartEditing}
+                      >
+                        <PencilLine className="w-3.5 h-3.5 mr-1.5" />
+                        Edit Profile
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Main Content Column */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="lg:col-span-2 flex flex-col gap-6"
+            >
+              {/* Employee Assigned Work (if present) */}
+              {employeeProfile && (
+                <div className="bg-card border-[2.5px] border-border/70 dark:border-border rounded-xl p-4 shadow-md">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                        <BriefcaseBusiness className="w-4 h-4 text-primary" />
+                        Assigned Tasks
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {employeeProfile.name} ({employeeProfile.profession})
+                      </p>
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-0 text-[10px]">
+                      {employeeAssignments.filter((item) => item.status !== "draft").length} Tasks
+                    </Badge>
+                  </div>
+
+                  {loadingEmployeeData ? (
+                    <div className="py-6 text-center">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground mb-2" />
+                      <p className="text-xs text-muted-foreground">Loading tasks...</p>
+                    </div>
+                  ) : employeeAssignments.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-4 text-center">No assigned work yet.</p>
+                  ) : (
+                    <div className="rounded-lg border border-border overflow-hidden">
+                      <div className="divide-y divide-border">
+                        {employeeAssignments.map((assignment, idx) => (
+                          <div key={assignment.id} className="p-3 text-xs flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
+                            <div className="min-w-0">
+                              <span className="font-semibold text-foreground block truncate">{assignment.work_title}</span>
+                              <span className="text-[11px] text-muted-foreground block">Duration: {assignment.work_duration}</span>
+                            </div>
+                            <Badge className={assignment.status === "done" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-0" : "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-0"}>
+                              {assignment.status === "done" ? "Done" : "Assigned"}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quotes Section */}
+              <div className="bg-card border-[2.5px] border-border/70 dark:border-border rounded-xl p-4 flex-1 shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-primary" />
+                      Your Quotes
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Track quote status and payment readiness
+                    </p>
+                  </div>
+                  <Badge className="bg-primary/10 text-primary border-0 text-[10px] font-bold">
+                    Paid Total: {formatCurrency(stats.paidAmount, "USD")}
+                  </Badge>
+                </div>
+
+                {loading ? (
+                  <div className="py-12 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground mb-3" />
+                    <p className="text-xs text-muted-foreground">Loading quotes...</p>
+                  </div>
+                ) : quotes.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-primary" />
+                    </div>
+                    <h4 className="text-sm font-bold text-foreground mb-1">No quotes yet</h4>
+                    <p className="text-xs text-muted-foreground mb-4 max-w-sm mx-auto">
+                      When your first quote is created, it will appear here with status and payment options.
+                    </p>
+                    <Button size="sm" className="rounded-lg text-xs h-8" onClick={() => navigate("/start-project")}>
+                      Request a Quote
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    {/* Header */}
+                    <div className="hidden sm:grid grid-cols-[36px_minmax(0,2fr)_90px_100px_90px] gap-1 px-3 py-2 text-[10px] uppercase tracking-wider text-foreground/70 dark:text-muted-foreground font-bold bg-muted/70 dark:bg-muted/40 border-b border-border">
+                      <span className="text-center">#</span>
+                      <span>Title</span>
+                      <span>Created</span>
+                      <span className="text-right">Amount</span>
+                      <span className="text-center">Status</span>
+                    </div>
+
+                    {/* Body */}
+                    <div className="divide-y divide-border">
+                      {quotes.map((quote, idx) => (
+                        <div
+                          key={quote.id}
+                          className="grid sm:grid-cols-[36px_minmax(0,2fr)_90px_100px_90px] grid-cols-1 gap-1 items-center px-3 py-2.5 text-xs transition-colors duration-150 hover:bg-muted/60 dark:hover:bg-muted/30"
+                        >
+                          <span className="text-[10px] text-muted-foreground font-semibold text-center tabular-nums">
+                            {idx + 1}
+                          </span>
+                          <span className="font-semibold text-foreground truncate">
+                            {quote.title}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {new Date(quote.created_at).toLocaleDateString()}
+                          </span>
+                          <span className="text-[11px] font-bold text-foreground text-right tabular-nums">
+                            {formatCurrency(quote.amount, quote.currency || "USD")}
+                          </span>
+                          <div className="flex justify-center">
+                            <Badge className={`text-[9px] px-1.5 py-0.5 leading-tight ${getStatusColor(quote.status || "draft")}`}>
+                              {quote.status || "Draft"}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </div>
         </main>
 
+        {/* ─── Avatar Lightbox ───────────────────────────── */}
+        {avatarFullView && profileDraft.avatar_url && (
+          <div
+            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center cursor-pointer"
+            onClick={() => setAvatarFullView(false)}
+          >
+            <button
+              onClick={() => setAvatarFullView(false)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={resolveCmsMediaUrl(profileDraft.avatar_url)}
+              alt="Profile"
+              className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+
         <Footer />
-      </PremiumBackground>
+      </div>
     </PageTransition>
   );
 };

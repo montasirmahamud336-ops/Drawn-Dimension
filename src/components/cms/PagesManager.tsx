@@ -14,6 +14,12 @@ import {
   ChevronRight,
   Globe,
   FileEdit,
+  Sparkles,
+  Layers,
+  HelpCircle,
+  BookOpen,
+  ArrowRight,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
@@ -344,67 +350,81 @@ function ServiceRow({
 }) {
   const link = resolveServiceLink(service.name, service.slug);
   return (
-    <div className="flex items-center gap-2 text-sm rounded-lg border border-border/60 px-3 py-2.5 group hover:border-border transition-colors">
-      <span
-        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-          isLive ? "bg-emerald-500" : "bg-amber-500"
-        }`}
-      />
-      <span className="flex-1 truncate text-left font-medium">
-        {service.name}
-      </span>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={onEdit}
-        className="h-6 px-2 text-xs gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
-      >
-        <PencilLine className="w-3 h-3" />
-        Edit
-      </Button>
-      {isLive ? (
-        <>
-          <a href={link} target="_blank" rel="noreferrer">
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card/80 p-3.5 shadow-sm backdrop-blur-xl transition-all duration-200 hover:border-primary/40 hover:shadow-md group">
+      <div className="flex items-center gap-3 min-w-0">
+        <span
+          className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+            isLive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
+          }`}
+        />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+            {service.name}
+          </p>
+          <p className="text-[11px] font-mono text-muted-foreground/80 truncate">
+            {service.slug || slugifyServiceName(service.name)}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onEdit}
+          className="h-8 rounded-xl px-3 text-xs font-bold gap-1 border-border/60 hover:border-primary/30"
+        >
+          <PencilLine className="w-3.5 h-3.5" />
+          Edit
+        </Button>
+        {isLive ? (
+          <>
+            <a href={link} target="_blank" rel="noreferrer">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0 rounded-xl border-border/60 hover:border-primary/30"
+                title="View live page"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Button>
+            </a>
             <Button
               size="sm"
-              variant="ghost"
-              className="h-6 w-6 p-0 opacity-40 group-hover:opacity-100 transition-opacity"
+              variant="outline"
+              onClick={onStatusChange}
+              disabled={submitting}
+              className="h-8 px-2.5 rounded-xl text-xs font-bold text-amber-600 border-amber-500/40 hover:bg-amber-500/10"
+              title="Move to draft"
             >
-              <ExternalLink className="w-3 h-3" />
+              Draft
             </Button>
-          </a>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onStatusChange}
-            disabled={submitting}
-            className="h-6 px-2 text-xs text-amber-600 hover:bg-amber-500/10 opacity-40 group-hover:opacity-100 transition-opacity"
-          >
-            Draft
-          </Button>
-        </>
-      ) : (
-        <>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onStatusChange}
-            disabled={submitting}
-            className="h-6 w-6 p-0 text-emerald-600 hover:bg-emerald-500/10 opacity-40 group-hover:opacity-100 transition-opacity"
-          >
-            <RotateCcw className="w-3 h-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onDelete}
-            disabled={submitting}
-            className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10 opacity-40 group-hover:opacity-100 transition-opacity"
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </>
-      )}
+          </>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onStatusChange}
+              disabled={submitting}
+              className="h-8 px-2.5 rounded-xl text-xs font-bold text-emerald-600 border-emerald-500/40 hover:bg-emerald-500/10"
+              title="Restore to live"
+            >
+              Restore
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={onDelete}
+              disabled={submitting}
+              className="h-8 w-8 p-0 rounded-xl"
+              title="Delete service"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -781,35 +801,56 @@ const PagesManager = () => {
   const pageSections: Array<{
     id: PageSection;
     label: string;
+    badge: string;
     icon: React.ReactNode;
     description: string;
+    tags: string[];
+    accentGradient: string;
+    actionLabel: string;
   }> = [
     {
       id: "home",
-      label: "Home Page",
-      icon: <Globe className="w-4 h-4" />,
+      label: "Home Page Workspace",
+      badge: "Core Layout",
+      icon: <Globe className="w-6 h-6 text-white" />,
       description:
-        "Edit the home page layout, reorder sections, and update key content.",
+        "Customize the home page hero section, reorder site components, update software strips, and manage primary call-to-actions.",
+      tags: ["Hero Section", "Global Strips", "CTA Cards", "Reorder"],
+      accentGradient: "from-blue-500 to-cyan-500",
+      actionLabel: "Configure Home Page",
     },
     {
       id: "services",
-      label: "Our Services",
-      icon: <FileText className="w-4 h-4" />,
-      description: "Create, edit, and publish service pages from CMS.",
+      label: "Our Services Catalog",
+      badge: "Services & Pricing",
+      icon: <Layers className="w-6 h-6 text-white" />,
+      description:
+        "Create, edit, and publish custom service offerings, pricing tiers, step-by-step process workflows, and feature cards.",
+      tags: ["Service Pages", "Process Steps", "Pricing Tiers", "Features"],
+      accentGradient: "from-purple-500 to-indigo-500",
+      actionLabel: "Manage Catalog",
     },
     {
       id: "faq",
-      label: "FAQ",
-      icon: <FileEdit className="w-4 h-4" />,
+      label: "FAQ Management",
+      badge: "Help & QA",
+      icon: <HelpCircle className="w-6 h-6 text-white" />,
       description:
-        "Manage page-wise FAQs for each live service with draft workflow.",
+        "Manage page-specific FAQs for each live service with instant preview, draft workflow, and publish controls.",
+      tags: ["Service FAQs", "Draft Mode", "Categorized QA"],
+      accentGradient: "from-amber-500 to-orange-500",
+      actionLabel: "Edit FAQs",
     },
     {
       id: "blog",
-      label: "Blog",
-      icon: <PencilLine className="w-4 h-4" />,
+      label: "Blog Articles & News",
+      badge: "Editorial Content",
+      icon: <BookOpen className="w-6 h-6 text-white" />,
       description:
-        "Create and publish service-wise blog posts with draft workflow.",
+        "Publish technical articles, tutorial guides, news updates, and manage service-linked draft blog posts.",
+      tags: ["Blog Posts", "Draft System", "Rich Content", "Author Meta"],
+      accentGradient: "from-emerald-500 to-teal-500",
+      actionLabel: "Manage Articles",
     },
   ];
 
@@ -822,24 +863,56 @@ const PagesManager = () => {
   // ── Index: 4 page cards ──
   if (!activeSection) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-        {pageSections.map((section) => (
-          <button
-            key={section.id}
-            type="button"
-            onClick={() => setActiveSection(section.id)}
-            className="glass-card border-border/60 p-6 text-left rounded-2xl hover:border-primary/40 hover:bg-primary/5 transition-all group"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <span className="p-2 rounded-lg bg-muted/50 group-hover:bg-primary/10 transition-colors text-muted-foreground group-hover:text-primary">
-                {section.icon}
-              </span>
-              <span className="font-semibold">{section.label}</span>
-              <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary transition-colors" />
-            </div>
-            <p className="text-sm text-muted-foreground">{section.description}</p>
-          </button>
-        ))}
+      <div className="space-y-6 pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+          {pageSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => setActiveSection(section.id)}
+              className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/80 p-5 sm:p-6 shadow-md backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl text-left flex flex-col justify-between"
+            >
+              {/* Subtle ambient accent background glow */}
+              <div className={`pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-gradient-to-br ${section.accentGradient} opacity-15 blur-2xl transition-opacity duration-300 group-hover:opacity-30`} />
+
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-3.5">
+                  <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${section.accentGradient} shadow-md transition-transform duration-300 group-hover:scale-105`}>
+                    {section.icon}
+                  </div>
+                  <span className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground backdrop-blur-md">
+                    {section.badge}
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                  {section.label}
+                </h3>
+                <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                  {section.description}
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {section.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-md border border-border/50 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center justify-between border-t border-border/40 pt-3.5">
+                <span className="text-xs font-bold text-primary flex items-center gap-1 group-hover:underline">
+                  {section.actionLabel}
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary" />
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
@@ -924,38 +997,45 @@ const PagesManager = () => {
           <HomePageManager />
         </CMSErrorBoundary>
       ) : activeSection === "services" ? (
-        <ServicesSection
-          loading={loading}
-          liveServices={liveServices}
-          draftServices={draftServices}
-          openEditEditor={openEditEditor}
-          updateStatus={updateStatus}
-          deleteService={deleteService}
-          submitting={submitting}
-          editorOpen={editorOpen}
-          closeEditor={closeEditor}
-          editingId={editingId}
-          editorTab={editorTab}
-          setEditorTab={setEditorTab}
-          form={form}
-          setField={setField}
-          setFeature={setFeature}
-          addFeatureCard={addFeatureCard}
-          removeFeatureCard={removeFeatureCard}
-          setProcessStep={setProcessStep}
-          addProcessStep={addProcessStep}
-          removeProcessStep={removeProcessStep}
-          setPricingTier={setPricingTier}
-          setPricingTierFeatures={setPricingTierFeatures}
-          addPricingTier={addPricingTier}
-          removePricingTier={removePricingTier}
-          saveService={saveService}
-          previewUrl={previewUrl}
-        />
+        <CMSErrorBoundary>
+          <ServicesSection
+            loading={loading}
+            liveServices={liveServices}
+            draftServices={draftServices}
+            openNewEditor={openNewEditor}
+            openEditEditor={openEditEditor}
+            updateStatus={updateStatus}
+            deleteService={deleteService}
+            submitting={submitting}
+            editorOpen={editorOpen}
+            closeEditor={closeEditor}
+            editingId={editingId}
+            editorTab={editorTab}
+            setEditorTab={setEditorTab}
+            form={form}
+            setField={setField}
+            setFeature={setFeature}
+            addFeatureCard={addFeatureCard}
+            removeFeatureCard={removeFeatureCard}
+            setProcessStep={setProcessStep}
+            addProcessStep={addProcessStep}
+            removeProcessStep={removeProcessStep}
+            setPricingTier={setPricingTier}
+            setPricingTierFeatures={setPricingTierFeatures}
+            addPricingTier={addPricingTier}
+            removePricingTier={removePricingTier}
+            saveService={saveService}
+            previewUrl={previewUrl}
+          />
+        </CMSErrorBoundary>
       ) : activeSection === "faq" ? (
-        <FaqManager onBack={goBack} />
+        <CMSErrorBoundary>
+          <FaqManager onBack={goBack} />
+        </CMSErrorBoundary>
       ) : (
-        <BlogManager onBack={goBack} />
+        <CMSErrorBoundary>
+          <BlogManager onBack={goBack} />
+        </CMSErrorBoundary>
       )}
     </div>
   );
@@ -967,6 +1047,7 @@ type ServicesSectionProps = {
   loading: boolean;
   liveServices: ServiceItem[];
   draftServices: ServiceItem[];
+  openNewEditor: () => void;
   openEditEditor: (s: ServiceItem) => void;
   updateStatus: (s: ServiceItem, status: ServiceStatus) => void;
   deleteService: (s: ServiceItem) => void;
@@ -1011,6 +1092,7 @@ const ServicesSection = ({
   loading,
   liveServices,
   draftServices,
+  openNewEditor,
   openEditEditor,
   updateStatus,
   deleteService,
@@ -1037,67 +1119,82 @@ const ServicesSection = ({
 }: ServicesSectionProps) => {
   const allServices = [...liveServices, ...draftServices];
 
-  // ── Empty state: no service selected ──
+  // ── Services Catalog Overview: when editor is closed ──
   if (!editorOpen) {
     return (
-      <div className="glass-card border-border/60 rounded-2xl flex flex-col items-center justify-center py-20 text-center gap-3">
-        <div className="p-4 rounded-2xl bg-muted/30">
-          <FileText className="w-8 h-8 text-muted-foreground" />
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-purple-500/20 bg-gradient-to-r from-card/90 via-card/75 to-purple-500/10 p-5 shadow-xl backdrop-blur-2xl sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500 text-white shadow-md shadow-purple-500/30">
+                <Layers className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-foreground">Services Catalog Management</h3>
+                <p className="text-xs text-muted-foreground">Manage active services, create custom offerings, and edit pricing & process steps.</p>
+              </div>
+            </div>
+            <Button onClick={openNewEditor} className="rounded-xl font-bold bg-purple-500 text-white shadow-md shadow-purple-500/25 hover:bg-purple-600 gap-1.5 self-start sm:self-auto">
+              <Plus className="h-4 w-4" />
+              <span>Create New Service</span>
+            </Button>
+          </div>
         </div>
-        <p className="font-medium">No service selected</p>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Select a service from the dropdown above to start editing, or create a
-          new one.
-        </p>
 
         {!loading && allServices.length > 0 && (
-          <div className="mt-6 w-full max-w-lg space-y-4 px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {liveServices.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[11px] text-muted-foreground uppercase tracking-widest">
-                  Live ({liveServices.length})
-                </p>
-                {liveServices.map((service) => (
-                  <ServiceRow
-                    key={service.id}
-                    service={service}
-                    onEdit={() => openEditEditor(service)}
-                    onStatusChange={() => updateStatus(service, "draft")}
-                    onDelete={() => deleteService(service)}
-                    submitting={submitting}
-                    isLive
-                  />
-                ))}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                    Live Services ({liveServices.length})
+                  </span>
+                </div>
+                <div className="space-y-2.5">
+                  {liveServices.map((service) => (
+                    <ServiceRow
+                      key={service.id}
+                      service={service}
+                      onEdit={() => openEditEditor(service)}
+                      onStatusChange={() => updateStatus(service, "draft")}
+                      onDelete={() => deleteService(service)}
+                      submitting={submitting}
+                      isLive
+                    />
+                  ))}
+                </div>
               </div>
             )}
+
             {draftServices.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[11px] text-muted-foreground uppercase tracking-widest">
-                  Draft ({draftServices.length})
-                </p>
-                {draftServices.map((service) => (
-                  <ServiceRow
-                    key={service.id}
-                    service={service}
-                    onEdit={() => openEditEditor(service)}
-                    onStatusChange={() => updateStatus(service, "live")}
-                    onDelete={() => deleteService(service)}
-                    submitting={submitting}
-                    isLive={false}
-                  />
-                ))}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                    Draft Services ({draftServices.length})
+                  </span>
+                </div>
+                <div className="space-y-2.5">
+                  {draftServices.map((service) => (
+                    <ServiceRow
+                      key={service.id}
+                      service={service}
+                      onEdit={() => openEditEditor(service)}
+                      onStatusChange={() => updateStatus(service, "live")}
+                      onDelete={() => deleteService(service)}
+                      submitting={submitting}
+                      isLive={false}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
         )}
 
         {loading && (
-          <div className="mt-4 space-y-2 w-full max-w-md px-6">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-10 rounded-lg bg-muted/20 animate-pulse"
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-20 rounded-2xl bg-card/40 animate-pulse border border-border/40" />
             ))}
           </div>
         )}

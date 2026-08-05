@@ -4,8 +4,9 @@ import multer from "multer";
 import { env } from "../config/env.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
-import { insertRow, selectRows, updateRow, deleteRow } from "../lib/supabaseRest.js";
+import { insertRow, selectRows, updateRow, deleteRow } from "../lib/database.js";
 import { normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
+import { validateUploadedBuffer } from "../lib/uploadValidation.js";
 import { isNonEmptyString } from "../utils/validation.js";
 
 const router = Router();
@@ -669,9 +670,10 @@ router.post("/live-chat/admin/upload", requireAuth, upload.single("file"), async
     if (!file) {
       return res.status(400).json({ message: "file is required" });
     }
-    if (!isAllowedAttachmentFile(file)) {
+    const validation = validateUploadedBuffer(file.buffer, file.originalname, file.mimetype, "docs-and-images");
+    if (!validation.valid || !isAllowedAttachmentFile(file)) {
       return res.status(400).json({
-        message: "Unsupported file type. Only PDF, image, XLSX/XLS, and DOCX files are allowed.",
+        message: validation.reason || "Unsupported file type. Only PDF, image, XLSX/XLS, and DOCX files are allowed.",
       });
     }
 
@@ -893,9 +895,10 @@ router.post("/live-chat/me/upload", requireUserAuth, upload.single("file"), asyn
     if (!file) {
       return res.status(400).json({ message: "file is required" });
     }
-    if (!isAllowedAttachmentFile(file)) {
+    const validation = validateUploadedBuffer(file.buffer, file.originalname, file.mimetype, "docs-and-images");
+    if (!validation.valid || !isAllowedAttachmentFile(file)) {
       return res.status(400).json({
-        message: "Unsupported file type. Only PDF, image, XLSX/XLS, and DOCX files are allowed.",
+        message: validation.reason || "Unsupported file type. Only PDF, image, XLSX/XLS, and DOCX files are allowed.",
       });
     }
 

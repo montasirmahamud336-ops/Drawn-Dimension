@@ -15,7 +15,11 @@ const normalizeConfiguredHost = (value?: string) => {
   }
 };
 const configuredApiHost = normalizeConfiguredHost((import.meta as any).env?.VITE_API_BASE_URL as string | undefined);
-const shouldUseLocalMediaProxy = () => false;
+// The media service intentionally sends `Cross-Origin-Resource-Policy: same-origin`.
+// In local development, serve it through Vite's same-origin `/cms-media` proxy so
+// the browser does not block production media URLs requested from localhost.
+const shouldUseLocalMediaProxy = () =>
+  typeof window !== "undefined" && isLoopbackHost(window.location.hostname.toLowerCase());
 const isProductionWebsiteHost = (host: string) =>
   host === "drawndimension.com" || host === "www.drawndimension.com";
 const buildLocalProxyUrl = (pathname: string, search = "") =>

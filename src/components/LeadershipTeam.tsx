@@ -64,16 +64,15 @@ const TeamMemberMedia = ({ leader }: { leader: any }) => {
 
   return (
     <div className="relative mb-5">
-      <div className="absolute -inset-2 rounded-full bg-[radial-gradient(circle,rgba(239,68,68,0.18)_0%,rgba(239,68,68,0.08)_45%,transparent_72%)] opacity-55 blur-md" />
-      <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-full border-2 border-slate-300/85 dark:border-white/20 group-hover:border-primary/45 transition-colors duration-300 overflow-hidden">
+      <div className="relative w-36 h-36 md:w-40 md:h-40 rounded-full overflow-hidden shadow-lg group-hover:scale-105 transition-transform duration-300 bg-muted/20">
         {current ? (
           current.type === "video" ? (
             <video src={current.url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
           ) : (
-            <img src={current.url} alt={leader.name} className="w-full h-full object-cover object-[center_16%] scale-[1.03]" />
+            <img src={current.url} alt={leader.name} className="w-full h-full object-cover object-[center_16%]" />
           )
         ) : (
-          <div className="w-full h-full bg-primary/10 text-primary text-2xl font-bold flex items-center justify-center">
+          <div className="w-full h-full bg-primary/10 text-primary text-3xl font-bold flex items-center justify-center">
             {initials}
           </div>
         )}
@@ -83,14 +82,14 @@ const TeamMemberMedia = ({ leader }: { leader: any }) => {
           <button
             type="button"
             onClick={prev}
-            className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
+            className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-background/90 border border-border/80 text-foreground flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-md"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={next}
-            className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
+            className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-background/90 border border-border/80 text-foreground flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-md"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -117,7 +116,7 @@ const LeadershipTeam = ({ compact = false }: LeadershipTeamProps) => {
     if (count === 2) {
       return "grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto";
     }
-    return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto";
+    return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto";
   };
 
   const leadershipGridClass = getLeadershipGridClass(teamMembers.length);
@@ -138,19 +137,20 @@ const LeadershipTeam = ({ compact = false }: LeadershipTeamProps) => {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className={compact ? "text-center mb-9 md:mb-10" : "text-center mb-16"}
+          transition={{ duration: 0.7 }}
+          className={compact ? "text-center mb-10 md:mb-12" : "text-center mb-16"}
         >
-          <span className="text-primary font-semibold text-sm uppercase tracking-wider">
-            Meet Our Leaders
+          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3 shadow-sm">
+            <span>Executive Board</span>
           </span>
-          <h2 id="leadership-team-heading" className="text-4xl md:text-5xl font-bold mt-4 text-foreground">
-            Our Leadership Team
+          <h2 id="leadership-team-heading" className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.15]">
+            <span className="text-foreground block">Executive Steering &</span>
+            <span className="text-primary font-bold block mt-1">Leadership Team</span>
           </h2>
         </motion.div>
 
         {loading ? (
-          <div className="flex justify-center items-center py-10">
+          <div className="flex justify-center items-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
@@ -168,58 +168,64 @@ const LeadershipTeam = ({ compact = false }: LeadershipTeamProps) => {
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.15 }}
-                    className="glass-card relative overflow-hidden p-7 group border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_42%,rgba(255,255,255,0.01)_100%)] backdrop-blur-xl transition-all duration-500 hover:border-slate-400/80 dark:hover:border-border/70 hover:shadow-[0_18px_45px_rgba(0,0,0,0.35)] w-full min-h-[500px] h-full"
+                    transition={{ duration: 0.5, delay: index * 0.12 }}
+                    className="relative overflow-hidden rounded-3xl border-[2.5px] border-border/70 dark:border-border bg-card p-6 md:p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:border-primary/50 shadow-md group flex flex-col justify-between items-center text-center"
                   >
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%)]" />
-                    <div className="flex flex-col items-center text-center relative z-10 h-full">
+                    {/* Top Glow Line Accent */}
+                    <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    
+                    <div className="flex flex-col items-center text-center relative z-10 w-full">
                       <TeamMemberMedia leader={leader} />
 
-                      <h3 className="text-xl font-bold text-foreground leading-tight line-clamp-2 min-h-[3.2rem] w-full flex items-end justify-center mb-1">
+                      {/* Name */}
+                      <h3 className="text-xl font-bold text-foreground tracking-tight group-hover:text-primary transition-colors mb-1 line-clamp-1">
                         {name}
                       </h3>
-                      <p className="text-primary font-semibold text-sm line-clamp-2 min-h-[2.25rem] w-full flex items-start justify-center mb-3">
+
+                      {/* Role */}
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-3.5">
                         {role}
                       </p>
 
-                      <div className="w-full min-h-[6rem] flex flex-col items-center">
-                        <p className="text-muted-foreground text-sm leading-relaxed line-clamp-4 w-full">
+                      {/* Bio Clamped */}
+                      <div className="w-full min-h-[5.5rem] flex flex-col items-center mb-4">
+                        <p className="text-muted-foreground text-xs md:text-sm leading-relaxed line-clamp-3 w-full">
                           {bio}
                         </p>
-                        {showReadMore ? (
+                        {showReadMore && (
                           <button
                             type="button"
                             onClick={() => setSelectedLeader({ ...leader, name, role, bio })}
-                            className="mt-1 text-xs text-primary hover:text-primary/85 transition-colors underline underline-offset-2"
+                            className="mt-2 text-xs font-semibold text-primary hover:underline transition-colors"
                           >
-                            Read more
+                            Read Full Bio →
                           </button>
-                        ) : (
-                          <span className="h-3" />
                         )}
                       </div>
+                    </div>
 
-                      <div className="flex gap-3 mt-2">
-                        {[
-                          { href: normalizeUrl(leader.linkedin_url), icon: LinkedInIcon, label: "LinkedIn" },
-                          { href: normalizeUrl(leader.twitter_url), icon: TwitterIcon, label: "Twitter" },
-                          { href: normalizeUrl(leader.facebook_url), icon: FacebookIcon, label: "Facebook" },
-                        ].map((social) => (
-                          <a
-                            key={social.label}
-                            href={social.href || "#"}
-                            target={social.href ? "_blank" : undefined}
-                            rel={social.href ? "noopener noreferrer" : undefined}
-                            aria-label={social.label}
-                            className={`w-10 h-10 rounded-full border border-slate-300/80 dark:border-border/50 bg-background/35 backdrop-blur-sm flex items-center justify-center transition-all duration-300 ${social.href
-                              ? "text-muted-foreground hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
-                              : "text-muted-foreground/40 pointer-events-none"
-                              }`}
-                          >
-                            <social.icon className="w-4 h-4" />
-                          </a>
-                        ))}
-                      </div>
+                    {/* Social Links Bar */}
+                    <div className="flex items-center justify-center gap-3 pt-4 border-t border-border/60 w-full relative z-10">
+                      {[
+                        { href: normalizeUrl(leader.linkedin_url), icon: LinkedInIcon, label: "LinkedIn" },
+                        { href: normalizeUrl(leader.twitter_url), icon: TwitterIcon, label: "Twitter" },
+                        { href: normalizeUrl(leader.facebook_url), icon: FacebookIcon, label: "Facebook" },
+                      ].map((social) => (
+                        <a
+                          key={social.label}
+                          href={social.href || "#"}
+                          target={social.href ? "_blank" : undefined}
+                          rel={social.href ? "noopener noreferrer" : undefined}
+                          aria-label={social.label}
+                          className={`w-9 h-9 rounded-xl border border-border/70 bg-muted/40 flex items-center justify-center transition-all duration-200 shadow-sm ${
+                            social.href
+                              ? "text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground hover:scale-110"
+                              : "text-muted-foreground/30 pointer-events-none opacity-40"
+                          }`}
+                        >
+                          <social.icon className="w-4 h-4" />
+                        </a>
+                      ))}
                     </div>
                   </motion.div>
                 );

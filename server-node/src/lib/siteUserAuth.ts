@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Pool } from "pg";
 import { env } from "../config/env.js";
-import { insertRow, selectRows, updateRow } from "./supabaseRest.js";
+import { insertRow, selectRows, updateRow } from "./database.js";
 
 export type SiteUserRow = {
   id: string;
@@ -174,7 +174,7 @@ const signSiteUserToken = (row: SiteUserRow) =>
     env.userAuthToken,
     {
       subject: row.id,
-      expiresIn: "30d",
+      expiresIn: "7d",
     }
   );
 

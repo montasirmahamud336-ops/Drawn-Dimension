@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
 import { normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
+import { validateUploadedBuffer } from "../lib/uploadValidation.js";
 
 const router = Router();
 const upload = multer({
@@ -21,8 +22,9 @@ router.post("/me/profile/avatar-upload", requireUserAuth, upload.single("file"),
       return res.status(400).json({ message: "file is required" });
     }
 
-    if (!String(file.mimetype ?? "").toLowerCase().startsWith("image/")) {
-      return res.status(400).json({ message: "Please upload an image file" });
+    const validation = validateUploadedBuffer(file.buffer, file.originalname, file.mimetype, "image-only");
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.reason || "Please upload a valid image file" });
     }
 
     const ext = (file.originalname.split(".").pop() || "jpg").replace(/[^a-zA-Z0-9]/g, "") || "jpg";
@@ -40,9 +42,8 @@ router.post("/me/profile/avatar-upload", requireUserAuth, upload.single("file"),
       size: file.size,
     });
   } catch (error: unknown) {
-    return res.status(500).json({
-      message: error instanceof Error ? error.message : "Failed to upload avatar",
-    });
+    console.error("Avatar upload error:", error);
+    return res.status(500).json({ message: "Failed to upload avatar" });
   }
 });
 

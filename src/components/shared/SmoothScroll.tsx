@@ -6,18 +6,16 @@ const SmoothScroll = () => {
 
     useEffect(() => {
         const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
-        const isSmallViewport = window.matchMedia("(max-width: 767px)").matches;
+        const isMobileScreen = window.matchMedia("(max-width: 640px)").matches;
         const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
         const isVeryLowPowerDevice =
             typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 2;
 
-        // Keep native scroll for reduced-motion and clearly mobile/low-power contexts.
+        // Keep native scroll only for reduced-motion, saveData, or low-end mobile devices.
         if (
             prefersReducedMotion ||
-            isCoarsePointer ||
             connection?.saveData ||
-            (isSmallViewport && isVeryLowPowerDevice)
+            (isMobileScreen && isVeryLowPowerDevice)
         ) {
             return;
         }
@@ -34,12 +32,13 @@ const SmoothScroll = () => {
         };
 
         const lenis = new Lenis({
-            duration: 0.85,
-            easing: (t) => 1 - Math.pow(1 - t, 3),
+            duration: 1.25,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Buttery smooth momentum glide
             orientation: "vertical",
             gestureOrientation: "vertical",
             smoothWheel: true,
-            touchMultiplier: 1.2,
+            touchMultiplier: 1.5,
+            wheelMultiplier: 1.0,
             // Keep native scrolling inside overlays/modals and text-editing boxes.
             prevent: (node) => shouldUseNativeScroll(node),
         });
@@ -55,6 +54,7 @@ const SmoothScroll = () => {
                 lenis.stop();
             } else {
                 lenis.start();
+                lenis.resize();
             }
         };
 
@@ -71,6 +71,12 @@ const SmoothScroll = () => {
             subtree: false,
         });
 
+        // Auto-recalculate scroll height when dynamic content (like portfolio items) loads or resizes
+        const resizeObserver = new ResizeObserver(() => {
+            lenis.resize();
+        });
+        resizeObserver.observe(document.body);
+
         let rafId = 0;
         const raf = (time: number) => {
             lenis.raf(time);
@@ -81,6 +87,7 @@ const SmoothScroll = () => {
 
         return () => {
             observer.disconnect();
+            resizeObserver.disconnect();
             cancelAnimationFrame(rafId);
             delete (window as Window & { __lenis?: Lenis }).__lenis;
             lenis.destroy();

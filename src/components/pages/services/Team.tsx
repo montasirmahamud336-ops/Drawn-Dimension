@@ -15,7 +15,7 @@ const Team = () => {
         <Navigation />
         <main className="relative" aria-label="Drawn Dimension team page">
           <PageHero
-            title="Team"
+            title="World-Class Engineering Team"
             subtitle="Meet Drawn Dimension"
             description="Meet the leadership team and employees behind Drawn Dimension. This page brings everyone together in one place."
             actions={

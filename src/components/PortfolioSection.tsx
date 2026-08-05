@@ -17,16 +17,28 @@ interface Project {
   media?: Array<{ url?: string; type?: string; name?: string | null }> | null;
 }
 
+/** Drafting-style registration marks that resolve into view on hover — a nod to the studio's technical-drawing roots. */
+const CornerMarks = () => (
+  <div className="pointer-events-none absolute inset-3 z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100 transform-gpu">
+    <span className="absolute left-0 top-0 h-3.5 w-3.5 border-l-2 border-t-2 border-primary/70" />
+    <span className="absolute right-0 top-0 h-3.5 w-3.5 border-r-2 border-t-2 border-primary/70" />
+    <span className="absolute left-0 bottom-0 h-3.5 w-3.5 border-b-2 border-l-2 border-primary/70" />
+    <span className="absolute right-0 bottom-0 h-3.5 w-3.5 border-b-2 border-r-2 border-primary/70" />
+  </div>
+);
+
 const PortfolioCardImage = ({
   project,
   title,
   category,
   index,
+  variant,
 }: {
   project: Project;
   title: string;
   category: string;
   index: number;
+  variant: "feature" | "secondary";
 }) => {
   const previewMedia = useMemo(() => getProjectPrimaryCardMedia(project), [project]);
   const imageUrl = previewMedia?.type === "image" ? previewMedia.url : "";
@@ -39,13 +51,17 @@ const PortfolioCardImage = ({
     setIsImageReady(previewMedia?.type !== "image");
   }, [previewMedia?.type, imageUrl]);
 
+  const aspectClass = variant === "feature" ? "aspect-[4/3] md:aspect-[16/12]" : "aspect-video";
+
   return (
-    <div className="relative overflow-hidden aspect-video">
+    <div className={`relative overflow-hidden ${aspectClass}`}>
       {previewMedia?.type === "video" ? (
         <video
           src={previewMedia.url}
           className="w-full h-full object-cover"
           muted
+          autoPlay
+          loop
           playsInline
           preload="none"
         />
@@ -77,7 +93,7 @@ const PortfolioCardImage = ({
             decoding="async"
             onLoad={() => setIsImageReady(true)}
             onError={() => setIsImageReady(true)}
-            className={`w-full h-full object-cover transition-[transform,opacity] duration-300 group-hover:scale-[1.02] ${isImageReady ? "opacity-100" : "opacity-0"}`}
+            className={`w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] transform-gpu ${isImageReady ? "opacity-100" : "opacity-0"}`}
           />
         </>
       ) : (
@@ -85,12 +101,15 @@ const PortfolioCardImage = ({
           No Preview
         </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform-gpu" />
       <div className="absolute top-4 left-4">
         <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow">
           {category}
         </span>
       </div>
+      <span className="absolute top-4 right-4 rounded-full bg-black/40 px-2 py-1 font-mono text-[10px] tracking-[0.25em] text-white/80 backdrop-blur-sm">
+        {`N\u00b7${String(index + 1).padStart(2, "0")}`}
+      </span>
       {hasPdf && (
         <div className="absolute bottom-4 left-4">
           <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
@@ -143,6 +162,16 @@ const PortfolioSection = ({ data }: PortfolioSectionProps) => {
 
   return (
     <section id="portfolio" className="relative overflow-hidden bg-secondary/30 py-14 md:py-16 lg:py-20">
+      {/* faint blueprint grid — a quiet nod to technical-drawing paper, never louder than the work */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.7) 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+        }}
+      />
       <div className="container-narrow relative z-10" ref={ref}>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -185,33 +214,45 @@ const PortfolioSection = ({ data }: PortfolioSectionProps) => {
 
         {/* Projects Grid */}
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-64 rounded-2xl bg-muted/20" />
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="h-64 rounded-2xl bg-muted/20" />
+            <div className="h-64 rounded-2xl bg-muted/20" />
+            <div className="h-64 rounded-2xl bg-muted/20" />
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleProjects.map((project, index) => {
               return (
                 <div
                   key={project.id || index}
-                  className="group cursor-pointer [content-visibility:auto] [contain-intrinsic-size:440px]"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => openDetails(project)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openDetails(project);
+                    }
+                  }}
+                  className="group relative cursor-pointer [content-visibility:auto] [contain-intrinsic-size:440px]"
                 >
-                  <div className="glass-card cms-card-lite overflow-hidden h-full flex flex-col border-border/60 bg-card/95 transition-colors duration-300 group-hover:border-primary/35">
+                  <div className="relative overflow-hidden h-full flex flex-col border border-border/60 bg-card/95 rounded-2xl transition-[border-color,transform] duration-300 group-hover:border-primary/40 transform-gpu">
+                    <CornerMarks />
                     <PortfolioCardImage
                       project={project}
                       title={project.title}
                       category={project.category || "Uncategorized"}
                       index={index}
+                      variant="secondary"
                     />
                     <div className="p-6 flex-grow flex flex-col justify-between">
                       <div>
                         <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                           {project.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{project.description}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                          {project.description}
+                        </p>
                       </div>
                       {project.client && (
                         <div className="mt-auto pt-4 border-t border-border/50">

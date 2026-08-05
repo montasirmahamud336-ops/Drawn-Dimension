@@ -2,8 +2,9 @@ import { Router } from "express";
 import multer from "multer";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
-import { insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { insertRow, selectRows, updateRow } from "../lib/database.js";
 import { normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
+import { validateUploadedBuffer } from "../lib/uploadValidation.js";
 
 const router = Router();
 const upload = multer({
@@ -255,6 +256,11 @@ router.post("/chat/upload", requireAuth, upload.single("file"), async (req: Auth
     const file = req.file;
     if (!file) {
       return res.status(400).json({ message: "file is required" });
+    }
+
+    const validation = validateUploadedBuffer(file.buffer, file.originalname, file.mimetype, "docs-and-images");
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.reason || "Invalid attachment file format" });
     }
 
     const ext = (file.originalname.split(".").pop() || "bin").replace(/[^a-zA-Z0-9]/g, "") || "bin";

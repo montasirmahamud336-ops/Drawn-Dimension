@@ -185,10 +185,6 @@ const HomePageManager = () => {
     void loadSettings();
   }, []);
 
-  useEffect(() => {
-    scrollCmsMainToTop();
-  }, [activeTab]);
-
   const requireToken = () => {
     const token = getAdminToken();
     if (token) return token;
@@ -1008,7 +1004,7 @@ const HomePageManager = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Show</span>
                   <Switch
-                    checked={settings.sections[sectionId].enabled}
+                    checked={Boolean(settings.sections?.[sectionId]?.enabled)}
                     onCheckedChange={() => toggleSection(sectionId)}
                   />
                 </div>

@@ -21,9 +21,9 @@ const WORKS_LOAD_MORE_STEP = 6;
 const EAGER_IMAGE_COUNT = 1;
 const DESCRIPTION_PREVIEW_LIMIT = 180;
 const CARD_SHELL_STYLE = {
-  contentVisibility: "auto",
-  containIntrinsicSize: "420px",
-  contain: "layout paint style",
+  // Avoid `content-visibility: auto` here: Chrome can repeatedly promote and
+  // discard a hovered draggable card while its scroll container is moving.
+  contain: "paint",
 } as const;
 const LOADING_SKELETON_IDS = [1, 2, 3, 4, 5, 6];
 const WorkForm = lazy(() => import("./WorkForm"));
@@ -161,7 +161,7 @@ const WorkCard = memo(({
           ) : imageSrc ? (
             <>
               <div
-                className={`absolute inset-0 bg-muted/30 transition-opacity duration-200 ${isImageReady ? "opacity-0" : "opacity-100"}`}
+                className={`absolute inset-0 bg-muted/30 ${isImageReady ? "opacity-0" : "opacity-100"}`}
                 aria-hidden="true"
               />
               <img
@@ -176,7 +176,7 @@ const WorkCard = memo(({
                 sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                 onLoad={() => setIsImageReady(true)}
                 onError={() => setIsImageReady(true)}
-                className={`w-full h-full object-cover transition-opacity duration-200 ${isImageReady ? "opacity-100" : "opacity-0"}`}
+                className={`w-full h-full object-cover ${isImageReady ? "opacity-100" : "opacity-0"}`}
               />
             </>
           ) : (
@@ -186,11 +186,11 @@ const WorkCard = memo(({
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-40" />
 
-          <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+          <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 z-20">
             <Button
               size="sm"
               variant="secondary"
-              className="shadow-lg hover:scale-105 transition-transform"
+              className="shadow-lg"
               onClick={() => onEdit(project)}
             >
               <Edit className="w-4 h-4 mr-2" /> Edit
@@ -200,7 +200,7 @@ const WorkCard = memo(({
               <>
                 <Button
                   size="icon"
-                  className="bg-green-600 hover:bg-green-700 shadow-lg hover:scale-105 transition-transform"
+                  className="bg-green-600 hover:bg-green-700 shadow-lg"
                   onClick={() => onRestore(project.id)}
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -208,7 +208,7 @@ const WorkCard = memo(({
                 <Button
                   size="icon"
                   variant="destructive"
-                  className="shadow-lg hover:scale-105 transition-transform"
+                  className="shadow-lg"
                   onClick={() => onDelete(project.id, true)}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -218,7 +218,7 @@ const WorkCard = memo(({
               <Button
                 size="sm"
                 variant="destructive"
-                className="shadow-lg hover:scale-105 transition-transform"
+                className="shadow-lg"
                 onClick={() => onDelete(project.id, false)}
               >
                 <Trash2 className="w-4 h-4 mr-2" /> Draft
@@ -260,7 +260,7 @@ const WorkCard = memo(({
                 </span>
               </div>
             )}
-            <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+            <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary">
               {project.title}
             </h3>
             <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">

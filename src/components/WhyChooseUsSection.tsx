@@ -41,24 +41,25 @@ const WhyChooseUsSection = ({ data }: WhyChooseUsSectionProps) => {
             {content.reasons.map((reason, index) => {
               const Icon = iconMap[reason.icon as keyof typeof iconMap] ?? Zap;
               return (
-              <motion.div
-                key={reason.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={isInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                className="group"
-              >
-                <div className="glass-card p-5 bg-gradient-to-br from-background via-background to-primary/[0.05] border-border/60 hover:border-primary/45 transition-all duration-500 flex items-start gap-4 h-full">
-                  <div className="w-12 h-12 bg-primary/12 border border-primary/25 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors duration-500">
-                    <Icon className="w-6 h-6 text-primary" />
+                <motion.div
+                  key={reason.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="group"
+                >
+                  <div className="glass-card p-5 bg-gradient-to-br from-background via-background to-primary/[0.05] border-border/60 hover:border-primary/45 transition-all duration-500 flex items-start gap-4 h-full">
+                    <div className="w-12 h-12 bg-primary/12 border border-primary/25 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors duration-500">
+                      <Icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground mb-2 tracking-tight">{reason.title}</h3>
+                      <p className="text-sm text-muted-foreground/95 leading-relaxed">{reason.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-2 tracking-tight">{reason.title}</h3>
-                    <p className="text-sm text-muted-foreground/95 leading-relaxed">{reason.description}</p>
-                  </div>
-                </div>
-              </motion.div>
-            )})}
+                </motion.div>
+              )
+            })}
           </motion.div>
 
           <motion.div

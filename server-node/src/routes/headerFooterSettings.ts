@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs/promises";
 import path from "path";
 import { requireAuth } from "../middleware/auth.js";
-import { insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { insertRow, selectRows, updateRow } from "../lib/database.js";
 import { SERVER_DATA_DIR } from "../lib/runtimePaths.js";
 
 type HeaderFooterLink = {

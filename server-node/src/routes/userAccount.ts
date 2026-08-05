@@ -17,8 +17,9 @@ import {
   verifySiteUserPassword,
 } from "../lib/siteUserAuth.js";
 import { isGoogleAuthConfigured, verifyGoogleIdToken } from "../lib/googleAuth.js";
-import { insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { insertRow, selectRows, updateRow } from "../lib/database.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
+import { handleRouteError } from "../utils/errorResponse.js";
 import { env } from "../config/env.js";
 
 const router = Router();
@@ -175,9 +176,7 @@ router.post("/auth/user-signup", async (req, res) => {
       createdAt: user.created_at,
     });
   } catch (error: unknown) {
-    return res.status(500).json({
-      message: error instanceof Error ? error.message : "Failed to create account",
-    });
+    return handleRouteError(res, error, "Failed to create account");
   }
 });
 
@@ -228,9 +227,7 @@ router.post("/auth/user-login", async (req, res) => {
       user: session.user,
     });
   } catch (error: unknown) {
-    return res.status(500).json({
-      message: error instanceof Error ? error.message : "Failed to sign in",
-    });
+    return handleRouteError(res, error, "Failed to sign in");
   }
 });
 

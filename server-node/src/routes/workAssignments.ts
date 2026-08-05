@@ -2,7 +2,7 @@ import { Router } from "express";
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 import { requireAuth } from "../middleware/auth.js";
-import { insertRow, selectRows, updateRow, deleteRow } from "../lib/supabaseRest.js";
+import { insertRow, selectRows, updateRow, deleteRow } from "../lib/database.js";
 
 const router = Router();
 let transporter: nodemailer.Transporter | null = null;

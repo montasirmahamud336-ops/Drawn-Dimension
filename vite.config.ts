@@ -39,6 +39,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (requestPath) => requestPath.replace(/^\/cms-media/, "/media"),
         },
+        // Older CMS records can still contain relative `/media/...` URLs.
+        // Proxy those too, otherwise Vite serves the SPA fallback instead of the file.
+        "/media": {
+          target: cmsMediaTarget,
+          changeOrigin: true,
+        },
       },
     },
     plugins: [react()],

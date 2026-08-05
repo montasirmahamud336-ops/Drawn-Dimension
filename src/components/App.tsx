@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import Home from "./pages/services/Home";
 import Dashboard from "./pages/services/Dashboard";
 import AuthCallback from "./pages/services/AuthCallback";
+import CookieConsent from "@/components/shared/CookieConsent";
 
 // ⬇️ নতুন imports
 const StartProject = lazy(() => import("./pages/services/startproject"));
@@ -39,6 +40,10 @@ const HeaderFooterManager = lazy(() => import("@/components/cms/HeaderFooterMana
 const FormMessagesManager = lazy(() => import("@/components/cms/FormMessagesManager"));
 const LiveChatManager = lazy(() => import("@/components/cms/LiveChatManager"));
 const GiveAccessManager = lazy(() => import("@/components/cms/GiveAccessManager"));
+const AdvanceRequestsManager = lazy(() => import("@/components/cms/AdvanceRequestsManager"));
+const WebsiteUsersManager = lazy(() => import("@/components/cms/WebsiteUsersManager"));
+const VersionControlManager = lazy(() => import("@/components/cms/VersionControlManager"));
+const DatabaseBackupManager = lazy(() => import("@/components/cms/DatabaseBackupManager"));
 
 // Routes
 const About = lazy(() => import("./pages/services/About"));
@@ -82,6 +87,7 @@ const renderCMSRoutes = () => (
     <Route path="team" element={<TeamManager />} />
     <Route path="reviews" element={<ReviewsManager />} />
     <Route path="employees" element={<EmployeesManager />} />
+    <Route path="website-users" element={<WebsiteUsersManager />} />
     <Route path="work-assign" element={<WorkAssignManager />} />
     <Route path="sent-invoice" element={<SentInvoiceManager />} />
     <Route path="world-map" element={<WorldMapManager />} />
@@ -92,6 +98,9 @@ const renderCMSRoutes = () => (
     <Route path="chat" element={<EmployeeChatManager />} />
     <Route path="give-access" element={<GiveAccessManager />} />
     <Route path="inquiries" element={<InquiriesManager />} />
+    <Route path="advance-requests" element={<AdvanceRequestsManager />} />
+    <Route path="version-control" element={<VersionControlManager />} />
+    <Route path="database-backup" element={<DatabaseBackupManager />} />
   </>
 );
 
@@ -152,7 +161,7 @@ const AppShell = () => {
       {!adminRouteActive ? <CustomCursor /> : null}
       <ScrollToTop />
       <Suspense fallback={<RouteFallback />}>
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
@@ -203,6 +212,8 @@ const AppShell = () => {
               {renderCMSRoutes()}
             </Route>
 
+            <Route path="/website-users" element={<Navigate to="/cms/website-users" replace />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AnimatePresence>
@@ -212,6 +223,7 @@ const AppShell = () => {
           <ChatWidget />
         </Suspense>
       ) : null}
+      {!adminRouteActive ? <CookieConsent /> : null}
     </>
   );
 };

@@ -45,4 +45,14 @@ describe("mediaUrl helpers", () => {
       ),
     ).toBe("https://www.drawndimension.com/media/cms-uploads/home/logo.png");
   });
+
+  it("uses the Vite media proxy when the site is running locally", () => {
+    setWindowLocation("http://localhost:8080");
+
+    expect(
+      resolveCmsMediaUrl(
+        "https://www.drawndimension.com/media/cms-uploads/home/logo.png",
+      ),
+    ).toBe("/cms-media/cms-uploads/home/logo.png");
+  });
 });

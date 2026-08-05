@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { Router } from "express";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
-import { executeSql, selectRows } from "../lib/supabaseRest.js";
+import { executeSql, selectRows } from "../lib/database.js";
 
 const router = Router();
 

@@ -117,15 +117,15 @@ const AddReviewForm = ({ onSubmitted }: AddReviewFormProps) => {
   };
 
   return (
-    <div className="mt-8 md:mt-10">
+    <div className="mt-8 md:mt-12">
       <div className="flex justify-center">
         <Button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className="h-11 rounded-xl px-6"
+          className="px-6 py-3 bg-primary text-primary-foreground font-semibold text-sm rounded-2xl hover:bg-primary/90 transition-all duration-200 ease-out hover:scale-[1.03] active:scale-[0.98] shadow-md gap-2 h-auto"
         >
           <Plus className="w-4 h-4" />
-          {isOpen ? "Close Review Form" : "Add Your Review"}
+          {isOpen ? "Close Review Form" : "Submit Your Review"}
         </Button>
       </div>
 
@@ -133,43 +133,46 @@ const AddReviewForm = ({ onSubmitted }: AddReviewFormProps) => {
         {isOpen ? (
           <motion.div
             key="review-form"
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.24 }}
-            className="glass-card mt-6 p-5 md:p-7 border border-border/60"
+            transition={{ duration: 0.3 }}
+            className="mt-6 rounded-3xl border-[2.5px] border-border/70 dark:border-border bg-card p-6 md:p-8 shadow-md"
           >
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <h3 className="text-xl font-bold text-foreground mb-4">Share Your Feedback</h3>
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm text-foreground/90 font-medium">Your Name</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your Name</label>
                   <Input
                     value={form.name}
                     onChange={(event) => onChange("name", event.target.value)}
                     placeholder="John Doe"
                     maxLength={80}
                     required
+                    className="rounded-xl border-[1.5px] border-border/70 bg-background/50 focus:ring-2 focus:ring-primary/20 h-11"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm text-foreground/90 font-medium">Role / Company (Optional)</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role / Company (Optional)</label>
                   <Input
                     value={form.role}
                     onChange={(event) => onChange("role", event.target.value)}
-                    placeholder="Founder, Example Inc"
+                    placeholder="CEO, TechCorp"
                     maxLength={120}
+                    className="rounded-xl border-[1.5px] border-border/70 bg-background/50 focus:ring-2 focus:ring-primary/20 h-11"
                   />
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm text-foreground/90 font-medium">Service Used</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Service Used</label>
                   <select
                     value={form.service}
                     onChange={(event) => onChange("service", event.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex h-11 w-full rounded-xl border-[1.5px] border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                     required
                   >
                     {SERVICE_OPTIONS.map((service) => (
@@ -181,8 +184,8 @@ const AddReviewForm = ({ onSubmitted }: AddReviewFormProps) => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm text-foreground/90 font-medium">Rating</label>
-                  <div className="h-10 px-3 rounded-md border border-input bg-background flex items-center gap-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rating</label>
+                  <div className="h-11 px-4 rounded-xl border-[1.5px] border-border/70 bg-background/50 flex items-center gap-1.5">
                     {Array.from({ length: 5 }).map((_, index) => {
                       const starValue = index + 1;
                       const active = starValue <= rating;
@@ -192,12 +195,12 @@ const AddReviewForm = ({ onSubmitted }: AddReviewFormProps) => {
                           key={starValue}
                           type="button"
                           onClick={() => setRating(starValue)}
-                          className="p-0.5"
+                          className="p-1 hover:scale-110 transition-transform"
                           aria-label={`Set rating to ${starValue}`}
                         >
                           <Star
-                            className={`w-4 h-4 transition-colors ${
-                              active ? "fill-primary text-primary" : "text-muted-foreground/40"
+                            className={`w-5 h-5 transition-colors ${
+                              active ? "fill-amber-400 text-amber-400 drop-shadow-sm" : "text-muted-foreground/30"
                             }`}
                           />
                         </button>
@@ -208,12 +211,12 @@ const AddReviewForm = ({ onSubmitted }: AddReviewFormProps) => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm text-foreground/90 font-medium">Review</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Review</label>
                 <Textarea
                   value={form.content}
                   onChange={(event) => onChange("content", event.target.value)}
                   placeholder="Share your experience with DrawnDimension..."
-                  className="min-h-[120px] resize-y"
+                  className="min-h-[120px] resize-y rounded-xl border-[1.5px] border-border/70 bg-background/50 focus:ring-2 focus:ring-primary/20"
                   maxLength={1000}
                   required
                 />
@@ -221,8 +224,8 @@ const AddReviewForm = ({ onSubmitted }: AddReviewFormProps) => {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <Button type="submit" disabled={isSubmitting} className="min-w-[170px] h-11 rounded-xl">
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                <Button type="submit" disabled={isSubmitting} className="min-w-[170px] h-11 rounded-2xl font-semibold shadow-md">
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   {isSubmitting ? "Submitting..." : "Submit Review"}
                 </Button>
               </div>

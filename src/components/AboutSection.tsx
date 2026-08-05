@@ -47,21 +47,24 @@ const AboutSection = ({ data }: AboutSectionProps) => {
             <p className="text-muted-foreground leading-relaxed mb-8">
               {content.description_secondary}
             </p>
-            <div className="flex flex-col sm:flex-row items-start gap-3 w-full">
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Link to={content.primary_href} className="btn-primary inline-flex items-center gap-2 whitespace-nowrap w-full sm:w-auto sm:min-w-[280px]">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full max-w-xl">
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
+                <Link
+                  to={content.primary_href}
+                  className="btn-primary flex items-center justify-center gap-2 whitespace-nowrap w-full sm:w-auto sm:min-w-[260px] text-center"
+                >
                   {content.primary_label}
                 </Link>
               </motion.div>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
                 <a
                   href={content.secondary_href}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 h-[48px] w-full sm:w-auto sm:min-w-[280px] whitespace-nowrap px-8 rounded-xl border border-emerald-600/50 dark:border-emerald-500/35 bg-emerald-500/16 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/55 shadow-[0_8px_20px_rgba(16,185,129,0.16)] transition-all duration-300"
+                  className="flex items-center justify-center gap-2 h-[48px] w-full sm:w-auto sm:min-w-[260px] whitespace-nowrap px-8 rounded-xl border border-emerald-600/50 dark:border-emerald-500/35 bg-emerald-500/16 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/55 shadow-[0_8px_20px_rgba(16,185,129,0.16)] transition-all duration-300 text-center"
                 >
                   {content.secondary_label}
-                  <MessageCircle className="w-4 h-4" />
+                  <MessageCircle className="w-4 h-4 shrink-0" />
                 </a>
               </motion.div>
             </div>
@@ -76,20 +79,21 @@ const AboutSection = ({ data }: AboutSectionProps) => {
             {content.values.map((value, index) => {
               const Icon = iconMap[value.icon as keyof typeof iconMap] ?? Target;
               return (
-              <motion.div
-                key={value.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={isInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.6, delay: 0.3 + index * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                className="glass-card p-6 group hover:border-primary/50 transition-all duration-500 bg-gradient-to-br from-background via-background to-primary/[0.04] border-border/60"
-              >
-                <div className="w-12 h-12 bg-primary/10 border border-primary/25 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <Icon className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2 tracking-tight">{value.title}</h3>
-                <p className="text-sm text-muted-foreground/95 leading-relaxed">{value.description}</p>
-              </motion.div>
-            )})}
+                <motion.div
+                  key={value.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.6, delay: 0.3 + index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="glass-card p-6 group hover:border-primary/50 transition-all duration-500 bg-gradient-to-br from-background via-background to-primary/[0.04] border-border/60"
+                >
+                  <div className="w-12 h-12 bg-primary/10 border border-primary/25 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                    <Icon className="w-6 h-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-2 tracking-tight">{value.title}</h3>
+                  <p className="text-sm text-muted-foreground/95 leading-relaxed">{value.description}</p>
+                </motion.div>
+              )
+            })}
           </motion.div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Quote, Sparkles, Star, CheckCircle2 } from "lucide-react";
 import type { Review } from "@/components/shared/reviews";
 
 interface TestimonialSliderProps {
@@ -27,13 +27,11 @@ const TestimonialSlider = ({
 }: TestimonialSliderProps) => {
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
-  const [expanded, setExpanded] = useState(false);
 
   const goTo = useCallback(
     (index: number) => {
       setDirection(index >= current ? 1 : -1);
       setCurrent(index);
-      setExpanded(false);
     },
     [current],
   );
@@ -61,154 +59,143 @@ const TestimonialSlider = ({
   if (!testimonials.length) return null;
 
   const t = testimonials[current];
-  const isLong = t.content.length > 180;
 
   return (
-    <section className={`${sectionClassName ?? "py-16 md:py-24"} relative`}>
-      {/* decorative */}
-      <div
-        className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 text-[14rem] md:text-[20rem] font-serif text-slate-200 dark:text-foreground/[0.018] select-none leading-none"
-        aria-hidden="true"
-      >
-        &ldquo;
-      </div>
-
+    <section className={`${sectionClassName ?? "py-16 md:py-24"} relative overflow-hidden`}>
       <div className="container-narrow relative z-10">
-        {/* ── header ── */}
+        {/* ── Section Header ── */}
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-12 md:mb-16"
+          className="text-center mb-10 md:mb-14 flex flex-col items-center"
         >
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/60">
-            {sectionBadge ?? "Client Reviews"}
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-3">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <span className="px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider bg-primary/10 text-primary rounded-full mb-2">
+            {sectionBadge ?? "Client Testimonials"}
           </span>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-[-0.025em] mt-3 text-foreground">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
             {sectionTitle ?? "What Our Clients Say"}
           </h2>
+          <p className="text-muted-foreground text-sm md:text-base mt-2 max-w-xl">
+            Real feedback from engineering leaders and businesses who rely on Drawn Dimension.
+          </p>
         </motion.div>
 
-        {/* ── slider card ── */}
-        <div className="max-w-3xl mx-auto">
-          <div className="rounded-2xl border border-slate-200 dark:border-white/[0.05] bg-white dark:bg-white/[0.015] shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
-            <AnimatePresence mode="wait" onExitComplete={() => setExpanded(false)}>
+        {/* ── Slider Card Container ── */}
+        <div className="max-w-4xl mx-auto">
+          <div className="relative overflow-hidden rounded-3xl border-[2.5px] border-border/70 dark:border-border bg-card p-6 md:p-10 shadow-xl transition-all duration-300">
+            {/* Glowing background radial */}
+            <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+            <Quote className="absolute bottom-6 right-8 w-24 h-24 text-primary/[0.08] pointer-events-none" />
+
+            <AnimatePresence mode="wait">
               <motion.div
                 key={current}
-                initial={{ opacity: 0, x: direction > 0 ? 20 : -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: direction > 0 ? -20 : 20 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="relative z-10 flex flex-col justify-between min-h-[220px]"
               >
-                {/* top — stars + tag */}
-                <div className="flex items-center justify-between px-6 md:px-8 pt-6 md:pt-8 pb-2">
-                  <div className="flex gap-[3px]">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <Star
-                        key={n}
-                        className={`w-4 h-4 transition-colors duration-300 ${
-                          n <= t.rating
-                            ? "fill-amber-400 text-amber-400"
-                            : "fill-slate-200 text-slate-200 dark:fill-white/[0.08] dark:text-white/[0.08]"
-                        }`}
-                      />
-                    ))}
+                {/* Header: Stars + Service Tag */}
+                <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          className={`w-4 h-4 ${
+                            n <= t.rating
+                              ? "fill-amber-400 text-amber-400 drop-shadow-sm"
+                              : "fill-transparent text-muted-foreground/20"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs font-bold text-foreground">{t.rating}.0</span>
                   </div>
-                  {t.project && t.project !== "General Service" && (
-                    <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground/30 border border-slate-200 dark:border-white/[0.04] px-2.5 py-[3px] rounded bg-slate-50 dark:bg-transparent">
+
+                  {t.project && (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary border border-primary/20 bg-primary/10 px-3 py-1 rounded-full">
                       {t.project}
                     </span>
                   )}
                 </div>
 
-                {/* content — fixed height */}
-                <div className="px-6 md:px-8 h-[120px] md:h-[112px] flex items-start">
-                  <p
-                    className={`text-[15.5px] md:text-[17px] leading-[1.75] text-slate-700 dark:text-foreground/65 ${
-                      expanded ? "" : "line-clamp-3"
-                    }`}
-                  >
+                {/* Quote Content */}
+                <div className="mb-8 min-h-[90px] flex items-center">
+                  <p className="text-lg md:text-xl font-medium leading-relaxed text-foreground tracking-tight italic">
                     &ldquo;{t.content}&rdquo;
                   </p>
                 </div>
 
-                {/* read more — links to testimonials page */}
-                {isLong && (
-                  <div className="px-6 md:px-8 -mt-1">
-                    <Link
-                      to="/testimonials"
-                      className="inline-flex items-center gap-1 text-[12px] font-medium text-primary/70 hover:text-primary transition-colors"
-                    >
-                      Read more
-                      <ChevronRight className="w-3 h-3" />
-                    </Link>
-                  </div>
-                )}
-
-                {/* author */}
-                <div className="px-6 md:px-8 pt-5 pb-6 md:pb-8 border-t border-slate-100 dark:border-white/[0.04]">
+                {/* Author Info & Nav Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-6 border-t border-border/60">
                   <div className="flex items-center gap-4">
                     {t.image ? (
                       <img
                         src={t.image}
                         alt={t.name}
                         loading="lazy"
-                        className="w-11 h-11 shrink-0 rounded-full object-cover border-2 border-white dark:border-white/[0.08] shadow-sm"
+                        className="w-12 h-12 shrink-0 rounded-full object-cover ring-2 ring-primary/30 shadow-sm"
                       />
                     ) : (
-                      <div className="w-11 h-11 shrink-0 rounded-full border border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-white/[0.03] flex items-center justify-center text-[11px] font-semibold text-slate-500 dark:text-foreground/30 tracking-wide">
+                      <div className="w-12 h-12 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary ring-2 ring-primary/30">
                         {initials(t.name)}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-[14px] font-semibold text-slate-900 dark:text-foreground/90 truncate">
-                        {t.name}
-                      </p>
-                      <p className="text-[12px] text-slate-500 dark:text-muted-foreground/40 truncate">
-                        {t.role}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-base font-bold text-foreground truncate">{t.name}</h4>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      </div>
+                      <p className="text-xs font-medium text-muted-foreground truncate">{t.role}</p>
                     </div>
                   </div>
+
+                  {/* Navigation Controls with Counter */}
+                  {testimonials.length > 1 && (
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                      <button
+                        onClick={prev}
+                        className="w-10 h-10 rounded-2xl border-[1.5px] border-border/70 bg-background/50 flex items-center justify-center text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 shadow-sm active:scale-95"
+                        aria-label="Previous review"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+
+                      {/* Clean Counter Indicator */}
+                      <span className="text-xs font-mono font-bold tracking-wider text-muted-foreground px-3 py-1.5 rounded-full border border-border/60 bg-background/50">
+                        {String(current + 1).padStart(2, "0")} / {String(testimonials.length).padStart(2, "0")}
+                      </span>
+
+                      <button
+                        onClick={next}
+                        className="w-10 h-10 rounded-2xl border-[1.5px] border-border/70 bg-background/50 flex items-center justify-center text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 shadow-sm active:scale-95"
+                        aria-label="Next review"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-
-                {/* controls */}
-                {testimonials.length > 1 && (
-                  <div className="flex items-center justify-between px-6 md:px-8 py-3.5 border-t border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-white/[0.01]">
-                    <button
-                      onClick={prev}
-                      className="w-9 h-9 rounded-full border border-slate-200 dark:border-white/[0.06] flex items-center justify-center text-slate-500 dark:text-muted-foreground/40 hover:text-slate-700 dark:hover:text-foreground/70 hover:border-slate-300 dark:hover:border-white/[0.12] transition-all duration-200"
-                      aria-label="Previous review"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-
-                    <div className="flex gap-1.5">
-                      {testimonials.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => goTo(i)}
-                          className={`rounded-full transition-all duration-300 ${
-                            i === current
-                              ? "w-6 h-1.5 bg-primary"
-                              : "w-1.5 h-1.5 bg-slate-300 dark:bg-white/[0.08] hover:bg-slate-400 dark:hover:bg-white/[0.16]"
-                          }`}
-                          aria-label={`Go to review ${i + 1}`}
-                        />
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={next}
-                      className="w-9 h-9 rounded-full border border-slate-200 dark:border-white/[0.06] flex items-center justify-center text-slate-500 dark:text-muted-foreground/40 hover:text-slate-700 dark:hover:text-foreground/70 hover:border-slate-300 dark:hover:border-white/[0.12] transition-all duration-200"
-                      aria-label="Next review"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
               </motion.div>
             </AnimatePresence>
+          </div>
+
+          {/* View All Reviews Button */}
+          <div className="mt-8 text-center">
+            <Link
+              to="/testimonials"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl border-[1.5px] border-border/70 bg-card hover:bg-muted/80 text-sm font-semibold text-foreground transition-all duration-200 hover:scale-[1.02] shadow-sm"
+            >
+              <span>Explore All Verified Reviews</span>
+              <ChevronRight className="w-4 h-4 text-primary" />
+            </Link>
           </div>
         </div>
       </div>

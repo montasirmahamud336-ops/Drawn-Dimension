@@ -42,9 +42,22 @@ const normalizeMediaEntry = (entry: any): ProjectMediaItem | null => {
 
 export const getProjectMediaList = (item: any): ProjectMediaItem[] => {
   if (Array.isArray(item?.media) && item.media.length > 0) {
-    return item.media
+    const media = item.media
       .map(normalizeMediaEntry)
       .filter((entry): entry is ProjectMediaItem => Boolean(entry));
+
+    // Some older CMS entries have a valid cover image in `image_url`, while
+    // their media array contains only a PDF or a stale entry. Keep that cover
+    // available for cards instead of rendering an empty preview.
+    const coverUrl = typeof item?.image_url === "string"
+      ? resolveCmsMediaUrl(item.image_url)
+      : "";
+    const hasImage = media.some((entry) => entry.type === "image");
+    if (coverUrl && !hasImage) {
+      return [{ url: coverUrl, type: "image", name: null }, ...media];
+    }
+
+    return media;
   }
 
   if (typeof item?.image_url === "string" && item.image_url.trim().length > 0) {

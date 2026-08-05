@@ -104,3 +104,15 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return res.status(401).json({ message: "Invalid token" });
   }
 }
+
+export function requireOwner(req: AuthRequest, res: Response, next: NextFunction) {
+  if (!req.admin) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (req.admin.role !== "owner" && !req.admin.isMain) {
+    return res.status(403).json({ message: "Forbidden: Owner privilege required" });
+  }
+
+  return next();
+}

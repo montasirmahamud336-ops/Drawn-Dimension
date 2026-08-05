@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ChevronDown, LogOut } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, MessageSquare, LayoutDashboard } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -207,9 +207,11 @@ const Navigation = () => {
   };
 
   const desktopActionButtonBase =
-    "h-9 min-w-[112px] px-3 py-2 text-sm rounded-lg inline-flex items-center justify-center font-semibold transition-colors shrink-0";
+    "h-9 min-w-[112px] px-3.5 py-2 text-sm rounded-xl inline-flex items-center justify-center font-semibold transition-all duration-300 shrink-0";
   const liveChatButtonClass =
-    "bg-gradient-to-r from-emerald-600 via-green-500 to-lime-500 text-white border border-emerald-300/70 shadow-[0_0_22px_rgba(34,197,94,0.55)] hover:from-emerald-500 hover:via-green-400 hover:to-lime-400";
+    "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 dark:hover:bg-emerald-500/25 backdrop-blur-md shadow-sm shadow-emerald-500/10";
+  const dashboardButtonClass =
+    "bg-card/80 text-foreground border border-border/80 hover:bg-accent/80 hover:border-primary/40 dark:bg-white/10 dark:text-white dark:border-white/15 dark:hover:bg-white/20 backdrop-blur-md shadow-sm";
 
   return (
     <motion.nav
@@ -321,12 +323,14 @@ const Navigation = () => {
                   onClick={openLiveChat}
                   className={`${desktopActionButtonBase} ${liveChatButtonClass}`}
                 >
+                  <MessageSquare className="w-4 h-4 mr-1.5 shrink-0" />
                   Live Chat
                 </button>
                 <Link
                   to={dashboardHref}
-                  className={`${desktopActionButtonBase} bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow-lg`}
+                  className={`${desktopActionButtonBase} ${dashboardButtonClass}`}
                 >
+                  <LayoutDashboard className="w-4 h-4 mr-1.5 shrink-0" />
                   Dashboard
                 </Link>
                 <button
@@ -360,12 +364,23 @@ const Navigation = () => {
           <div className="hidden lg:flex xl:hidden items-center gap-2 ml-3 z-20 shrink-0">
             <ThemeToggle />
             {isSignedIn ? (
-              <Link
-                to={dashboardHref}
-                className="h-9 px-3 rounded-lg inline-flex items-center justify-center text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Dashboard
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={openLiveChat}
+                  className={`h-9 px-3 rounded-xl inline-flex items-center justify-center text-sm font-semibold transition-all ${liveChatButtonClass}`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  Live Chat
+                </button>
+                <Link
+                  to={dashboardHref}
+                  className={`h-9 px-3 rounded-xl inline-flex items-center justify-center text-sm font-semibold transition-all ${dashboardButtonClass}`}
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  Dashboard
+                </Link>
+              </div>
             ) : (
               <Link
                 to="/auth?mode=signup"
@@ -477,21 +492,23 @@ const Navigation = () => {
                   <button
                     type="button"
                     onClick={openLiveChat}
-                    className={`h-10 rounded-lg inline-flex items-center justify-center font-semibold transition-colors ${liveChatButtonClass}`}
+                    className={`h-11 rounded-xl inline-flex items-center justify-center font-semibold transition-all ${liveChatButtonClass}`}
                   >
+                    <MessageSquare className="w-4 h-4 mr-2 shrink-0" />
                     Live Chat
                   </button>
                   <Link
                     to={dashboardHref}
-                    className="h-10 rounded-lg inline-flex items-center justify-center font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow-lg"
+                    className={`h-11 rounded-xl inline-flex items-center justify-center font-semibold transition-all ${dashboardButtonClass}`}
                   >
+                    <LayoutDashboard className="w-4 h-4 mr-2 shrink-0" />
                     Dashboard
                   </Link>
                   <button
                     onClick={() => signOut()}
-                    className="text-muted-foreground hover:text-foreground transition-colors py-2"
+                    className="text-muted-foreground hover:text-foreground transition-colors py-2.5 flex items-center justify-center gap-2"
                   >
-                    Sign Out
+                    <LogOut className="w-4 h-4" /> Sign Out
                   </button>
                 </div>
               ) : (

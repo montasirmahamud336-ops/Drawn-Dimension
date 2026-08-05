@@ -52,9 +52,7 @@
     --glow: 0 84% 50%;
     --glass: 0 0% 100% / 0.05;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
@@ -65,8 +63,20 @@
     font-family: Inter, "Plus Jakarta Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
 
-  html {
-    /* scroll-behavior: smooth; - Disabled for Lenis */
+  html.lenis, html.lenis body {
+    height: auto;
+  }
+
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+
+  .lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+
+  .lenis.lenis-stopped {
+    overflow: hidden;
   }
 
   /* Hide scrollbar for Chrome, Safari and Opera */
@@ -77,9 +87,7 @@
   /* Hide scrollbar for IE, Edge and Firefox */
   html {
     -ms-overflow-style: none;
-    /* IE and Edge */
     scrollbar-width: none;
-    /* Firefox */
   }
 }
 
@@ -241,7 +249,6 @@
   .trusted-logos-marquee:hover .trusted-logos-track {
     animation-play-state: paused;
   }
-
 }
 
 @keyframes trusted-logos-marquee {

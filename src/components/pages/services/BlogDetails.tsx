@@ -609,7 +609,7 @@ const BlogDetails = () => {
                   setServiceName(s?.name || "");
                 }
               })
-              .catch(() => {}),
+              .catch(() => { }),
           );
           tasks.push(
             fetch(
@@ -625,7 +625,7 @@ const BlogDetails = () => {
                       .slice(0, 3),
                   );
               })
-              .catch(() => {}),
+              .catch(() => { }),
           );
         } else if (mounted) setServiceName("");
         await Promise.allSettled(tasks);
@@ -1098,9 +1098,8 @@ const BlogDetails = () => {
                         <Link
                           key={rp.id}
                           to={`/blog/${rp.slug}`}
-                          className={`group relative block overflow-hidden bg-white/[0.008] hover:bg-white/[0.025] transition-colors duration-300 ${
-                            i > 0 ? "md:border-l border-white/[0.04]" : ""
-                          }`}
+                          className={`group relative block overflow-hidden bg-white/[0.008] hover:bg-white/[0.025] transition-colors duration-300 ${i > 0 ? "md:border-l border-white/[0.04]" : ""
+                            }`}
                         >
                           <div className="relative aspect-[4/3] overflow-hidden">
                             {rp.cover_image_url ? (

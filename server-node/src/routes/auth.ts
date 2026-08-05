@@ -3,9 +3,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
-import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import { requireAuth, requireOwner, AuthRequest } from "../middleware/auth.js";
 import { getUserFromAccessToken } from "../middleware/userAuth.js";
-import { insertRow, selectRows, updateRow } from "../lib/supabaseRest.js";
+import { insertRow, selectRows, updateRow } from "../lib/database.js";
 import { isNonEmptyString } from "../utils/validation.js";
 
 const router = Router();
@@ -461,7 +461,7 @@ router.patch("/auth/admin-me", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
-router.get("/auth/admin-users", requireAuth, async (req: AuthRequest, res) => {
+router.get("/auth/admin-users", requireAuth, requireOwner, async (req: AuthRequest, res) => {
   if (!assertMainAdmin(req, res)) return;
 
   try {
@@ -478,13 +478,12 @@ router.get("/auth/admin-users", requireAuth, async (req: AuthRequest, res) => {
 
     return res.json(result);
   } catch (error: unknown) {
-    return res.status(500).json({
-      message: error instanceof Error ? error.message : "Failed to fetch admin users"
-    });
+    console.error("Error fetching admin users:", error);
+    return res.status(500).json({ message: "Failed to fetch admin users" });
   }
 });
 
-router.post("/auth/admin-users", requireAuth, async (req: AuthRequest, res) => {
+router.post("/auth/admin-users", requireAuth, requireOwner, async (req: AuthRequest, res) => {
   if (!assertMainAdmin(req, res)) return;
 
   const fullName = String(req.body?.fullName ?? "").trim();

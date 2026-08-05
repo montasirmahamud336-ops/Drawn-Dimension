@@ -1,6 +1,9 @@
 import { Pool } from "pg";
 import { env } from "../config/env.js";
 
+// Production uses the VPS PostgreSQL `DATABASE_URL`. The remaining REST
+// fallback is legacy compatibility only; do not use it for new work.
+
 const usePostgres = env.databaseUrl.trim().length > 0;
 let pool: Pool | null = null;
 const tableMetadataCache = new Map<string, Promise<Map<string, ColumnMetadata>>>();

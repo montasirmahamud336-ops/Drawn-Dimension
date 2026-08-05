@@ -2,9 +2,12 @@ import type { LucideIcon } from "lucide-react";
 import {
   Briefcase,
   ClipboardCheck,
+  Database,
   FileText,
+  GitBranch,
   Globe2,
   Inbox,
+  HandCoins,
   LayoutDashboard,
   MessageCircleMore,
   MessageSquare,
@@ -12,6 +15,7 @@ import {
   ShieldPlus,
   ShoppingBag,
   Users,
+  UserCheck,
   UserSquare2,
 } from "lucide-react";
 
@@ -98,11 +102,26 @@ const cmsNavigationSections: CMSNavSectionDef[] = [
     label: "Operations",
     items: [
       {
+        id: "advance-requests",
+        label: "Advance Requests",
+        description: "Review employee advance requests and pipeline adjustments.",
+        segment: "advance-requests",
+        icon: HandCoins,
+      },
+      {
         id: "employees",
         label: "Employees",
         description: "Team accounts, employee records, and access-linked profiles.",
         segment: "employees",
         icon: UserSquare2,
+      },
+      {
+        id: "website-users",
+        label: "Website Users",
+        description: "Registered website client accounts, signups, and customer profiles.",
+        segment: "website-users",
+        aliases: ["users", "site-users"],
+        icon: UserCheck,
       },
       {
         id: "work-assign",
@@ -180,6 +199,22 @@ const cmsNavigationSections: CMSNavSectionDef[] = [
     id: "admin",
     label: "Administration",
     items: [
+      {
+        id: "database-backup",
+        label: "Database Backup",
+        description: "1-Click VPS PostgreSQL SQL dumps, JSON data snapshots, and complete database downloads.",
+        segment: "database-backup",
+        aliases: ["db-backup", "database", "backup"],
+        icon: Database,
+      },
+      {
+        id: "version-control",
+        label: "Version Control",
+        description: "Release versions, system deployment history, zip packages, and 1-click rollback.",
+        segment: "version-control",
+        aliases: ["versions", "deployments"],
+        icon: GitBranch,
+      },
       {
         id: "give-access",
         label: "Access Control",

@@ -1,8 +1,9 @@
 import { Router } from "express";
 import multer from "multer";
-import { selectRows, updateRow } from "../lib/supabaseRest.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
 import { normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
+import { selectRows, updateRow } from "../lib/database.js";
+import { validateUploadedBuffer } from "../lib/uploadValidation.js";
 
 const router = Router();
 const upload = multer({
@@ -83,10 +84,14 @@ router.get("/employee/dashboard", requireUserAuth, async (req: UserAuthRequest, 
     const assignments = await selectRows(
       `/work_assignments?employee_id=in.(${inClause})&status=neq.draft&order=created_at.desc`
     );
+    const advanceRequests = await selectRows(
+      `/employee_advance_requests?employee_id=eq.${encodeURIComponent(String(primaryEmployee.id))}&order=requested_at.desc`
+    );
 
     return res.json({
       employee: primaryEmployee,
-      assignments: Array.isArray(assignments) ? assignments : []
+      assignments: Array.isArray(assignments) ? assignments : [],
+      advance_requests: Array.isArray(advanceRequests) ? advanceRequests : []
     });
   } catch (error: unknown) {
     return res.status(500).json({
@@ -156,8 +161,9 @@ router.post("/employee/profile/upload", requireUserAuth, upload.single("file"), 
     if (!file) {
       return res.status(400).json({ message: "file is required" });
     }
-    if (!String(file.mimetype ?? "").toLowerCase().startsWith("image/")) {
-      return res.status(400).json({ message: "Please upload a valid image file" });
+    const validation = validateUploadedBuffer(file.buffer, file.originalname, file.mimetype, "image-only");
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.reason || "Please upload a valid image file" });
     }
 
     const employees = await getLinkedEmployees(user);
@@ -271,6 +277,10 @@ router.post("/employee/chat/upload", requireUserAuth, upload.single("file"), asy
     const file = req.file;
     if (!file) {
       return res.status(400).json({ message: "file is required" });
+    }
+    const validation = validateUploadedBuffer(file.buffer, file.originalname, file.mimetype, "docs-and-images");
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.reason || "Invalid attachment file format" });
     }
 
     const employees = await getLinkedEmployees(user);

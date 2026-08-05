@@ -1,0 +1,73 @@
+[
+  {
+    "id": "ver-v2-5-0",
+    "version": "v2.5.0",
+    "title": "Studio OS v2.5 Release",
+    "description": "Enhanced Glassmorphic CMS, Website Version Control System, Sidebar Scroll Persistence, and Custom Logo Support.",
+    "changelog": [
+      "Added System Version Control & 1-Click Rollback / Re-deploy Engine",
+      "Persisted CMS Navigation Sidebar Scroll Position across page clicks",
+      "Upgraded Workspace Cards, Pages Overview, FAQ Manager & Blog Manager",
+      "Fixed Main Scroll Container auto-jump issues on action button clicks",
+      "Integrated Website Branding Logo into CMS Navigation Panel"
+    ],
+    "zip_url": "/media/cms-uploads/versions/v2.5.0-release.zip",
+    "commit_hash": "9a2f7c4",
+    "is_active": true,
+    "created_at": "2026-08-05T12:00:00.000Z",
+    "deployed_at": "2026-08-05T12:00:00.000Z",
+    "created_by": "System Admin"
+  },
+  {
+    "id": "ver-v2-4-0",
+    "version": "v2.4.0",
+    "title": "Studio OS v2.4 Release",
+    "description": "Advanced CMS Workspace Redesign, Glass Panel Aesthetics, and Service FAQ Engine.",
+    "changelog": [
+      "Redesigned CMS Workspace Selection Cards with custom gradient accents",
+      "Implemented FAQ Management & Service Filter Engine",
+      "Added Live vs Draft Filter Tabs for Blog Articles & FAQs",
+      "Optimized VPS Media Storage API endpoints"
+    ],
+    "zip_url": "/media/cms-uploads/versions/v2.4.0-release.zip",
+    "commit_hash": "7e1d8b2",
+    "is_active": false,
+    "created_at": "2026-07-20T10:30:00.000Z",
+    "deployed_at": "2026-07-20T10:30:00.000Z",
+    "created_by": "Lead Engineer"
+  },
+  {
+    "id": "ver-v2-3-0",
+    "version": "v2.3.0",
+    "title": "Studio OS v2.3 Release",
+    "description": "VPS Media Storage Endpoint Integration & Employee Work Assignment System.",
+    "changelog": [
+      "Switched Storage Endpoints to VPS Express API /storage/upload",
+      "Added Work Assignments and Employee Invoice Builder",
+      "Improved Client Dashboard & Project Detail pages"
+    ],
+    "zip_url": "/media/cms-uploads/versions/v2.3.0-release.zip",
+    "commit_hash": "4c8f3a1",
+    "is_active": false,
+    "created_at": "2026-06-15T15:00:00.000Z",
+    "deployed_at": "2026-06-15T15:00:00.000Z",
+    "created_by": "DevOps"
+  },
+  {
+    "id": "ver-v1-0-0",
+    "version": "v1.0.0",
+    "title": "Initial Production Launch",
+    "description": "First Production Release of Drawn Dimension Platform & CMS Studio.",
+    "changelog": [
+      "Initial Release of Drawn Dimension Core Website",
+      "Admin Authentication & Access Control System",
+      "Basic Content Management for Services, Portfolio & Testimonials"
+    ],
+    "zip_url": "/media/cms-uploads/versions/v1.0.0-release.zip",
+    "commit_hash": "1b9e2f0",
+    "is_active": false,
+    "created_at": "2026-05-01T09:00:00.000Z",
+    "deployed_at": "2026-05-01T09:00:00.000Z",
+    "created_by": "System Administrator"
+  }
+]

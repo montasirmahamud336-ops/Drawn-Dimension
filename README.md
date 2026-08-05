@@ -518,3 +518,12 @@ cp -r /root/dist/. /var/www/vhosts/drawndimension.com/public_html/
 chown -R nginx:nginx /var/www/vhosts/drawndimension.com/public_html
 nginx -t
 systemctl reload nginx
+
+
+
+
+
+
+
+ssh root@192.64.118.232
+2SdtvYnL414Xx04MkR

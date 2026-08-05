@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { uploadCmsFile } from "@/integrations/supabase/storage";
+import { resolveCmsMediaUrl } from "@/components/shared/mediaUrl";
 
 type ChatMessage = {
   id: string;
@@ -437,7 +438,7 @@ const EmployeeChatManager = () => {
                         {/* Avatar */}
                         <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary overflow-hidden">
                           {conversation.employee.profile_image_url ? (
-                            <img src={conversation.employee.profile_image_url} alt="" className="h-full w-full object-cover" />
+                            <img src={resolveCmsMediaUrl(conversation.employee.profile_image_url)} alt="" className="h-full w-full object-cover" />
                           ) : (
                             getInitials(conversation.employee.name || "E")
                           )}
@@ -501,7 +502,7 @@ const EmployeeChatManager = () => {
               <div className="shrink-0 border-b border-border/10 px-5 py-4 flex items-center gap-4">
                 <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary overflow-hidden">
                   {selectedConversation?.employee.profile_image_url ? (
-                    <img src={selectedConversation.employee.profile_image_url} alt="" className="h-full w-full object-cover" />
+                    <img src={resolveCmsMediaUrl(selectedConversation.employee.profile_image_url)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     getInitials(selectedConversation?.employee.name || "E")
                   )}

@@ -202,36 +202,11 @@ const Home = () => {
       <PremiumBackground>
         <Navigation />
         <main className="relative z-10">
-          {visibleSections.map((sectionId) =>
-            sectionId === "hero" ? (
-              /* ── HERO: immediate animation, zero delay ── */
-              <motion.div
-                key={sectionId}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.55,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                <Fragment>{sectionNodes[sectionId]}</Fragment>
-              </motion.div>
-            ) : (
-              /* ── OTHER SECTIONS: animate only when scrolled into view ── */
-              <motion.div
-                key={sectionId}
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{
-                  duration: 0.55,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                <Fragment>{sectionNodes[sectionId]}</Fragment>
-              </motion.div>
-            ),
-          )}
+          {visibleSections.map((sectionId) => (
+            <div key={sectionId}>
+              {sectionNodes[sectionId]}
+            </div>
+          ))}
         </main>
         <Footer />
       </PremiumBackground>

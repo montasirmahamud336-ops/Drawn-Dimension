@@ -3,6 +3,7 @@ import multer from "multer";
 import { env } from "../config/env.js";
 import { requireAuth } from "../middleware/auth.js";
 import { ensureMediaBucket, normalizeObjectPath, storeUploadedFile } from "../lib/mediaStorage.js";
+import { validateUploadedBuffer } from "../lib/uploadValidation.js";
 
 const router = Router();
 const upload = multer({
@@ -27,9 +28,8 @@ router.post("/storage/ensure", requireAuth, async (_req, res) => {
     await ensureMediaBucket(bucket);
     return res.json({ status: "ok", bucket });
   } catch (error: unknown) {
-    return res.status(500).json({
-      message: error instanceof Error ? error.message : "Failed to prepare media storage"
-    });
+    console.error("Storage ensure error:", error);
+    return res.status(500).json({ message: "Failed to prepare media storage" });
   }
 });
 
@@ -38,6 +38,11 @@ router.post("/storage/upload", requireAuth, upload.single("file"), async (req, r
     const file = req.file;
     if (!file) {
       return res.status(400).json({ message: "file is required" });
+    }
+
+    const validation = validateUploadedBuffer(file.buffer, file.originalname, file.mimetype);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.reason || "Invalid upload file format" });
     }
 
     const bucket = env.storageBucket;

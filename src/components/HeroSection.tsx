@@ -1516,12 +1516,20 @@ const HeroSection = ({ data, metricsData }: HeroSectionProps) => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden py-20 md:py-24">
-      {/* Background */}
-      <div className="absolute inset-0">
-        <div className="hero-glow top-24 -left-32" />
-        <div className="absolute top-20 right-[-10rem] w-[28rem] h-[28rem] rounded-full bg-primary/7 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.09),transparent_45%)]" />
+      {/* 🛠️ Clean Hero Background with Single Rotating Gear Accent */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+        {/* Ambient Red Glow Effects */}
+        <div className="hero-glow top-24 -left-32 opacity-80" />
+        <div className="absolute top-20 right-[-10rem] w-[28rem] h-[28rem] rounded-full bg-primary/8 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.08),transparent_50%)]" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-secondary/30" />
+
+        {/* ⚙️ Single Rotating Engineering Gear (Top-Right) */}
+        <div className="absolute top-[-5rem] right-[-5rem] opacity-[0.10] dark:opacity-[0.15] transform-gpu pointer-events-none">
+          <div className="animate-[spin_60s_linear_infinite]">
+            <Settings className="w-[32rem] h-[32rem] text-primary stroke-[1]" />
+          </div>
+        </div>
       </div>
 
       <div className="container-narrow relative z-10 w-full px-4 sm:px-6">
