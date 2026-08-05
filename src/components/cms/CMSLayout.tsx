@@ -44,24 +44,19 @@ const CMSNavigationPanel = ({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Sidebar Brand Header */}
-      <div className={cn("mb-5 pb-4 border-b border-border/50", collapsed ? "flex flex-col items-center gap-3" : "flex items-center justify-between gap-3 px-1")}>
-        {collapsed ? (
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/50 bg-background/80 p-1 shadow-sm backdrop-blur-md">
+      <div className="mb-4 pb-4 border-b border-border/50 flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/50 bg-background/80 p-1 shadow-sm backdrop-blur-md">
             <img src="/images/logo.png" alt="Drawn Dimension Logo" className="h-7 w-7 object-contain" />
           </div>
-        ) : (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/50 bg-background/80 p-1 shadow-sm backdrop-blur-md">
-              <img src="/images/logo.png" alt="Drawn Dimension Logo" className="h-7 w-7 object-contain" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-primary">Drawn Dimension</p>
-              <p className="text-sm font-bold tracking-tight text-foreground truncate">Studio OS • CMS v2.5</p>
-            </div>
+          <div className={cn("overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap min-w-0", collapsed ? "max-w-0 opacity-0 pointer-events-none" : "max-w-[180px] opacity-100")}>
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-primary">Drawn Dimension</p>
+            <p className="text-sm font-bold tracking-tight text-foreground truncate">Studio OS • CMS v2.5</p>
           </div>
-        )}
+        </div>
+
         {onToggleCollapse && (
           <Button
             type="button"
@@ -82,20 +77,28 @@ const CMSNavigationPanel = ({
         ref={navRef}
         onScroll={handleScroll}
         data-lenis-prevent
-        className={cn(
-          "cms-nav-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y space-y-6",
-          collapsed ? "pr-0 space-y-4" : "pr-1.5"
-        )}
+        className="cms-nav-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y space-y-5 pr-1"
       >
         {navSections.map((section) => (
-          <div key={section.id} className={cn("space-y-2", collapsed && "space-y-3")}>
-            {collapsed ? (
-              <div className="mx-auto h-px w-8 rounded-full bg-border/70" />
-            ) : (
-              <p className="px-3 text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground/80">
+          <div key={section.id} className="space-y-1.5">
+            {/* Section Header with smooth morph transition */}
+            <div className="relative overflow-hidden transition-all duration-300">
+              <p
+                className={cn(
+                  "px-3 text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground/80 transition-all duration-300 ease-in-out whitespace-nowrap",
+                  collapsed ? "max-h-0 opacity-0 my-0 pointer-events-none" : "max-h-6 opacity-100 my-1"
+                )}
+              >
                 {section.label}
               </p>
-            )}
+              <div
+                className={cn(
+                  "mx-auto h-px rounded-full bg-border/70 transition-all duration-300 ease-in-out",
+                  collapsed ? "w-8 opacity-100 my-2" : "w-0 opacity-0 my-0"
+                )}
+              />
+            </div>
+
             <div className="space-y-1.5">
               {section.items.map((item) => {
                 const isActive = item.id === activeItemId;
@@ -107,22 +110,25 @@ const CMSNavigationPanel = ({
                     to={item.href}
                     onClick={onNavigate}
                     className={cn(
-                      "group relative flex rounded-2xl border transition-all duration-200",
-                      collapsed ? "items-center justify-center p-2.5" : "items-center gap-3 px-3.5 py-2.5",
+                      "group relative flex items-center gap-3 rounded-2xl border px-2.5 py-2.5 transition-all duration-300 ease-in-out w-full overflow-hidden",
                       isActive
                         ? "border-primary/30 bg-primary/10 shadow-[0_8px_24px_rgba(239,68,68,0.12)] text-primary backdrop-blur-md"
                         : "border-transparent bg-background/40 hover:border-border/60 hover:bg-background/80 text-foreground/85"
                     )}
                   >
                     {/* Left Active Glow Bar */}
-                    {isActive && !collapsed && (
-                      <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                    {isActive && (
+                      <span
+                        className={cn(
+                          "absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-opacity duration-300",
+                          collapsed ? "opacity-90" : "opacity-100"
+                        )}
+                      />
                     )}
 
                     <div
                       className={cn(
-                        "flex shrink-0 items-center justify-center rounded-xl transition-all duration-200",
-                        collapsed ? "h-10 w-10" : "h-9 w-9",
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-200",
                         isActive
                           ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30"
                           : "bg-muted/70 text-muted-foreground group-hover:bg-primary/15 group-hover:text-primary"
@@ -131,23 +137,27 @@ const CMSNavigationPanel = ({
                       <item.icon className="h-4 w-4" />
                     </div>
 
-                    {!collapsed && (
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <p className={cn("text-xs font-bold leading-tight", isActive ? "text-foreground" : "text-foreground/90")}>
-                            {item.label}
-                          </p>
-                          {hasBadge && (
-                            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-extrabold text-destructive-foreground shadow-sm">
-                              {pendingAdvanceCount}
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/80 group-hover:text-muted-foreground">
-                          {item.description}
+                    {/* Text Label & Description with smooth expansion/collapse slide */}
+                    <div
+                      className={cn(
+                        "overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap min-w-0 flex-1",
+                        collapsed ? "max-w-0 opacity-0 pointer-events-none" : "max-w-[220px] opacity-100"
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <p className={cn("text-xs font-bold leading-tight truncate", isActive ? "text-foreground" : "text-foreground/90")}>
+                          {item.label}
                         </p>
+                        {hasBadge && (
+                          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-extrabold text-destructive-foreground shadow-sm">
+                            {pendingAdvanceCount}
+                          </span>
+                        )}
                       </div>
-                    )}
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/80 group-hover:text-muted-foreground truncate">
+                        {item.description}
+                      </p>
+                    </div>
 
                     {collapsed && hasBadge && (
                       <span className="absolute top-1 right-1 flex h-3 w-3 rounded-full bg-destructive shadow-[0_0_6px_rgba(239,68,68,0.9)]" />
@@ -175,17 +185,20 @@ const CMSNavigationPanel = ({
       </nav>
 
       {/* Footer indicator in sidebar */}
-      {!collapsed && (
-        <div className="mt-auto pt-4 border-t border-border/40">
-          <div className="flex items-center justify-between rounded-xl bg-card/60 px-3 py-2 text-[11px] text-muted-foreground backdrop-blur-md">
-            <div className="flex items-center gap-1.5">
-              <Server className="h-3.5 w-3.5 text-emerald-500" />
-              <span className="font-semibold text-foreground/80">VPS PostgreSQL</span>
-            </div>
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+      <div
+        className={cn(
+          "mt-auto border-t border-border/40 overflow-hidden transition-all duration-300 ease-in-out",
+          collapsed ? "max-h-0 opacity-0 pt-0 border-t-0 pointer-events-none" : "max-h-20 opacity-100 pt-4"
+        )}
+      >
+        <div className="flex items-center justify-between rounded-xl bg-card/60 px-3 py-2 text-[11px] text-muted-foreground backdrop-blur-md">
+          <div className="flex items-center gap-1.5">
+            <Server className="h-3.5 w-3.5 text-emerald-500" />
+            <span className="font-semibold text-foreground/80">VPS PostgreSQL</span>
           </div>
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
         </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -215,6 +228,14 @@ const CMSLayout = () => {
   );
   const currentRoute = useMemo(() => resolveCMSRoute(location.pathname), [location.pathname]);
   const currentDashboardHref = buildCMSHref(currentBasePath, "");
+
+  const toggleSidebarCollapse = () => {
+    setDesktopSidebarCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(CMS_SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
 
   // Scroll main content container to top on page change
   useEffect(() => {
@@ -258,15 +279,10 @@ const CMSLayout = () => {
   useEffect(() => {
     const lenis = (window as Window & { __lenis?: { stop: () => void; start: () => void } }).__lenis;
     lenis?.stop();
-
     return () => {
       lenis?.start();
     };
   }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(CMS_SIDEBAR_COLLAPSED_KEY, desktopSidebarCollapsed ? "1" : "0");
-  }, [desktopSidebarCollapsed]);
 
   const handleLogout = () => {
     clearAdminToken();
@@ -286,11 +302,11 @@ const CMSLayout = () => {
           }}
         />
       )}
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar with smooth ease-in-out spring transition */}
       <aside
         className={cn(
-          "hidden h-full shrink-0 border-r border-border/40 bg-card/65 py-5 backdrop-blur-2xl transition-[width,padding] duration-300 lg:flex shadow-2xl z-30",
-          desktopSidebarCollapsed ? "w-[92px] px-3" : "w-[300px] px-4"
+          "hidden h-full shrink-0 border-r border-border/40 bg-card/65 py-5 backdrop-blur-2xl transition-all duration-300 ease-in-out lg:flex shadow-2xl z-30 overflow-hidden",
+          desktopSidebarCollapsed ? "w-[84px] px-2.5" : "w-[300px] px-4"
         )}
       >
         <CMSNavigationPanel
@@ -298,7 +314,7 @@ const CMSLayout = () => {
           activeItemId={currentRoute.id}
           collapsed={desktopSidebarCollapsed}
           pendingAdvanceCount={pendingAdvanceCount}
-          onToggleCollapse={() => setDesktopSidebarCollapsed((current) => !current)}
+          onToggleCollapse={toggleSidebarCollapse}
         />
       </aside>
 
@@ -382,60 +398,39 @@ const CMSLayout = () => {
                   </Link>
                 </Button>
 
-                {/* Dashboard Quick Link */}
-                <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex rounded-xl font-bold border-border/60">
-                  <Link to={currentDashboardHref}>Dashboard</Link>
-                </Button>
-
-                {/* View Website Button */}
-                <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex rounded-xl font-bold border-border/60 hover:border-primary/40 hover:text-primary">
-                  <Link to="/" target="_blank" rel="noreferrer" className="flex items-center gap-1.5">
-                    <span>Website</span>
+                {/* Public Site Button */}
+                <Button variant="outline" size="sm" asChild className="hidden rounded-xl border-border/60 sm:inline-flex hover:bg-primary/10 hover:border-primary/30">
+                  <a href="/" target="_blank" rel="noreferrer" className="flex items-center gap-2">
                     <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
+                    <span>Public Site</span>
+                  </a>
                 </Button>
 
-                {/* Profile Pill */}
-                <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card/60 p-1.5 pl-2.5 backdrop-blur-md">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-rose-600 text-xs font-bold text-white shadow-sm">
-                    {adminName.slice(0, 2).toUpperCase()}
+                {/* Account Profile Badge */}
+                <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/60 p-1.5 pr-3 shadow-sm backdrop-blur-md">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 text-primary font-extrabold text-xs">
+                    {adminName.slice(0, 1).toUpperCase()}
                   </div>
-                  <div className="hidden xl:block text-left pr-1">
-                    <p className="text-xs font-bold leading-none text-foreground">{adminName}</p>
-                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <ShieldCheck className="h-2.5 w-2.5 text-primary" />
-                      {isMainAdmin ? "Owner" : "Admin"}
+                  <div className="hidden text-left sm:block">
+                    <p className="text-xs font-bold leading-tight text-foreground">{adminName}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">
+                      {isMainAdmin ? "Owner / Primary" : adminProfile?.role || "Manager"}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-xl text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
-                    onClick={handleLogout}
-                    title="Logout"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                  </Button>
                 </div>
-              </div>
-            </div>
 
-            {/* Mobile Header Subtitle */}
-            <div className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-2 lg:hidden backdrop-blur-md">
-              <p className="text-xs text-muted-foreground">{currentRoute.description}</p>
+                {/* Logout Button */}
+                <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={handleLogout} title="Sign out">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Content Outlet */}
-        <main
-          ref={mainScrollRef}
-          data-lenis-prevent
-          className="cms-main-scroll flex-1 min-h-0 overflow-y-auto"
-        >
-          <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-            <Outlet />
-          </div>
+        {/* Dynamic Nested Route Content Container */}
+        <main ref={mainScrollRef} data-lenis-prevent className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <Outlet />
         </main>
       </div>
     </div>
