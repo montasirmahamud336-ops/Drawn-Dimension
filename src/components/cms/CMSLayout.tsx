@@ -46,51 +46,35 @@ const CMSNavigationPanel = ({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Sidebar Brand Header */}
-      <div className={cn("mb-4 pb-4 border-b border-border/50 transition-all duration-300", collapsed ? "flex flex-col items-center gap-2.5 px-0" : "flex items-center justify-between gap-2 px-1")}>
-        {collapsed ? (
-          <>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/50 bg-background/80 p-1 shadow-sm backdrop-blur-md">
-              <img src="/images/logo.png" alt="Drawn Dimension Logo" className="h-7 w-7 object-contain" />
+      <div className="mb-4 flex items-center justify-between pb-4 border-b border-border/50 transition-all duration-300 ease-in-out min-h-[50px] overflow-hidden px-1">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+          {!collapsed && (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center transition-all duration-300">
+              <img src="/images/logo.png" alt="Drawn Dimension Logo" className="h-8 w-8 object-contain" />
             </div>
-            {onToggleCollapse && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-xl border border-border/50 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all duration-200"
-                onClick={onToggleCollapse}
-                aria-label="Expand sidebar"
-                title="Expand sidebar"
-              >
-                <PanelLeftOpen className="h-4 w-4" />
-              </Button>
+          )}
+          <div
+            className={cn(
+              "min-w-0 flex-1 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out",
+              collapsed ? "max-w-0 opacity-0 pointer-events-none" : "max-w-[180px] opacity-100"
             )}
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/50 bg-background/80 p-1 shadow-sm backdrop-blur-md">
-                <img src="/images/logo.png" alt="Drawn Dimension Logo" className="h-7 w-7 object-contain" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-primary">Drawn Dimension</p>
-                <p className="text-sm font-bold tracking-tight text-foreground truncate">Studio OS • CMS v2.5</p>
-              </div>
-            </div>
-            {onToggleCollapse && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="shrink-0 h-9 w-9 rounded-xl border border-border/50 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all duration-200"
-                onClick={onToggleCollapse}
-                aria-label="Collapse sidebar"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </Button>
-            )}
-          </>
+          >
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-primary truncate">Drawn Dimension</p>
+            <p className="text-sm font-bold tracking-tight text-foreground truncate">Studio OS • CMS v2.5</p>
+          </div>
+        </div>
+        {onToggleCollapse && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0 h-9 w-9 rounded-xl border border-border/50 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all duration-300"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
         )}
       </div>
 
@@ -99,18 +83,27 @@ const CMSNavigationPanel = ({
         ref={navRef}
         onScroll={handleScroll}
         data-lenis-prevent
-        className="cms-nav-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y space-y-5 pr-1"
+        className="cms-nav-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y space-y-4 pr-1"
       >
         {navSections.map((section) => (
           <div key={section.id} className="space-y-1.5">
             {/* Section Header */}
-            {collapsed ? (
-              <div className="mx-auto h-px w-8 rounded-full bg-border/70 my-2" />
-            ) : (
-              <p className="px-3 text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground/80 my-1">
+            <div className="relative py-0.5 overflow-hidden">
+              <p
+                className={cn(
+                  "px-3 text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground/80 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out",
+                  collapsed ? "max-h-0 opacity-0 pointer-events-none my-0" : "max-h-6 opacity-100 my-1"
+                )}
+              >
                 {section.label}
               </p>
-            )}
+              <div
+                className={cn(
+                  "mx-auto h-px rounded-full bg-border/70 transition-all duration-300 ease-in-out",
+                  collapsed ? "w-8 opacity-100 my-2" : "w-0 opacity-0 my-0"
+                )}
+              />
+            </div>
 
             <div className="space-y-1.5">
               {section.items.map((item) => {
@@ -123,8 +116,8 @@ const CMSNavigationPanel = ({
                     to={item.href}
                     onClick={onNavigate}
                     className={cn(
-                      "group relative flex items-center rounded-2xl border transition-all duration-300 ease-in-out w-full overflow-hidden",
-                      collapsed ? "justify-center p-2" : "gap-3 px-3 py-2.5",
+                      "group relative flex items-center rounded-2xl border transition-all duration-300 ease-in-out w-full overflow-hidden py-2.5",
+                      collapsed ? "justify-center px-0" : "gap-1 px-2.5",
                       isActive
                         ? "border-primary/30 bg-primary/10 shadow-[0_8px_24px_rgba(239,68,68,0.12)] text-primary backdrop-blur-md"
                         : "border-transparent bg-background/40 hover:border-border/60 hover:bg-background/80 text-foreground/85"
@@ -132,7 +125,7 @@ const CMSNavigationPanel = ({
                   >
                     {/* Left Active Glow Bar */}
                     {isActive && !collapsed && (
-                      <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                      <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-opacity duration-300" />
                     )}
 
                     <div
@@ -147,23 +140,26 @@ const CMSNavigationPanel = ({
                     </div>
 
                     {/* Text Label & Description */}
-                    {!collapsed && (
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <p className={cn("text-xs font-bold leading-tight truncate", isActive ? "text-foreground" : "text-foreground/90")}>
-                            {item.label}
-                          </p>
-                          {hasBadge && (
-                            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-extrabold text-destructive-foreground shadow-sm">
-                              {pendingAdvanceCount}
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/80 group-hover:text-muted-foreground truncate">
-                          {item.description}
+                    <div
+                      className={cn(
+                        "min-w-0 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out",
+                        collapsed ? "w-0 max-w-0 opacity-0 flex-none pointer-events-none" : "flex-1 max-w-[200px] opacity-100 ml-2"
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <p className={cn("text-xs font-bold leading-tight truncate", isActive ? "text-foreground" : "text-foreground/90")}>
+                          {item.label}
                         </p>
+                        {hasBadge && (
+                          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-extrabold text-destructive-foreground shadow-sm">
+                            {pendingAdvanceCount}
+                          </span>
+                        )}
                       </div>
-                    )}
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/80 group-hover:text-muted-foreground truncate">
+                        {item.description}
+                      </p>
+                    </div>
 
                     {collapsed && hasBadge && (
                       <span className="absolute top-1 right-1 flex h-3 w-3 rounded-full bg-destructive shadow-[0_0_6px_rgba(239,68,68,0.9)]" />
@@ -191,17 +187,20 @@ const CMSNavigationPanel = ({
       </nav>
 
       {/* Footer indicator in sidebar */}
-      {!collapsed && (
-        <div className="mt-auto pt-4 border-t border-border/40">
-          <div className="flex items-center justify-between rounded-xl bg-card/60 px-3 py-2 text-[11px] text-muted-foreground backdrop-blur-md">
-            <div className="flex items-center gap-1.5">
-              <Server className="h-3.5 w-3.5 text-emerald-500" />
-              <span className="font-semibold text-foreground/80">VPS PostgreSQL</span>
-            </div>
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+      <div
+        className={cn(
+          "mt-auto pt-4 border-t border-border/40 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out",
+          collapsed ? "max-h-0 opacity-0 pointer-events-none py-0 border-t-0" : "max-h-20 opacity-100"
+        )}
+      >
+        <div className="flex items-center justify-between rounded-xl bg-card/60 px-3 py-2 text-[11px] text-muted-foreground backdrop-blur-md">
+          <div className="flex items-center gap-1.5">
+            <Server className="h-3.5 w-3.5 text-emerald-500" />
+            <span className="font-semibold text-foreground/80">VPS PostgreSQL</span>
           </div>
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -1483,6 +1483,36 @@ const EmployeeDashboard = () => {
                 </button>
               </div>
             </div>
+          {/* ─── PDFForge Tools Suite Banner Card ─── */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className="mb-8 p-5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 cursor-pointer hover:shadow-xl transition-all"
+            onClick={() => window.open("http://localhost:8001/", "_blank")}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-extrabold tracking-tight">PDFForge Tools Suite</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 border border-white/30 text-white">
+                    30 Free / Month
+                  </span>
+                </div>
+                <p className="text-xs text-red-100 mt-0.5">
+                  Merge, Split, Compress, Convert, Edit & Scan PDFs directly with your DrawnDimension account.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="px-5 py-2.5 rounded-xl bg-white text-red-600 font-bold text-xs shadow hover:bg-red-50 transition-colors shrink-0 flex items-center gap-1.5"
+            >
+              Open PDF Tools &rarr;
+            </button>
           </motion.div>
 
           {/* ─── KPI Grid ─────────────────────────────────────── */}

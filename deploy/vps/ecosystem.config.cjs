@@ -20,5 +20,15 @@ module.exports = {
         PYTHONUNBUFFERED: "1",
       },
     },
+    {
+      name: "drawndimension-pdf-tools",
+      cwd: "./pdf-tools",
+      script: "../server/.venv/bin/uvicorn",
+      args: "pdf-tool:app --host 127.0.0.1 --port 8001",
+      interpreter: "none",
+      env: {
+        PYTHONUNBUFFERED: "1",
+      },
+    },
   ],
 };

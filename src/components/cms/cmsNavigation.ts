@@ -17,6 +17,7 @@ import {
   Users,
   UserCheck,
   UserSquare2,
+  Wrench,
 } from "lucide-react";
 
 type CMSNavItemDef = {
@@ -94,6 +95,20 @@ const cmsNavigationSections: CMSNavSectionDef[] = [
         description: "Client testimonials, ratings, and review publishing.",
         segment: "reviews",
         icon: MessageSquare,
+      },
+    ],
+  },
+  {
+    id: "tools",
+    label: "Tools",
+    items: [
+      {
+        id: "pdf-forge-vault",
+        label: "PDF Tools Vault",
+        description: "View user-uploaded PDF files, storage stats, and DrawnDimension user accounts.",
+        segment: "tools/pdf-forge",
+        aliases: ["tools", "pdf-vault"],
+        icon: Wrench,
       },
     ],
   },

@@ -21,6 +21,7 @@ const InquiriesManager = lazy(() => import("@/components/cms/InquiriesManager"))
 
 // Pages
 const ChatWidget = lazy(() => import("@/components/ChatWidget"));
+const PDFToolsFloatingWidget = lazy(() => import("./PDFToolsFloatingWidget"));
 const AdminLogin = lazy(() => import("@/components/admin/AdminLogin"));
 
 // CMS Components
@@ -44,6 +45,7 @@ const AdvanceRequestsManager = lazy(() => import("@/components/cms/AdvanceReques
 const WebsiteUsersManager = lazy(() => import("@/components/cms/WebsiteUsersManager"));
 const VersionControlManager = lazy(() => import("@/components/cms/VersionControlManager"));
 const DatabaseBackupManager = lazy(() => import("@/components/cms/DatabaseBackupManager"));
+const PDFToolsVaultManager = lazy(() => import("@/components/cms/PDFToolsVaultManager"));
 
 // Routes
 const About = lazy(() => import("./pages/services/About"));
@@ -101,6 +103,8 @@ const renderCMSRoutes = () => (
     <Route path="advance-requests" element={<AdvanceRequestsManager />} />
     <Route path="version-control" element={<VersionControlManager />} />
     <Route path="database-backup" element={<DatabaseBackupManager />} />
+    <Route path="tools/pdf-forge" element={<PDFToolsVaultManager />} />
+    <Route path="tools" element={<PDFToolsVaultManager />} />
   </>
 );
 
@@ -220,6 +224,7 @@ const AppShell = () => {
       </Suspense>
       {!adminRouteActive && shouldLoadChatWidget ? (
         <Suspense fallback={null}>
+          <PDFToolsFloatingWidget />
           <ChatWidget />
         </Suspense>
       ) : null}
