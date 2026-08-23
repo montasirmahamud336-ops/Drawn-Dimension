@@ -122,6 +122,12 @@ const loadLocalVersions = async (): Promise<SystemVersionRecord[]> => {
     const content = await fs.readFile(LOCAL_VERSIONS_FILE, "utf-8");
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed) && parsed.length > 0) {
+      const hasV26 = parsed.some((v: any) => v.version === "v2.6.0");
+      if (!hasV26) {
+        parsed.forEach((v: any) => { v.is_active = false; });
+        parsed.unshift(DEFAULT_SYSTEM_VERSIONS[0]);
+        await fs.writeFile(LOCAL_VERSIONS_FILE, JSON.stringify(parsed, null, 2), "utf-8");
+      }
       return parsed as SystemVersionRecord[];
     }
   } catch {

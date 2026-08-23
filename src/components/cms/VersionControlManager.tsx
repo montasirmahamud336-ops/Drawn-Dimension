@@ -175,11 +175,14 @@ const VersionControlManager = () => {
       }
 
       if (successData && Array.isArray(successData.versions) && successData.versions.length > 0) {
-        setVersions(successData.versions);
+        let mergedList = [...successData.versions];
+        if (!mergedList.some((v) => v.version === "v2.6.0")) {
+          mergedList = [FALLBACK_SYSTEM_VERSIONS[0], ...mergedList.map((v) => ({ ...v, is_active: false }))];
+        }
+        setVersions(mergedList);
         setActiveVersion(
-          successData.active_version ||
-            successData.versions.find((v) => v.is_active) ||
-            successData.versions[0]
+          mergedList.find((v) => v.is_active) ||
+            mergedList[0]
         );
       } else {
         setVersions(FALLBACK_SYSTEM_VERSIONS);
