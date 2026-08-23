@@ -66,7 +66,7 @@ export const WelcomeIntroOverlay = ({ onComplete }: WelcomeIntroOverlayProps) =>
         <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 backdrop-blur-xl">
           <Cpu className="h-4 w-4 text-primary animate-spin" />
           <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono">
-            System Booting • Studio OS v2.5
+            System Booting • Studio OS v2.6
           </span>
         </div>
 
@@ -126,7 +126,7 @@ export const WelcomeIntroOverlay = ({ onComplete }: WelcomeIntroOverlayProps) =>
             <div className="space-y-3 animate-in fade-in zoom-in duration-500">
               <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3.5 py-1 text-xs font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-md shadow-emerald-500/20">
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Studio OS v2.5.0 Active Production Release</span>
+                <span>Studio OS v2.6.0 Active Production Release</span>
               </div>
               <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
                 Where Precision Engineering Meets Digital Innovation

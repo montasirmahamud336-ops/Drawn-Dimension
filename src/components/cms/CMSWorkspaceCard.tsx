@@ -26,7 +26,7 @@ const CMSWorkspaceCard = ({ adminDisplayName, adminMeta, className }: CMSWorkspa
         </div>
         <div className="mt-2.5 flex items-baseline gap-2">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground">CMS</h2>
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">v2.5 Workspace</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">v2.6 Workspace</span>
         </div>
         <p className="mt-1.5 max-w-[22rem] text-xs leading-relaxed text-muted-foreground/90">
           Centralized control suite for site content, operations, staff & inquiries.

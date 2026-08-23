@@ -8,6 +8,7 @@ import { clearAdminToken, getAdminProfile, getAdminToken, getApiBaseUrl, refresh
 import { buildCMSHref, getCMSBasePath, getCMSNavigationSections, resolveCMSRoute, type CMSResolvedNavSection } from "./cmsNavigation";
 import { Bell, ExternalLink, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Sparkles, Server, ShieldCheck, Play } from "lucide-react";
 import { WelcomeIntroOverlay } from "./WelcomeIntroOverlay";
+import CMSErrorBoundary from "./CMSErrorBoundary";
 
 const CMS_SIDEBAR_COLLAPSED_KEY = "cms-sidebar-collapsed";
 const CMS_SIDEBAR_SCROLL_KEY = "cms-sidebar-scroll-pos";
@@ -60,7 +61,7 @@ const CMSNavigationPanel = ({
             )}
           >
             <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-primary truncate">Drawn Dimension</p>
-            <p className="text-sm font-bold tracking-tight text-foreground truncate">Studio OS • CMS v2.5</p>
+            <p className="text-sm font-bold tracking-tight text-foreground truncate">Studio OS • CMS v2.6</p>
           </div>
         </div>
         {onToggleCollapse && (
@@ -432,7 +433,9 @@ const CMSLayout = () => {
 
         {/* Dynamic Nested Route Content Container */}
         <main ref={mainScrollRef} data-lenis-prevent className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <CMSErrorBoundary>
+            <Outlet />
+          </CMSErrorBoundary>
         </main>
       </div>
     </div>
