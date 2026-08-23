@@ -21,7 +21,6 @@ const InquiriesManager = lazy(() => import("@/components/cms/InquiriesManager"))
 
 // Pages
 const ChatWidget = lazy(() => import("@/components/ChatWidget"));
-const PDFToolsFloatingWidget = lazy(() => import("./PDFToolsFloatingWidget"));
 const AdminLogin = lazy(() => import("@/components/admin/AdminLogin"));
 
 // CMS Components
@@ -225,7 +224,6 @@ const AppShell = () => {
       </Suspense>
       {!adminRouteActive && shouldLoadChatWidget ? (
         <Suspense fallback={null}>
-          <PDFToolsFloatingWidget />
           <ChatWidget />
         </Suspense>
       ) : null}
