@@ -46,6 +46,8 @@ const WebsiteUsersManager = lazy(() => import("@/components/cms/WebsiteUsersMana
 const VersionControlManager = lazy(() => import("@/components/cms/VersionControlManager"));
 const DatabaseBackupManager = lazy(() => import("@/components/cms/DatabaseBackupManager"));
 const PDFToolsVaultManager = lazy(() => import("@/components/cms/PDFToolsVaultManager"));
+const PDFToolsEmbed = lazy(() => import("./pages/PDFToolsEmbed"));
+const VidGrabEmbed = lazy(() => import("./pages/VidGrabEmbed"));
 
 // Routes
 const About = lazy(() => import("./pages/services/About"));
@@ -120,12 +122,6 @@ const AppShell = () => {
   const [shouldLoadChatWidget, setShouldLoadChatWidget] = useState(false);
 
   useEffect(() => {
-    if (window.location.hostname === "drawndimension.com") {
-      window.location.replace(`https://www.drawndimension.com${window.location.pathname}${window.location.search}${window.location.hash}`);
-    }
-  }, []);
-
-  useEffect(() => {
     if (adminRouteActive) {
       if (shouldLoadChatWidget) {
         setShouldLoadChatWidget(false);
@@ -192,6 +188,11 @@ const AppShell = () => {
             <Route path="/products" element={<Products />} />
             <Route path="/products/:id" element={<ProductDetails />} />
             <Route path="/payment" element={<Payment />} />
+            <Route path="/pdf-forge" element={<PDFToolsEmbed />} />
+            <Route path="/pdf-tools" element={<PDFToolsEmbed />} />
+            <Route path="/vidgrab" element={<VidGrabEmbed />} />
+            <Route path="/downloader" element={<VidGrabEmbed />} />
+            <Route path="/video-downloader" element={<VidGrabEmbed />} />
 
             <Route path="/database/login" element={<AdminLogin />} />
             <Route
