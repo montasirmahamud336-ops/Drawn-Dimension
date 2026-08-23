@@ -1,4 +1,4 @@
-﻿import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useRef } from "react";
 import { motion } from "framer-motion";
@@ -109,7 +109,7 @@ const Auth = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
 
-  const { signIn, signInWithGoogleIdToken, signUp, resetPassword } = useAuth();
+  const { user, session, signIn, signInWithGoogleIdToken, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const prefillEmail = searchParams.get("email") ?? "";
@@ -117,8 +117,23 @@ const Auth = () => {
   const modeParam = (searchParams.get("mode") ?? "").toLowerCase();
   const isEmployeeLoginFlow = nextParam.startsWith("/employee/dashboard");
   const googleClientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "").trim();
+  const redirectParam = searchParams.get("redirect") || searchParams.get("next") || "";
+
+  useEffect(() => {
+    if (user && session?.access_token && redirectParam) {
+      if (redirectParam.startsWith("http://") || redirectParam.startsWith("https://")) {
+        window.location.href = redirectParam;
+      } else {
+        navigate(redirectParam, { replace: true });
+      }
+    }
+  }, [user, session?.access_token, redirectParam, navigate]);
 
   const resolvePostLoginPath = (hasEmployeeDashboardAccess: boolean) => {
+    if (redirectParam) {
+      return redirectParam;
+    }
+
     if (isEmployeeLoginFlow) {
       return "/employee/dashboard";
     }

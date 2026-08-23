@@ -1,15 +1,8 @@
-export const getVidGrabUrl = (userToken?: string): string => {
+export const getVidGrabUrl = (_userToken?: string): string => {
   const envUrl = import.meta.env.VITE_VIDGRAB_URL;
-  let baseUrl = (envUrl && typeof envUrl === "string" && envUrl.trim()) 
+  return (envUrl && typeof envUrl === "string" && envUrl.trim()) 
     ? envUrl.trim() 
     : "https://vidgrab.drawndimension.com";
-
-  if (userToken) {
-    const separator = baseUrl.includes("?") ? "&" : "?";
-    return `${baseUrl}${separator}token=${encodeURIComponent(userToken)}`;
-  }
-
-  return baseUrl;
 };
 
 export default getVidGrabUrl;
