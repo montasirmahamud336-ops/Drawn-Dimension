@@ -26,6 +26,26 @@ export type SystemVersionItem = {
 
 const FALLBACK_SYSTEM_VERSIONS: SystemVersionItem[] = [
   {
+    id: "ver-v2-6-0",
+    version: "v2.6.0",
+    title: "Studio OS v2.6 Release — Tools Suite & VidGrab Downloader",
+    description: "Integrated VidGrab 4K Downloader & PDFForge Suite, Auth-gated tools, Android Share Sheet intent support, Live Streaming engine, and Admin User tracking.",
+    changelog: [
+      "Integrated VidGrab 4K High-Speed Media Downloader with instant streaming pipeline",
+      "Integrated PDFForge Multi-Tool Document Suite with 3D Red Branding",
+      "Added Member Auth-Gating for all Downloader and PDF tools with instant redirect",
+      "Resolved Android App Share-Sheet media URL extraction & upgraded Kotlin 2.0",
+      "Implemented VidGrab Admin Panel User Downloads Activity Tracking & Search",
+      "Optimized Localhost Dev URL Routing & Cleaned JWT tokens from browser address bar"
+    ],
+    zip_url: "/media/cms-uploads/versions/v2.6.0-release.zip",
+    commit_hash: "v2.6.0",
+    is_active: true,
+    created_at: "2026-08-24T00:00:00.000Z",
+    deployed_at: "2026-08-24T00:00:00.000Z",
+    created_by: "Lead Engineer"
+  },
+  {
     id: "ver-v2-5-0",
     version: "v2.5.0",
     title: "Studio OS v2.5 Release",
@@ -39,7 +59,7 @@ const FALLBACK_SYSTEM_VERSIONS: SystemVersionItem[] = [
     ],
     zip_url: "/media/cms-uploads/versions/v2.5.0-release.zip",
     commit_hash: "9a2f7c4",
-    is_active: true,
+    is_active: false,
     created_at: "2026-08-05T12:00:00.000Z",
     deployed_at: "2026-08-05T12:00:00.000Z",
     created_by: "System Admin"
