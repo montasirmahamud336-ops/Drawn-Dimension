@@ -520,8 +520,8 @@ const Dashboard = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/5 opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="flex items-center gap-3.5 relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shrink-0 shadow-sm">
-                  <FileText className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 shadow-sm overflow-hidden p-1.5">
+                  <img src="/pdf-forge-logo.png" alt="PDFForge Logo" className="w-full h-full object-contain drop-shadow-sm" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
