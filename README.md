@@ -474,6 +474,9 @@ tar.exe -a -c -f server-node.zip `
 tar.exe -a -c -f vidgrab.zip `
   --exclude "node_modules" `
   --exclude ".next" `
+  --exclude "mobile_app" `
+  --exclude "multipage" `
+  --exclude "*.mp4" `
   --exclude ".git" `
   --exclude "collected_cookies.json" `
   -C vidgrab_repo .
