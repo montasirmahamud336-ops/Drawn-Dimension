@@ -9,6 +9,7 @@ import {
   Clock3,
   DollarSign,
   FileText,
+  Video,
   Loader2,
   LogOut,
   PencilLine,
@@ -23,6 +24,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { getPdfToolsUrl } from "@/components/shared/pdfToolsUrl";
+import { getVidGrabUrl } from "@/components/shared/vidgrabUrl";
 import PageTransition from "@/components/shared/PageTransition";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -498,37 +501,88 @@ const Dashboard = () => {
             </div>
           </motion.div>
 
-          {/* ─── PDFForge Tools Suite Banner Card ─── */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="mb-8 p-5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 cursor-pointer hover:shadow-xl transition-all"
-            onClick={() => window.open("http://localhost:8001/", "_blank")}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0">
-                <FileText className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-extrabold tracking-tight">PDFForge Tools Suite</h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 border border-white/30 text-white">
-                    30 Free / Month
-                  </span>
-                </div>
-                <p className="text-xs text-red-100 mt-0.5">
-                  Merge, Split, Compress, Convert, Edit & Scan PDFs directly with your DrawnDimension account.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="px-5 py-2.5 rounded-xl bg-white text-red-600 font-bold text-xs shadow hover:bg-red-50 transition-colors shrink-0 flex items-center gap-1.5"
+          {/* ─── Suite Tools Banner Cards (PDFForge & VidGrab 4K Downloader) ─── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+            {/* PDFForge Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="p-5 sm:p-6 bg-card border-[2px] border-red-500/30 hover:border-red-500/70 text-foreground rounded-3xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer transition-all duration-300 relative overflow-hidden group"
+              onClick={() => {
+                try {
+                  const url = getPdfToolsUrl(session?.access_token);
+                  window.open(url, "_blank");
+                } catch (e) {
+                  window.open(getPdfToolsUrl(), "_blank");
+                }
+              }}
             >
-              Open PDF Tools &rarr;
-            </button>
-          </motion.div>
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-transparent to-red-500/5 opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="flex items-center gap-3.5 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shrink-0 shadow-sm">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="text-base font-bold tracking-tight text-foreground">PDFForge Tools Suite</h3>
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-500">
+                      Free Suite
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-1">
+                    Merge, Split, Compress & Edit PDFs directly.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md transition-all shrink-0 flex items-center justify-center gap-1.5 relative z-10"
+              >
+                Open PDF Tools &rarr;
+              </button>
+            </motion.div>
+
+            {/* VidGrab 4K Downloader Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className="p-5 sm:p-6 bg-card border-[2px] border-amber-500/30 hover:border-amber-500/70 text-foreground rounded-3xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer transition-all duration-300 relative overflow-hidden group"
+              onClick={() => {
+                try {
+                  const url = getVidGrabUrl(session?.access_token);
+                  window.open(url, "_blank");
+                } catch (e) {
+                  window.open(getVidGrabUrl(), "_blank");
+                }
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-transparent to-amber-500/5 opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="flex items-center gap-3.5 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 shadow-sm">
+                  <Video className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="text-base font-bold tracking-tight text-foreground">VidGrab 4K Downloader</h3>
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-500">
+                      ⚡ 4K Fast
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-1">
+                    Download YouTube, Instagram Reels & TikTok in 4K.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs shadow-md transition-all shrink-0 flex items-center justify-center gap-1.5 relative z-10"
+              >
+                Open VidGrab &rarr;
+              </button>
+            </motion.div>
+          </div>
 
           {/* ─── KPI Grid ─────────────────────────────────────── */}
           <motion.div

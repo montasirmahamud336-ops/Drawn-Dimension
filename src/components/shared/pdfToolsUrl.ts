@@ -1,8 +1,8 @@
-export const getVidGrabUrl = (userToken?: string): string => {
-  const envUrl = import.meta.env.VITE_VIDGRAB_URL;
+export const getPdfToolsUrl = (userToken?: string): string => {
+  const envUrl = import.meta.env.VITE_PDF_TOOLS_URL;
   let baseUrl = (envUrl && typeof envUrl === "string" && envUrl.trim()) 
     ? envUrl.trim() 
-    : "https://vidgrab.drawndimension.com";
+    : "https://tools.drawndimension.com";
 
   if (userToken) {
     const separator = baseUrl.includes("?") ? "&" : "?";
@@ -12,4 +12,4 @@ export const getVidGrabUrl = (userToken?: string): string => {
   return baseUrl;
 };
 
-export default getVidGrabUrl;
+export default getPdfToolsUrl;
