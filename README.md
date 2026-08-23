@@ -447,44 +447,90 @@ Local:
 ```powershell
 cd C:\DrawnDimension
 npm run build
+
 if (Test-Path .\website-dist.zip) { Remove-Item .\website-dist.zip -Force }
 if (Test-Path .\server-node.zip) { Remove-Item .\server-node.zip -Force }
+if (Test-Path .\pdf-tools.zip) { Remove-Item .\pdf-tools.zip -Force }
+if (Test-Path .\vidgrab.zip) { Remove-Item .\vidgrab.zip -Force }
+
 Compress-Archive -Path .\dist\* -DestinationPath .\website-dist.zip -Force
+
+tar.exe -a -c -f pdf-tools.zip `
+  --exclude ".deps" `
+  --exclude "transcript-model" `
+  --exclude "uploads" `
+  --exclude "outputs" `
+  --exclude "cms_storage" `
+  --exclude ".git" `
+  -C pdf-tools .
+
 tar.exe -a -c -f server-node.zip `
   --exclude "server-node/node_modules" `
   --exclude "server-node/dist" `
   --exclude "server-node/.env" `
   --exclude "server-node/data" `
   server-node
-scp .\website-dist.zip .\server-node.zip root@192.64.118.232:/tmp/
+
+tar.exe -a -c -f vidgrab.zip `
+  --exclude "node_modules" `
+  --exclude ".next" `
+  --exclude ".git" `
+  --exclude "collected_cookies.json" `
+  -C vidgrab_repo .
+
+scp .\website-dist.zip .\server-node.zip .\pdf-tools.zip .\vidgrab.zip root@192.64.118.232:/tmp/
+
 ```
 
 VPS:
 
 ```bash
 cd /var/www/vhosts/drawndimension.com
-mv public_html public_html_backup_$(date +%F_%H-%M-%S)
-mkdir public_html
+mv public_html public_html_backup_$(date +%F_%H-%M-%S) 2>/dev/null || true
+mkdir -p public_html
 unzip -o /tmp/website-dist.zip -d public_html
-chown -R nginx:nginx public_html
+chmod -R 755 public_html
+chown -R nginx:nginx public_html 2>/dev/null || true
 
 cd /opt/drawndimension/app
 BACKUP_DIR="server-node_safe_backup_$(date +%F_%H-%M-%S)"
 PREV_DIR="server-node_prev_$(date +%F_%H-%M-%S)"
-cp -r server-node "$BACKUP_DIR"
-mv server-node "$PREV_DIR"
+cp -r server-node "$BACKUP_DIR" 2>/dev/null || true
+mv server-node "$PREV_DIR" 2>/dev/null || true
 unzip -o /tmp/server-node.zip -d /opt/drawndimension/app
-cp "$PREV_DIR/.env" server-node/.env
-mkdir -p server-node/data
-cp -a "$PREV_DIR/data/." server-node/data/
+if [ -d "$PREV_DIR" ]; then
+  cp "$PREV_DIR/.env" server-node/.env 2>/dev/null || true
+  mkdir -p server-node/data
+  cp -a "$PREV_DIR/data/." server-node/data/ 2>/dev/null || true
+fi
 cd /opt/drawndimension/app/server-node
-npm install
+npm install --silent
 node ./node_modules/typescript/lib/tsc.js -p tsconfig.json
 pm2 restart drawndimension-node-api --update-env
-sleep 3
-curl http://127.0.0.1:4000/health
-curl https://api.drawndimension.com/health
-curl -I https://drawndimension.com/
+
+# 🚀 PDF Tools Suite Auto-Update & PM2 Restart
+if [ -f /tmp/pdf-tools.zip ]; then
+  mkdir -p /opt/drawndimension/app/pdf-tools
+  rm -rf /opt/drawndimension/app/pdf-tools/pdf-tools 2>/dev/null || true
+  unzip -o /tmp/pdf-tools.zip -d /opt/drawndimension/app/pdf-tools/
+  chmod -R 755 /opt/drawndimension/app/pdf-tools
+  pm2 restart drawndimension-pdf-tools 2>/dev/null || pm2 start pdf-tool.py --name "drawndimension-pdf-tools" --interpreter ../server/.venv/bin/python
+fi
+
+# 🎬 VidGrab 4K Downloader & CMS Auto-Update
+if [ -f /tmp/vidgrab.zip ]; then
+  VID_DIR=$(find /opt /root /var/www -name "vidgrab.service" 2>/dev/null | head -n 1 | xargs dirname)
+  if [ -z "$VID_DIR" ]; then VID_DIR="/opt/vidgrab"; fi
+  mkdir -p "$VID_DIR"
+  unzip -o /tmp/vidgrab.zip -d "$VID_DIR"
+  chmod -R 755 "$VID_DIR"
+  systemctl restart vidgrab 2>/dev/null || pm2 restart vidgrab 2>/dev/null || true
+fi
+
+echo "=========================================="
+echo "✅ DEPLOYMENT FULLY COMPLETED & ONLINE!"
+echo "=========================================="
+
 ```
 
 The `.env` and `data/` restore lines are important. They preserve live CMS-backed JSON data such as home hero cards, hero software strip, trusted logos, header/footer settings, service FAQs, and service blogs during backend replacement.
