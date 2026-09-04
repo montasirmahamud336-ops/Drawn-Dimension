@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Download, FileText, HardDrive, RefreshCw, Search, Shield, User, Wrench, Layers } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getPdfToolsUrl } from "@/components/shared/pdfToolsUrl";
 
 interface CMSStatData {
   total_files: number;
@@ -46,7 +47,7 @@ export const PDFToolsVaultManager = () => {
   const [selectedUserFilter, setSelectedUserFilter] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const API_BASE = "http://localhost:8001";
+  const API_BASE = getPdfToolsUrl();
 
   const loadData = async () => {
     setLoading(true);
@@ -74,7 +75,7 @@ export const PDFToolsVaultManager = () => {
     } catch (error) {
       toast({
         title: "Connection Error",
-        description: "Could not connect to PDF Tools server on http://localhost:8001.",
+        description: `Could not connect to PDF Tools server on ${API_BASE}.`,
         variant: "destructive",
       });
     } finally {

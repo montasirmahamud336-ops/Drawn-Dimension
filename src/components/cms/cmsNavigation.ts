@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Briefcase,
   ClipboardCheck,
+  CreditCard,
   Database,
   FileText,
   GitBranch,
@@ -221,6 +222,14 @@ const cmsNavigationSections: CMSNavSectionDef[] = [
         segment: "database-backup",
         aliases: ["db-backup", "database", "backup"],
         icon: Database,
+      },
+      {
+        id: "payment-integration",
+        label: "Payment Integration",
+        description: "Stripe API keys, live & test mode credentials, and gateway setup.",
+        segment: "payment-integration",
+        aliases: ["payment", "stripe", "payment-settings"],
+        icon: CreditCard,
       },
       {
         id: "version-control",

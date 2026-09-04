@@ -44,10 +44,12 @@ const PortfolioCardImage = ({
   const imageUrl = previewMedia?.type === "image" ? previewMedia.url : "";
   const imageSources = useMemo(() => (imageUrl ? buildCardImageSources(imageUrl) : null), [imageUrl]);
   const hasPdf = Boolean(getProjectPdfDocument(project));
+  const [variantFailed, setVariantFailed] = useState(false);
   const [isImageReady, setIsImageReady] = useState(previewMedia?.type !== "image");
   const eagerImage = index < 3;
 
   useEffect(() => {
+    setVariantFailed(false);
     setIsImageReady(previewMedia?.type !== "image");
   }, [previewMedia?.type, imageUrl]);
 
@@ -82,8 +84,8 @@ const PortfolioCardImage = ({
             aria-hidden="true"
           />
           <img
-            src={imageSources.src}
-            srcSet={imageSources.srcSet}
+            src={variantFailed ? (imageSources.fallbackSrc ?? imageUrl) : imageSources.src}
+            srcSet={variantFailed ? undefined : imageSources.srcSet}
             alt={title}
             width={600}
             height={400}
@@ -92,7 +94,13 @@ const PortfolioCardImage = ({
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             decoding="async"
             onLoad={() => setIsImageReady(true)}
-            onError={() => setIsImageReady(true)}
+            onError={() => {
+              if (!variantFailed && imageSources.srcSet) {
+                setVariantFailed(true);
+              } else {
+                setIsImageReady(true);
+              }
+            }}
             className={`w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] transform-gpu ${isImageReady ? "opacity-100" : "opacity-0"}`}
           />
         </>

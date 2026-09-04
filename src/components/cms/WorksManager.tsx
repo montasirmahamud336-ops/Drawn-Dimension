@@ -2,12 +2,12 @@ import { DragEvent, Suspense, lazy, memo, useCallback, useDeferredValue, useEffe
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Edit, FileText, GripVertical, Loader2, MonitorPlay, Plus, RotateCcw, Search, Tag, Trash2 } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Edit, FileText, GripVertical, LayoutGrid, List, Loader2, MonitorPlay, Plus, RotateCcw, Search, Settings2, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { getAdminToken, getApiBaseUrl } from "@/components/admin/adminAuth";
 import { toast } from "sonner";
 import { moveItemById } from "./reorderUtils";
 import { buildCardImageSources } from "@/components/shared/mediaUrl";
-import { getProjectPdfDocument, getProjectPrimaryCardMedia } from "@/components/shared/projectMedia";
+import { getProjectPdfDocument, getProjectPrimaryCardMedia, getProjectVisualMedia } from "@/components/shared/projectMedia";
 import {
   applyPortfolioFilterCategories,
   getPortfolioFilterCategories,
@@ -109,14 +109,36 @@ const WorkCard = memo(({
   onRestore,
   project,
 }: WorkCardProps) => {
-  const previewMedia = useMemo(() => getProjectPrimaryCardMedia(project), [project]);
-  const imageSrc = previewMedia?.type === "image" ? (project.imageSources?.src ?? previewMedia.url) : "";
+  const allMedia = useMemo(() => getProjectVisualMedia(project), [project]);
   const hasPdf = Boolean(getProjectPdfDocument(project));
-  const [isImageReady, setIsImageReady] = useState(previewMedia?.type !== "image");
+  const [slideIndex, setSlideIndex] = useState(0);
+  const currentMedia = allMedia[slideIndex] ?? getProjectPrimaryCardMedia(project);
+  const hasMany = allMedia.length > 1;
+
+  const fallbackUrl = currentMedia?.type === "image" ? (project.imageSources?.fallbackSrc ?? currentMedia.url) : "";
+  const [variantFailed, setVariantFailed] = useState(false);
+  const currentSources = useMemo(() => currentMedia?.type === "image" ? buildCardImageSources(currentMedia.url) : null, [currentMedia]);
+  const displaySrc = variantFailed ? (currentSources?.fallbackSrc ?? fallbackUrl) : (currentSources?.src ?? fallbackUrl);
+  const [isImageReady, setIsImageReady] = useState(currentMedia?.type !== "image");
 
   useEffect(() => {
-    setIsImageReady(previewMedia?.type !== "image");
-  }, [previewMedia?.type, imageSrc]);
+    setVariantFailed(false);
+    setIsImageReady(currentMedia?.type !== "image");
+  }, [currentMedia?.type, currentMedia?.url]);
+
+  const prevSlide = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!hasMany) return;
+    setSlideIndex((i) => (i - 1 + allMedia.length) % allMedia.length);
+  };
+
+  const nextSlide = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!hasMany) return;
+    setSlideIndex((i) => (i + 1) % allMedia.length);
+  };
 
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     if (isReorderEnabled) {
@@ -126,7 +148,7 @@ const WorkCard = memo(({
 
   return (
     <div
-      className={`group relative ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "opacity-70" : ""} ${isDropTarget ? "ring-1 ring-primary/35 rounded-3xl" : ""}`}
+      className={`group relative ${isReorderEnabled ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "opacity-60 scale-[0.98]" : ""} ${isDropTarget ? "ring-2 ring-primary rounded-3xl" : ""} transition-all duration-200`}
       draggable={isReorderEnabled}
       onDragStart={() => onDragStart(project.id)}
       onDragEnter={() => onDragEnter(project.id)}
@@ -138,144 +160,204 @@ const WorkCard = memo(({
       onDragEnd={onDragEnd}
       style={CARD_SHELL_STYLE}
     >
-      <div className="glass-card cms-card-lite overflow-hidden h-full flex flex-col border-border/50 bg-secondary/10 transition-none">
-        <div className="relative overflow-hidden aspect-video bg-muted/10">
-          {previewMedia?.type === "video" ? (
+      <div className="rounded-3xl border border-border/60 bg-card/90 overflow-hidden shadow-md hover:shadow-2xl hover:border-primary/50 transition-all duration-300 flex flex-col h-full group/card">
+        {/* Media Frame (16/10 ratio matching portfolio) */}
+        <div className="relative overflow-hidden aspect-[16/10] bg-muted/30 group/media">
+          {currentMedia?.type === "video" ? (
             <video
-              src={previewMedia.url}
+              src={currentMedia.url}
               className="w-full h-full object-cover"
               muted
               playsInline
               preload="none"
             />
-          ) : previewMedia?.type === "pdf" ? (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-white to-zinc-100 text-zinc-900">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/12 text-primary shadow-[0_10px_24px_-16px_rgba(239,68,68,0.55)]">
-                <FileText className="h-7 w-7" />
+          ) : currentMedia?.type === "pdf" ? (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2.5 bg-gradient-to-br from-card via-muted/40 to-muted/80 text-foreground p-4 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary border border-primary/20 shadow-md">
+                <FileText className="h-6 w-6" />
               </div>
-              <div className="px-6 text-center">
-                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-700">PDF Project</p>
-                <p className="mt-1 text-xs text-zinc-500">Open edit or details view to inspect the full file.</p>
-              </div>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">PDF Project</p>
+              <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">Click Edit to view document</p>
             </div>
-          ) : imageSrc ? (
+          ) : displaySrc ? (
             <>
               <div
                 className={`absolute inset-0 bg-muted/30 ${isImageReady ? "opacity-0" : "opacity-100"}`}
                 aria-hidden="true"
               />
               <img
-                src={imageSrc}
-                srcSet={project.imageSources?.srcSet}
+                src={displaySrc}
+                srcSet={variantFailed ? undefined : currentSources?.srcSet ?? project.imageSources?.srcSet}
                 alt={project.title}
                 loading={eagerImage ? "eager" : "lazy"}
                 fetchpriority={eagerImage ? "high" : "low"}
                 decoding="async"
                 width={640}
-                height={360}
+                height={400}
                 sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                 onLoad={() => setIsImageReady(true)}
-                onError={() => setIsImageReady(true)}
-                className={`w-full h-full object-cover ${isImageReady ? "opacity-100" : "opacity-0"}`}
+                onError={() => {
+                  if (!variantFailed && (currentSources?.srcSet || project.imageSources?.srcSet)) {
+                    setVariantFailed(true);
+                  } else {
+                    setIsImageReady(true);
+                  }
+                }}
+                className={`w-full h-full object-cover transition-transform duration-500 ease-out group-hover/card:scale-105 ${isImageReady ? "opacity-100" : "opacity-0"}`}
               />
             </>
           ) : (
-            <div className="flex items-center justify-center h-full bg-muted/30 text-muted-foreground">
-              No Image
+            <div className="flex items-center justify-center h-full bg-muted/30 text-muted-foreground text-xs">
+              No Visual Media
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-40" />
 
-          <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 z-20">
+          {/* Category Pill Tag Overlay (Matching Portfolio style) */}
+          <div className="absolute top-3.5 left-3.5 z-10">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border border-white/20 bg-black/65 backdrop-blur-md text-white shadow-xl">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              {project.category || "Uncategorized"}
+            </span>
+          </div>
+
+          {/* Media Count / PDF Badge */}
+          <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-1.5">
+            {hasPdf && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/20 backdrop-blur-md px-2.5 py-1 text-[11px] font-bold text-white shadow-lg">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                PDF
+              </span>
+            )}
+            {hasMany && (
+              <span className="inline-flex items-center rounded-full border border-white/20 bg-black/60 backdrop-blur-md px-2.5 py-1 text-[11px] font-bold text-white shadow-lg">
+                {slideIndex + 1}/{allMedia.length}
+              </span>
+            )}
+            {project.status === "draft" && (
+              <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-500/90 text-black font-bold shadow-md">
+                Draft
+              </span>
+            )}
+          </div>
+
+          {/* Slide Navigation Buttons */}
+          {hasMany && (
+            <>
+              <button
+                type="button"
+                onClick={prevSlide}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/65 text-white flex items-center justify-center hover:bg-primary transition-all duration-200 opacity-0 group-hover/media:opacity-100 shadow-lg z-20 cursor-pointer"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={nextSlide}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/65 text-white flex items-center justify-center hover:bg-primary transition-all duration-200 opacity-0 group-hover/media:opacity-100 shadow-lg z-20 cursor-pointer"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
+          {/* Reorder Drag Handle */}
+          {isReorderEnabled && (
+            <div
+              draggable
+              className="absolute right-3 bottom-3 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/75 text-white shadow-md cursor-grab active:cursor-grabbing hover:bg-black"
+              title="Drag to reorder"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
+
+          {/* Admin Hover Action Buttons Overlay */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center gap-2.5 z-20">
             <Button
               size="sm"
-              variant="secondary"
-              className="shadow-lg"
-              onClick={() => onEdit(project)}
+              className="bg-white text-zinc-900 hover:bg-white/90 font-bold shadow-xl cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(project);
+              }}
             >
-              <Edit className="w-4 h-4 mr-2" /> Edit
+              <Edit className="w-4 h-4 mr-1.5" /> Edit
             </Button>
 
             {activeTab === "draft" ? (
               <>
                 <Button
-                  size="icon"
-                  className="bg-green-600 hover:bg-green-700 shadow-lg"
-                  onClick={() => onRestore(project.id)}
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xl cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRestore(project.id);
+                  }}
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="w-4 h-4 mr-1.5" /> Restore
                 </Button>
                 <Button
-                  size="icon"
+                  size="sm"
                   variant="destructive"
-                  className="shadow-lg"
-                  onClick={() => onDelete(project.id, true)}
+                  className="shadow-xl font-bold cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(project.id, true);
+                  }}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4 mr-1.5" /> Delete
                 </Button>
               </>
             ) : (
               <Button
                 size="sm"
                 variant="destructive"
-                className="shadow-lg"
-                onClick={() => onDelete(project.id, false)}
+                className="shadow-xl font-bold cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(project.id, false);
+                }}
               >
-                <Trash2 className="w-4 h-4 mr-2" /> Draft
+                <Trash2 className="w-4 h-4 mr-1.5" /> Draft
               </Button>
             )}
           </div>
-
-          <div className="absolute top-4 left-4 z-10">
-            <span className="text-xs px-3 py-1 rounded-full bg-primary/90 text-primary-foreground shadow-glow">
-              {project.category || "Uncategorized"}
-            </span>
-          </div>
-
-          {hasPdf && (
-            <div className="absolute bottom-4 left-4 z-10">
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
-                <FileText className="h-3.5 w-3.5" />
-                PDF
-              </span>
-            </div>
-          )}
-
-          {project.status === "draft" && (
-            <div className="absolute top-4 right-4 z-10">
-              <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/90 text-black font-medium shadow-sm">
-                Draft
-              </span>
-            </div>
-          )}
         </div>
 
-        <div className="p-6 flex-grow flex flex-col justify-between relative z-10">
+        {/* Card Body */}
+        <div className="p-5 flex-1 flex flex-col justify-between">
           <div>
-            {isReorderEnabled && (
-              <div className="flex justify-end mb-2">
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/90 rounded-full border border-border/60 bg-background/40 px-2 py-1">
-                  <GripVertical className="w-3.5 h-3.5" />
-                  Drag
-                </span>
-              </div>
-            )}
-            <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+              <span className="font-semibold text-foreground/80 truncate max-w-[180px]">
+                {project.client ? `Client: ${project.client}` : "DrawnDimension"}
+              </span>
+              <span className="uppercase text-[10px] font-mono tracking-wider text-muted-foreground">Case Study</span>
+            </div>
+            <h3
+              onClick={() => onEdit(project)}
+              className="text-base sm:text-lg font-bold text-foreground leading-snug group-hover/card:text-primary transition-colors line-clamp-2 cursor-pointer"
+            >
               {project.title}
             </h3>
-            <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
+            <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2">
               {project.descriptionPreview}
             </p>
           </div>
 
-          {project.client && (
-            <div className="mt-auto pt-4 border-t border-border/50">
-              <p className="text-xs font-bold tracking-wider text-primary uppercase flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                CLIENT: <span className="text-foreground/80 font-normal normal-case">{project.client}</span>
-              </p>
-            </div>
-          )}
+          <div className="mt-4 pt-3.5 border-t border-border/40 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => onEdit(project)}
+              className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              Edit Details <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[11px] text-muted-foreground">
+              {allMedia.length} visual asset{allMedia.length === 1 ? "" : "s"}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -298,10 +380,100 @@ const WorkCard = memo(({
 
 WorkCard.displayName = "WorkCard";
 
+const CompactWorkRow = memo(({
+  project,
+  activeTab,
+  onEdit,
+  onDelete,
+  onRestore,
+}: {
+  project: ProjectCardRecord;
+  activeTab: string;
+  onEdit: (project: ProjectRecord) => void;
+  onDelete: (id: string, isHardDelete: boolean) => void;
+  onRestore: (id: string) => void;
+}) => {
+  const previewMedia = getProjectPrimaryCardMedia(project);
+
+  return (
+    <div
+      onClick={() => onEdit(project)}
+      className="group cursor-pointer rounded-2xl border border-border/60 bg-card/80 hover:border-primary/50 hover:bg-card p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200 shadow-sm hover:shadow-md"
+    >
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        <div className="w-20 h-14 rounded-xl overflow-hidden shrink-0 bg-muted/40 relative border border-border/40">
+          {previewMedia?.type === "video" ? (
+            <video src={previewMedia.url} className="w-full h-full object-cover" muted />
+          ) : previewMedia?.type === "pdf" ? (
+            <div className="w-full h-full flex items-center justify-center text-primary bg-primary/10">
+              <FileText className="w-5 h-5" />
+            </div>
+          ) : previewMedia?.url ? (
+            <img src={previewMedia.url} alt={project.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">
+              No Media
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+              {project.category || "General"}
+            </span>
+            {project.client && (
+              <span className="text-[11px] text-muted-foreground truncate">
+                • {project.client}
+              </span>
+            )}
+            {project.status === "draft" && (
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold uppercase">
+                Draft
+              </span>
+            )}
+          </div>
+          <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+            {project.title}
+          </h3>
+          <p className="text-xs text-muted-foreground truncate max-w-xl mt-0.5">
+            {project.descriptionPreview}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center" onClick={(e) => e.stopPropagation()}>
+        <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs font-semibold" onClick={() => onEdit(project)}>
+          <Edit className="w-3.5 h-3.5" /> Edit
+        </Button>
+        {activeTab === "draft" ? (
+          <>
+            <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1 text-xs font-semibold" onClick={() => onRestore(project.id)}>
+              <RotateCcw className="w-3.5 h-3.5" /> Restore
+            </Button>
+            <Button size="sm" variant="destructive" className="h-8 text-xs font-semibold" onClick={() => onDelete(project.id, true)}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-semibold" onClick={() => onDelete(project.id, false)}>
+            <Trash2 className="w-3.5 h-3.5" /> Draft
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+});
+
+CompactWorkRow.displayName = "CompactWorkRow";
+
 const WorksManager = () => {
   const [projects, setProjects] = useState<ProjectCardRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("live");
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
+  const [isFilterManagerOpen, setIsFilterManagerOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectRecord | null>(null);
@@ -323,7 +495,7 @@ const WorksManager = () => {
   const apiBase = getApiBaseUrl();
   const token = getAdminToken();
   const searchQuery = deferredSearch.trim().toLowerCase();
-  const isReorderEnabled = searchQuery.length === 0 && !isSavingOrder;
+  const isReorderEnabled = activeCategory === "All" && searchQuery.length === 0 && !isSavingOrder && viewMode === "grid";
 
   useEffect(() => {
     projectsRef.current = projects;
@@ -367,7 +539,7 @@ const WorksManager = () => {
 
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE_WORKS);
-  }, [activeTab, searchQuery, projects.length]);
+  }, [activeTab, activeCategory, searchQuery, projects.length]);
 
   useEffect(() => {
     setEditingCategoryKey(null);
@@ -533,10 +705,25 @@ const WorksManager = () => {
     void fetchProjects();
   }, [fetchProjects]);
 
-  const filteredProjects = useMemo(
-    () => projects.filter((project) => !searchQuery || project.searchText.includes(searchQuery)),
-    [projects, searchQuery],
-  );
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      if (activeCategory !== "All") {
+        const norm = normalizeCategoryValue(project.category);
+        if (activeCategory === "Uncategorized") {
+          if (norm.length > 0) return false;
+        } else {
+          const label = getProjectCategoryLabel(project.category);
+          if (label.toLowerCase() !== activeCategory.toLowerCase()) return false;
+        }
+      }
+
+      if (searchQuery && !project.searchText.includes(searchQuery)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [projects, activeCategory, searchQuery]);
 
   const categoryGroups = useMemo<WorkCategoryGroup[]>(() => {
     const groups = new Map<string, WorkCategoryGroup>();
@@ -588,6 +775,20 @@ const WorksManager = () => {
       return b.count - a.count || a.label.localeCompare(b.label);
     });
   }, [managedCategories, projects]);
+
+  const filterPillCategories = useMemo(() => {
+    const list = ["All"];
+    categoryGroups.forEach((group) => {
+      if (!group.isUncategorized && !list.includes(group.label)) {
+        list.push(group.label);
+      }
+    });
+    const uncategorizedGroup = categoryGroups.find((g) => g.isUncategorized && g.count > 0);
+    if (uncategorizedGroup) {
+      list.push("Uncategorized");
+    }
+    return list;
+  }, [categoryGroups]);
 
   const handleStartCategoryEdit = useCallback((group: WorkCategoryGroup) => {
     setEditingCategoryKey(group.key);
@@ -791,55 +992,168 @@ const WorksManager = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header Title & Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Live Works</h2>
-          <p className="text-muted-foreground">Manage your portfolio projects.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">Portfolio Works</h2>
+          <p className="text-sm text-muted-foreground">
+            Curate, reorder, and publish engineering projects and case studies.
+          </p>
         </div>
-        <Button onClick={handleOpenCreate} className="gap-2">
-          <Plus className="w-4 h-4" /> Upload Work
-        </Button>
+        <div className="flex items-center gap-3">
+          {activeTab === "live" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterManagerOpen((open) => !open)}
+              className={`gap-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                isFilterManagerOpen ? "border-primary text-primary bg-primary/10" : ""
+              }`}
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              <span>Manage Filters</span>
+              {categoryGroups.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted font-mono">
+                  {categoryGroups.length}
+                </span>
+              )}
+              {isFilterManagerOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </Button>
+          )}
+          <Button onClick={handleOpenCreate} className="gap-2 rounded-xl text-xs font-semibold shadow-lg shadow-primary/20 cursor-pointer">
+            <Plus className="w-4 h-4" /> Upload Work
+          </Button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
-          <TabsList>
-            <TabsTrigger value="live" className="gap-2"><MonitorPlay className="w-4 h-4" /> Live Works</TabsTrigger>
-            <TabsTrigger value="draft" className="gap-2"><RotateCcw className="w-4 h-4" /> Drafts</TabsTrigger>
+      {/* Interactive Controls Row: Tabs, Search, View Mode */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl border border-border/60 bg-card/80 backdrop-blur-xl shadow-md">
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => {
+            setActiveTab(val);
+            setActiveCategory("All");
+          }}
+          className="w-auto"
+        >
+          <TabsList className="bg-muted/60 p-1 rounded-xl h-9">
+            <TabsTrigger value="live" className="gap-1.5 rounded-lg text-xs font-semibold px-3">
+              <MonitorPlay className="w-3.5 h-3.5" /> Live Works
+            </TabsTrigger>
+            <TabsTrigger value="draft" className="gap-1.5 rounded-lg text-xs font-semibold px-3">
+              <RotateCcw className="w-3.5 h-3.5" /> Drafts
+            </TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative flex-1 max-w-sm ml-auto">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+
+        {/* Real-time Search Box */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
-            placeholder="Search projects..."
-            className="pl-8"
+            placeholder="Search works by title, client, or category..."
+            className="pl-8 pr-8 h-9 rounded-xl bg-muted/30 border-border/50 focus:border-primary/60 text-xs"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* View Mode Switcher */}
+        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+          <span className="text-xs font-medium text-muted-foreground hidden lg:inline">
+            Showing <span className="text-foreground font-bold">{filteredProjects.length}</span> works
+          </span>
+          <div className="flex items-center p-0.5 rounded-xl bg-muted/40 border border-border/50">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              title="Grid View"
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === "grid"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Grid</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("compact")}
+              title="Compact List View"
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === "compact"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Compact</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        {isReorderEnabled
-          ? "Drag and drop cards to control website display order."
-          : "Clear search text before dragging cards to reorder."}
-      </p>
+      {/* Portfolio Category Filter Pills Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar scroll-smooth">
+        {filterPillCategories.map((category) => {
+          const count =
+            category === "All"
+              ? projects.length
+              : category === "Uncategorized"
+              ? projects.filter((p) => !normalizeCategoryValue(p.category)).length
+              : projects.filter((p) => getProjectCategoryLabel(p.category).toLowerCase() === category.toLowerCase()).length;
 
-      {activeTab === "live" ? (
-        <div className="glass-card border-border/60 bg-secondary/10 p-5 space-y-4">
+          const isActive = activeCategory === category;
+
+          return (
+            <button
+              key={category}
+              type="button"
+              onClick={() => setActiveCategory(category)}
+              className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 ${
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 border border-primary scale-[1.02]"
+                  : "bg-card border border-border/60 hover:border-primary/50 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              {category}
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Collapsible Filter Categories Management Panel */}
+      {activeTab === "live" && isFilterManagerOpen ? (
+        <div className="border border-primary/25 bg-card/90 backdrop-blur-xl p-5 rounded-3xl space-y-4 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                <Tag className="h-3.5 w-3.5" />
-                Portfolio Filters
+                <Tag className="h-3.5 w-3.5 text-primary" />
+                Portfolio Filter Settings
               </div>
-              <h3 className="mt-3 text-lg font-semibold text-foreground">Edit the filter buttons from here</h3>
-              <p className="text-sm text-muted-foreground">
-                Rename or remove the category pills shown on the public Our Work page. The <span className="font-medium text-foreground">All</span> button stays fixed.
+              <h3 className="mt-2 text-lg font-semibold text-foreground">Edit public portfolio filter categories</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Rename or remove the category filter pills shown on the public portfolio page. The <span className="font-medium text-foreground">All</span> filter remains fixed.
               </p>
             </div>
-            <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3 text-sm text-muted-foreground">
-              {categoryGroups.length} live categor{categoryGroups.length === 1 ? "y" : "ies"}
+            <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs font-medium text-muted-foreground shrink-0">
+              {categoryGroups.length} categor{categoryGroups.length === 1 ? "y" : "ies"} defined
             </div>
           </div>
 
@@ -848,12 +1162,13 @@ const WorksManager = () => {
               <Input
                 value={newCategoryValue}
                 onChange={(event) => setNewCategoryValue(event.target.value)}
-                placeholder="Add a new filter category"
+                placeholder="Add a new filter category (e.g. 3D Product Modeling)"
                 disabled={categoryActionKey === "__add__"}
+                className="h-10 text-sm"
               />
               <Button
                 type="button"
-                className="gap-2 md:min-w-[160px]"
+                className="gap-2 md:min-w-[160px] h-10 font-semibold cursor-pointer"
                 onClick={() => void handleAddCategory()}
                 disabled={categoryActionKey === "__add__"}
               >
@@ -862,7 +1177,7 @@ const WorksManager = () => {
               </Button>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              New categories will appear on the public Our Work filter bar immediately, even before any work is assigned.
+              New categories will appear on the public portfolio filter bar immediately.
             </p>
           </div>
 
@@ -958,50 +1273,106 @@ const WorksManager = () => {
         </div>
       ) : null}
 
+      {/* Drag & Drop Reorder Helper Notice */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-muted-foreground px-1 gap-1">
+        <p>
+          {isReorderEnabled
+            ? "⠿ Drag and drop cards to adjust display order on the public portfolio."
+            : activeCategory !== "All"
+            ? `Viewing "${activeCategory}". Switch to "All" category to reorder cards.`
+            : searchQuery.length > 0
+            ? "Clear search input to enable drag-and-drop reordering."
+            : viewMode !== "grid"
+            ? "Switch to Grid view to drag and reorder."
+            : ""}
+        </p>
+        {isSavingOrder && (
+          <span className="flex items-center gap-1.5 text-primary font-semibold">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving new order...
+          </span>
+        )}
+      </div>
+
+      {/* Main Content Area: Loading vs Grid vs Compact View */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {LOADING_SKELETON_IDS.map((id) => (
-            <div key={id} className="h-96 bg-muted/20 animate-pulse rounded-2xl" />
+            <div key={id} className="h-96 bg-muted/20 animate-pulse rounded-3xl" />
           ))}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleProjects.map((project, index) => (
-              <WorkCard
-                key={project.id}
-                activeTab={activeTab}
-                eagerImage={index < EAGER_IMAGE_COUNT}
-                isDragging={draggingProjectId === project.id}
-                isDropTarget={dropTargetProjectId === project.id && draggingProjectId !== project.id}
-                isReorderEnabled={isReorderEnabled}
-                onDelete={handleDelete}
-                onDragEnd={handleDragEnd}
-                onDragEnter={handleDragEnter}
-                onDragStart={handleDragStart}
-                onDrop={handleDrop}
-                onEdit={handleOpenEdit}
-                onRestore={handleRestore}
-                project={project}
-              />
-            ))}
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {visibleProjects.map((project, index) => (
+                <WorkCard
+                  key={project.id}
+                  activeTab={activeTab}
+                  eagerImage={index < EAGER_IMAGE_COUNT}
+                  isDragging={draggingProjectId === project.id}
+                  isDropTarget={dropTargetProjectId === project.id && draggingProjectId !== project.id}
+                  isReorderEnabled={isReorderEnabled}
+                  onDelete={handleDelete}
+                  onDragEnd={handleDragEnd}
+                  onDragEnter={handleDragEnter}
+                  onDragStart={handleDragStart}
+                  onDrop={handleDrop}
+                  onEdit={handleOpenEdit}
+                  onRestore={handleRestore}
+                  project={project}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleProjects.map((project) => (
+                <CompactWorkRow
+                  key={project.id}
+                  project={project}
+                  activeTab={activeTab}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleDelete}
+                  onRestore={handleRestore}
+                />
+              ))}
+            </div>
+          )}
 
-            {filteredProjects.length === 0 && (
-              <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/5 rounded-3xl border border-dashed border-border/50">
-                <MonitorPlay className="w-12 h-12 mb-4 opacity-20" />
-                <p className="text-lg font-medium">No works found in {activeTab}.</p>
-                <p className="text-sm opacity-60">Upload a new work to get started.</p>
-              </div>
-            )}
-          </div>
+          {filteredProjects.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground bg-muted/5 rounded-3xl border border-dashed border-border/50 text-center px-4">
+              <MonitorPlay className="w-12 h-12 mb-3 opacity-20" />
+              <p className="text-base font-semibold text-foreground">
+                No works found in {activeTab}
+                {activeCategory !== "All" ? ` under "${activeCategory}"` : ""}
+                {searchQuery ? ` matching "${searchInput}"` : ""}.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                Try switching categories, clearing search filters, or uploading a new work.
+              </p>
+              {(activeCategory !== "All" || searchQuery) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 text-xs font-semibold rounded-xl cursor-pointer"
+                  onClick={() => {
+                    setActiveCategory("All");
+                    setSearchInput("");
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          )}
 
           {canLoadMore && (
-            <div className="flex justify-center">
+            <div className="flex justify-center pt-2">
               <Button
                 variant="outline"
+                className="rounded-2xl px-6 font-semibold cursor-pointer"
                 onClick={() => setVisibleCount((count) => count + WORKS_LOAD_MORE_STEP)}
               >
-                Load more works
+                Load more works ({filteredProjects.length - visibleCount} remaining)
               </Button>
             </div>
           )}

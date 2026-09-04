@@ -89,6 +89,16 @@ const Blog = () => {
   }, [apiBase]);
 
   const selectedSlug = searchParams.get("service")?.trim().toLowerCase() || "";
+
+  useEffect(() => {
+    const lenis = (window as Window & { __lenis?: any }).__lenis;
+    if (lenis) {
+      lenis.scrollTo(0, { immediate: true });
+      setTimeout(() => lenis.resize(), 100);
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [selectedSlug, loading]);
   const selectedService = useMemo(
     () =>
       selectedSlug

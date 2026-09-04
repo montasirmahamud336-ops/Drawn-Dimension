@@ -9,7 +9,7 @@ const hasDatabaseUrl = Boolean((process.env.DATABASE_URL ?? "").trim());
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 const defaultSiteBaseUrl =
   process.env.SITE_BASE_URL ??
-  (process.env.NODE_ENV === "production" ? "https://drawndimension.com" : "http://localhost:8080");
+  (process.env.NODE_ENV === "production" ? "https://www.drawndimension.com" : "http://localhost:8080");
 const defaultMediaBaseUrl =
   process.env.NODE_ENV === "production"
     ? `${trimTrailingSlash(defaultSiteBaseUrl)}/media`
@@ -81,8 +81,12 @@ export const env = {
   mediaBaseUrl: trimTrailingSlash(process.env.MEDIA_BASE_URL ?? defaultMediaBaseUrl),
   mediaRoot:
     process.env.MEDIA_ROOT ??
-    (process.env.NODE_ENV === "production" ? "/opt/drawndimension/media" : SERVER_MEDIA_DIR),
+    (process.env.NODE_ENV === "production" && process.platform !== "win32"
+      ? "/opt/drawndimension/media"
+      : SERVER_MEDIA_DIR),
   brandLogoUrl: process.env.BRAND_LOGO_URL ?? "",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+  stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? "",
   corsOrigin: (process.env.CORS_ORIGIN ?? defaultCorsOrigins)
     .split(",")
     .map((v) => v.trim())

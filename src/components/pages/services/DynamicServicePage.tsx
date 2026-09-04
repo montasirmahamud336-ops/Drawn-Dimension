@@ -100,9 +100,11 @@ const RelatedWorkMedia = ({ project, eagerImage }: { project: RelatedProjectReco
   const previewMedia = getProjectPrimaryCardMedia(project);
   const imageSrc = previewMedia?.type === "image" ? previewMedia.url : "";
   const imageSources = imageSrc ? buildCardImageSources(imageSrc) : null;
+  const [variantFailed, setVariantFailed] = useState(false);
   const [isImageReady, setIsImageReady] = useState(previewMedia?.type !== "image");
 
   useEffect(() => {
+    setVariantFailed(false);
     setIsImageReady(previewMedia?.type !== "image");
   }, [previewMedia?.type, imageSrc]);
 
@@ -125,8 +127,8 @@ const RelatedWorkMedia = ({ project, eagerImage }: { project: RelatedProjectReco
             aria-hidden="true"
           />
           <img
-            src={imageSources?.src ?? imageSrc}
-            srcSet={imageSources?.srcSet}
+            src={variantFailed ? (imageSources?.fallbackSrc ?? imageSrc) : (imageSources?.src ?? imageSrc)}
+            srcSet={variantFailed ? undefined : imageSources?.srcSet}
             alt={project.title}
             width={800}
             height={600}
@@ -135,7 +137,13 @@ const RelatedWorkMedia = ({ project, eagerImage }: { project: RelatedProjectReco
             decoding="async"
             sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 33vw"
             onLoad={() => setIsImageReady(true)}
-            onError={() => setIsImageReady(true)}
+            onError={() => {
+              if (!variantFailed && imageSources?.srcSet) {
+                setVariantFailed(true);
+              } else {
+                setIsImageReady(true);
+              }
+            }}
             className={`h-full w-full object-cover transition-[transform,opacity] duration-300 group-hover:scale-[1.02] ${isImageReady ? "opacity-100" : "opacity-0"}`}
           />
         </>

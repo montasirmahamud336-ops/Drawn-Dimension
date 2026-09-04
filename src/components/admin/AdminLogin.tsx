@@ -53,6 +53,9 @@ const AdminLogin = () => {
       if (!data?.token) throw new Error("No session created");
 
       setAdminToken(data.token, data.admin ?? null);
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem("cms_welcome_intro_seen");
+      }
       navigate("/database");
     } catch (err: any) {
       setError(err.message || "Failed to login");

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useInView } from "framer-motion";
+import { useInView, motion } from "framer-motion";
 
 interface DeferredSectionProps {
   children: ReactNode;
@@ -11,11 +11,11 @@ interface DeferredSectionProps {
 const DeferredSection = ({
   children,
   minHeight = 360,
-  rootMargin = "560px 0px",
-  onVisible
+  rootMargin = "480px 0px",
+  onVisible,
 }: DeferredSectionProps) => {
   const anchorRef = useRef<HTMLDivElement | null>(null);
-  const inView = useInView(anchorRef, { margin: rootMargin, once: true });
+  const inView = useInView(anchorRef, { margin: rootMargin as any, once: true });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ const DeferredSection = ({
       cancelIdleCallback?: (id: number) => void;
     };
     let timeoutId: number | undefined;
-    const idleId = idleWindow.requestIdleCallback?.(mountSection, { timeout: 220 });
+    const idleId = idleWindow.requestIdleCallback?.(mountSection, { timeout: 200 });
 
     if (typeof idleId !== "number") {
       timeoutId = window.setTimeout(mountSection, 0);
@@ -51,7 +51,15 @@ const DeferredSection = ({
   }, [inView, mounted, onVisible]);
 
   if (mounted) {
-    return <>{children}</>;
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {children}
+      </motion.div>
+    );
   }
 
   const height = typeof minHeight === "number" ? `${minHeight}px` : minHeight;

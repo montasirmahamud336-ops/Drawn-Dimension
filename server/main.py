@@ -879,6 +879,8 @@ async def models() -> dict[str, Any]:
 
 
 @app.post("/api/chat")
+@app.post("/ai")
+@app.post("/chat")
 async def chat(payload: ChatRequest) -> dict[str, str]:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:

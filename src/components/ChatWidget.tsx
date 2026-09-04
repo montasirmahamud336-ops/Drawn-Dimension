@@ -600,7 +600,7 @@ const ChatWidget = () => {
         content: m.content,
       }));
 
-      const response = await fetch(`${chatApiBase}/ai`, {
+      let response = await fetch(`${chatApiBase}/ai`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -610,6 +610,32 @@ const ChatWidget = () => {
           history: historyPayload,
         }),
       });
+
+      if (!response.ok && response.status === 404) {
+        response = await fetch(`${chatApiBase}/api/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: text,
+            history: historyPayload,
+          }),
+        });
+      }
+
+      if (!response.ok && response.status === 404) {
+        response = await fetch(`${chatApiBase}/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: text,
+            history: historyPayload,
+          }),
+        });
+      }
 
       if (!response.ok) {
         throw new Error(await parseApiError(response, "AI response failed"));

@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 import { AuthRequest, requireAuth } from "../middleware/auth.js";
 import { requireUserAuth, UserAuthRequest } from "../middleware/userAuth.js";
-import { insertRow, selectRows, updateRow } from "../lib/database.js";
+import { insertRow, selectRows, updateRow, deleteRow } from "../lib/database.js";
 
 const router = Router();
 let transporter: nodemailer.Transporter | null = null;
@@ -53,12 +53,31 @@ router.get("/advance-requests/pending-count", requireAuth, async (_req, res) => 
 router.patch("/advance-requests/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const status = text(req.body?.status).toLowerCase();
-    if (status !== "approved" && status !== "rejected") return res.status(400).json({ message: "Choose approved or rejected" });
-    const patch = { status, admin_note: text(req.body?.admin_note) || null, reviewed_at: new Date().toISOString(), reviewed_by: req.admin?.fullName || req.admin?.username || "Admin" };
-    const updated = await updateRow(`/employee_advance_requests?id=eq.${encodeURIComponent(req.params.id)}&status=eq.pending`, patch);
-    if (!updated?.[0]) return res.status(404).json({ message: "Pending request not found" });
+    const validStatuses = ["approved", "rejected", "repaid", "settled", "pending", "paid"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status option. Choose approved, rejected, repaid, or paid." });
+    }
+    const patch = {
+      status,
+      admin_note: text(req.body?.admin_note) || null,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: req.admin?.fullName || req.admin?.username || "Admin"
+    };
+    const updated = await updateRow(`/employee_advance_requests?id=eq.${encodeURIComponent(req.params.id)}`, patch);
+    if (!updated?.[0]) return res.status(404).json({ message: "Advance request not found" });
     return res.json(updated[0]);
-  } catch (error: unknown) { return res.status(500).json({ message: error instanceof Error ? error.message : "Failed to review advance request" }); }
+  } catch (error: unknown) {
+    return res.status(500).json({ message: error instanceof Error ? error.message : "Failed to review advance request" });
+  }
+});
+
+router.delete("/advance-requests/:id", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const deleted = await deleteRow(`/employee_advance_requests?id=eq.${encodeURIComponent(req.params.id)}`);
+    return res.json({ message: "Advance request deleted successfully", deleted });
+  } catch (error: unknown) {
+    return res.status(500).json({ message: error instanceof Error ? error.message : "Failed to delete advance request" });
+  }
 });
 
 export default router;

@@ -44,7 +44,7 @@ const HomeMetricsSection = ({
 
   const isInView = useInView(ref, {
     once: true,
-    margin: "-100px",
+    margin: "50px 0px",
   });
 
   return (

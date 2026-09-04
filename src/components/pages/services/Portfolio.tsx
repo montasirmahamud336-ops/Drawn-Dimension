@@ -21,13 +21,12 @@ import {
   Eye, 
   Share2, 
   Check, 
-  SlidersHorizontal,
-  X
+  X,
 } from "lucide-react";
 import PremiumBackground from "@/components/shared/PremiumBackground";
 import { useLiveData } from "@/hooks/useLiveData";
 import { useNavigate } from "react-router-dom";
-import { buildCardImageSources } from "@/components/shared/mediaUrl";
+import { buildCardImageSources, resolveCmsMediaUrl } from "@/components/shared/mediaUrl";
 import {
   getProjectMediaList,
   getProjectPdfDocument,
@@ -72,8 +71,8 @@ const PortfolioMedia = ({
 
   const imageFromUrl: ProjectMediaItem[] = [];
   if (!rawMedia.length && project.image_url) {
-    const sources = buildCardImageSources(project.image_url);
-    imageFromUrl.push({ url: sources.src, type: "image" });
+    const rawUrl = resolveCmsMediaUrl(project.image_url) || project.image_url;
+    imageFromUrl.push({ url: rawUrl, type: "image" });
   }
 
   const media = rawMedia.length ? rawMedia : imageFromUrl;
@@ -86,11 +85,15 @@ const PortfolioMedia = ({
   const current = media[index] ?? fallbackMedia;
   const hasMany = media.length > 1;
   const hasPdf = Boolean(getProjectPdfDocument(project));
+  const [variantFailed, setVariantFailed] = useState(false);
   const imageSources = current.type === "image" ? buildCardImageSources(current.url) : null;
+  const fallbackUrl = imageSources?.fallbackSrc ?? current.url;
+  const displaySrc = variantFailed ? fallbackUrl : (imageSources?.src ?? fallbackUrl);
   const [isImageReady, setIsImageReady] = useState(current.type === "video");
   const eagerImage = cardIndex < 3;
 
   useEffect(() => {
+    setVariantFailed(false);
     setIsImageReady(current.type !== "image");
   }, [current.type, current.url]);
 
@@ -135,8 +138,8 @@ const PortfolioMedia = ({
             aria-hidden="true"
           />
           <img
-            src={imageSources?.src ?? current.url}
-            srcSet={imageSources?.srcSet}
+            src={displaySrc}
+            srcSet={variantFailed ? undefined : imageSources?.srcSet}
             alt={project.title}
             width={800}
             height={500}
@@ -145,7 +148,13 @@ const PortfolioMedia = ({
             decoding="async"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             onLoad={() => setIsImageReady(true)}
-            onError={() => setIsImageReady(true)}
+            onError={() => {
+              if (!variantFailed && imageSources?.srcSet) {
+                setVariantFailed(true);
+              } else {
+                setIsImageReady(true);
+              }
+            }}
             className={`w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 transform-gpu ${
               isImageReady ? "opacity-100" : "opacity-0"
             }`}
@@ -228,6 +237,41 @@ const PortfolioSkeleton = () => (
     ))}
   </div>
 );
+
+const CompactPortfolioThumbnail = ({
+  imageUrl,
+  title,
+}: {
+  imageUrl: string;
+  title: string;
+}) => {
+  const [variantFailed, setVariantFailed] = useState(false);
+  const sources = useMemo(() => buildCardImageSources(imageUrl), [imageUrl]);
+  const fallbackUrl = sources.fallbackSrc;
+
+  useEffect(() => {
+    setVariantFailed(false);
+  }, [imageUrl]);
+
+  return (
+    <img
+      src={variantFailed ? fallbackUrl : sources.src}
+      srcSet={variantFailed ? undefined : sources.srcSet}
+      sizes="80px"
+      width={80}
+      height={64}
+      loading="lazy"
+      decoding="async"
+      alt={title}
+      onError={() => {
+        if (!variantFailed && sources.srcSet) {
+          setVariantFailed(true);
+        }
+      }}
+      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+    />
+  );
+};
 
 const Portfolio = () => {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -568,11 +612,7 @@ const Portfolio = () => {
                         <div className="flex items-center gap-4 min-w-0 flex-1">
                           <div className="w-20 h-16 rounded-xl overflow-hidden shrink-0 bg-muted/40 relative">
                             {project.image_url ? (
-                              <img
-                                src={project.image_url}
-                                alt={project.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
+                              <CompactPortfolioThumbnail imageUrl={project.image_url} title={project.title} />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                                 <FileText className="w-6 h-6" />

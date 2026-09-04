@@ -17,15 +17,17 @@ export const DEFAULT_HEADER_LINKS: HeaderFooterLink[] = [
   { id: "home", label: "Home", href: "/" },
   { id: "about", label: "About", href: "/about" },
   { id: "services", label: "Services", href: "/services" },
-  { id: "products", label: "Products", href: "/products" },
   { id: "our-works", label: "Our Works", href: "/portfolio" },
+  { id: "products", label: "Products", href: "/products" },
   { id: "reviews", label: "Reviews", href: "/testimonials" },
+  { id: "team", label: "Team", href: "/team" },
   { id: "contact", label: "Contact", href: "/contact" },
 ];
 
 export const DEFAULT_FOOTER_LINKS: HeaderFooterLink[] = [
   { id: "about-us", label: "About Us", href: "/about" },
   { id: "our-portfolio", label: "Our Portfolio", href: "/portfolio" },
+  { id: "pdf-tools", label: "PDF Tools Suite", href: "/pdf-tools" },
   { id: "testimonials", label: "Testimonials", href: "/testimonials" },
   { id: "faq", label: "FAQ", href: "/faq" },
   { id: "blog", label: "Blog", href: "/blog" },

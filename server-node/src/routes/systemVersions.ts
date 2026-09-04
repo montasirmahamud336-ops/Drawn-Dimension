@@ -24,6 +24,27 @@ const LOCAL_VERSIONS_FILE = path.join(LOCAL_DATA_DIR, "system-versions.json");
 
 const DEFAULT_SYSTEM_VERSIONS: SystemVersionRecord[] = [
   {
+    id: "ver-v3-0-0",
+    version: "v3.0.0",
+    title: "Studio OS v3.0 Release — Dynamic Stripe Integration & Quantum CMS Boot",
+    description: "Major milestone release featuring complete CMS Dynamic Stripe Payment Gateway Integration with live diagnostics, Quantum HUD CMS boot entrance animation, interactive Portfolio grid, World Map alignment, and PostgreSQL database migrations.",
+    changelog: [
+      "Integrated Dynamic Payment Integration CMS module with Stripe Publishable, Secret, and Webhook Key management",
+      "Added live Stripe API Health Diagnostics testing with account latency and capability verification",
+      "Enabled zero-downtime Stripe account switching directly from CMS without server restarts or .env editing",
+      "Implemented Quantum Holographic HUD entrance animation with live UTC telemetry and quick keyboard skip",
+      "Upgraded Database Works management with dynamic category pills and compact view switcher",
+      "Refined World Map manager with synchronized bottom border alignment and removed redundant chip tray",
+      "Created PostgreSQL payment_settings migration schema with resilient fallback adapter"
+    ],
+    zip_url: "/media/cms-uploads/versions/v3.0.0-release.zip",
+    commit_hash: "v3.0.0",
+    is_active: true,
+    created_at: "2026-09-04T17:20:00.000Z",
+    deployed_at: "2026-09-04T17:20:00.000Z",
+    created_by: "Lead Engineer"
+  },
+  {
     id: "ver-v2-6-0",
     version: "v2.6.0",
     title: "Studio OS v2.6 Release — Tools Suite & VidGrab Downloader",
@@ -38,7 +59,7 @@ const DEFAULT_SYSTEM_VERSIONS: SystemVersionRecord[] = [
     ],
     zip_url: "/media/cms-uploads/versions/v2.6.0-release.zip",
     commit_hash: "v2.6.0",
-    is_active: true,
+    is_active: false,
     created_at: "2026-08-24T00:00:00.000Z",
     deployed_at: "2026-08-24T00:00:00.000Z",
     created_by: "Lead Engineer"
@@ -122,8 +143,8 @@ const loadLocalVersions = async (): Promise<SystemVersionRecord[]> => {
     const content = await fs.readFile(LOCAL_VERSIONS_FILE, "utf-8");
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      const hasV26 = parsed.some((v: any) => v.version === "v2.6.0");
-      if (!hasV26) {
+      const hasV30 = parsed.some((v: any) => v.version === "v3.0.0" || v.version === "3.0.0");
+      if (!hasV30) {
         parsed.forEach((v: any) => { v.is_active = false; });
         parsed.unshift(DEFAULT_SYSTEM_VERSIONS[0]);
         await fs.writeFile(LOCAL_VERSIONS_FILE, JSON.stringify(parsed, null, 2), "utf-8");
@@ -145,8 +166,8 @@ const saveLocalVersions = async (versions: SystemVersionRecord[]): Promise<void>
   }
 };
 
-// GET /system-versions
-router.get("/system-versions", async (_req, res) => {
+// GET /system-versions & /api/system-versions
+router.get(["/system-versions", "/api/system-versions"], async (_req, res) => {
   try {
     const versions = await loadLocalVersions();
     const activeVersion = versions.find((v) => v.is_active) ?? versions[0];
@@ -161,7 +182,7 @@ router.get("/system-versions", async (_req, res) => {
 });
 
 // POST /system-versions (Create new release version)
-router.post("/system-versions", requireAuth, async (req, res) => {
+router.post(["/system-versions", "/api/system-versions"], requireAuth, async (req, res) => {
   try {
     const { version, title, description, changelog, zip_url, commit_hash, deploy_now } = req.body;
 
@@ -218,7 +239,7 @@ router.post("/system-versions", requireAuth, async (req, res) => {
 });
 
 // POST /system-versions/:id/redeploy (Re-deploy / Rollback to a version)
-router.post("/system-versions/:id/redeploy", requireAuth, async (req, res) => {
+router.post(["/system-versions/:id/redeploy", "/api/system-versions/:id/redeploy"], requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const versions = await loadLocalVersions();
@@ -254,7 +275,7 @@ router.post("/system-versions/:id/redeploy", requireAuth, async (req, res) => {
 });
 
 // DELETE /system-versions/:id (Delete archived version)
-router.delete("/system-versions/:id", requireAuth, async (req, res) => {
+router.delete(["/system-versions/:id", "/api/system-versions/:id"], requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const versions = await loadLocalVersions();

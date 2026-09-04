@@ -31,4 +31,8 @@ __pycache__/
 supabase/.temp/
 backup/
 *.zip
+*.apk
+vidgrab_repo/
+server-node/media/
+*.backup.*
 

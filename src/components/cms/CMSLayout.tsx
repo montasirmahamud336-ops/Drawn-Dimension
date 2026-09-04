@@ -61,7 +61,7 @@ const CMSNavigationPanel = ({
             )}
           >
             <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-primary truncate">Drawn Dimension</p>
-            <p className="text-sm font-bold tracking-tight text-foreground truncate">Studio OS • CMS v2.6</p>
+            <p className="text-sm font-bold tracking-tight text-foreground truncate">Studio OS • CMS v3.0</p>
           </div>
         </div>
         {onToggleCollapse && (

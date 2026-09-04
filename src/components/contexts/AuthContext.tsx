@@ -157,9 +157,10 @@ const notifySignup = async (payload: {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialSession = typeof window !== "undefined" ? loadStoredSession() : null;
+  const [session, setSession] = useState<AuthSession | null>(() => initialSession);
+  const [user, setUser] = useState<AuthUser | null>(() => initialSession?.user ?? null);
+  const [loading, setLoading] = useState(() => !initialSession);
 
   const applySession = useCallback((nextSession: AuthSession | null) => {
     setSession(nextSession);

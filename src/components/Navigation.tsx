@@ -55,12 +55,27 @@ const buildOrderedServiceNavItems = (services: ApiServiceRecord[], savedOrder: n
     .map(({ serviceId: _serviceId, fallbackIndex: _fallbackIndex, ...item }) => item);
 };
 
+const getInitialHeaderSettings = () => {
+  if (typeof window === "undefined") {
+    return { header_links: DEFAULT_HEADER_LINKS, header_service_order: [] };
+  }
+  try {
+    const raw = localStorage.getItem("dd_cached_header_settings");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return normalizeHeaderFooterSettings(parsed);
+    }
+  } catch {}
+  return { header_links: DEFAULT_HEADER_LINKS, header_service_order: [] };
+};
+
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
-  const [headerLinks, setHeaderLinks] = useState<HeaderFooterLink[]>(DEFAULT_HEADER_LINKS);
-  const [headerServiceOrder, setHeaderServiceOrder] = useState<number[]>([]);
+  const initialSettings = useMemo(() => getInitialHeaderSettings(), []);
+  const [headerLinks, setHeaderLinks] = useState<HeaderFooterLink[]>(() => initialSettings.header_links);
+  const [headerServiceOrder, setHeaderServiceOrder] = useState<number[]>(() => initialSettings.header_service_order);
   const [liveServices, setLiveServices] = useState<ApiServiceRecord[]>([]);
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [servicesLoadFailed, setServicesLoadFailed] = useState(false);
@@ -148,6 +163,9 @@ const Navigation = () => {
 
         const data = await res.json();
         if (!mounted) return;
+        try {
+          localStorage.setItem("dd_cached_header_settings", JSON.stringify(data));
+        } catch {}
         const normalized = normalizeHeaderFooterSettings(data);
         setHeaderLinks(normalized.header_links);
         setHeaderServiceOrder(normalized.header_service_order);

@@ -28,10 +28,22 @@ const CTASection = lazy(() => import("@/components/CTASection"));
 
 const HOME_REVIEWS_QUERY_KEY = ["home", "testimonials", "published"];
 
+const getInitialHomeSettings = () => {
+  if (typeof window === "undefined") return DEFAULT_HOME_PAGE_SETTINGS;
+  try {
+    const raw = localStorage.getItem("dd_cached_home_settings");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return normalizeHomePageSettings(parsed);
+    }
+  } catch {}
+  return DEFAULT_HOME_PAGE_SETTINGS;
+};
+
 const Home = () => {
   const queryClient = useQueryClient();
   const [shouldLoadTestimonials, setShouldLoadTestimonials] = useState(false);
-  const [homeSettings, setHomeSettings] = useState(DEFAULT_HOME_PAGE_SETTINGS);
+  const [homeSettings, setHomeSettings] = useState<HomePageSettings>(getInitialHomeSettings);
 
   /* ── prefetch (unchanged) ── */
   useEffect(() => {
@@ -64,7 +76,7 @@ const Home = () => {
     };
   }, []);
 
-  /* ── settings fetch (unchanged) ── */
+  /* ── settings fetch ── */
   useEffect(() => {
     let mounted = true;
     const controller = new AbortController();
@@ -75,10 +87,13 @@ const Home = () => {
         if (!res.ok) throw new Error("Failed to load");
         const payload = await res.json();
         if (!mounted) return;
+        try {
+          localStorage.setItem("dd_cached_home_settings", JSON.stringify(payload));
+        } catch {}
         setHomeSettings(normalizeHomePageSettings(payload));
       } catch {
         if (!mounted || controller.signal.aborted) return;
-        setHomeSettings(DEFAULT_HOME_PAGE_SETTINGS);
+        setHomeSettings(getInitialHomeSettings());
       }
     };
 

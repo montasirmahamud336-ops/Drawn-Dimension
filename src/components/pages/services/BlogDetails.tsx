@@ -729,8 +729,14 @@ const BlogDetails = () => {
   }, [canonicalUrl, pageDescription, pageTitle]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-  }, [slug]);
+    const lenis = (window as Window & { __lenis?: any }).__lenis;
+    if (lenis) {
+      lenis.scrollTo(0, { immediate: true });
+      setTimeout(() => lenis.resize(), 100);
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [slug, loading]);
 
   /* ═══════════════════════════════════════════════════════════
      RENDER

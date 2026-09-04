@@ -24,22 +24,29 @@ const SmoothScroll = () => {
             const element = node as HTMLElement | null;
             if (!element) return false;
             if (element.closest("[data-lenis-prevent]")) return true;
+
+            // Only prevent Lenis on textarea if the textarea actually has overflowing scrollable text
+            const textarea = element.closest("textarea") as HTMLTextAreaElement | null;
+            if (textarea) {
+                return textarea.scrollHeight > textarea.clientHeight;
+            }
+
             return Boolean(
                 element.closest(
-                    "textarea, [contenteditable='true'], [contenteditable='plaintext-only'], .cms-rich-editor",
+                    "[contenteditable='true'], [contenteditable='plaintext-only'], .cms-rich-editor",
                 ),
             );
         };
 
         const lenis = new Lenis({
-            duration: 1.25,
+            duration: 1.2,
             easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Buttery smooth momentum glide
             orientation: "vertical",
             gestureOrientation: "vertical",
             smoothWheel: true,
             touchMultiplier: 1.5,
             wheelMultiplier: 1.0,
-            // Keep native scrolling inside overlays/modals and text-editing boxes.
+            // Keep native scrolling inside overlays/modals and scrollable text-editing boxes.
             prevent: (node) => shouldUseNativeScroll(node),
         });
 
@@ -71,11 +78,22 @@ const SmoothScroll = () => {
             subtree: false,
         });
 
-        // Auto-recalculate scroll height when dynamic content (like portfolio items) loads or resizes
+        // Auto-recalculate scroll height when dynamic content (like framer-motion sections) loads or resizes
+        let resizeTimer = 0;
+        const debouncedResize = () => {
+            if (resizeTimer) window.clearTimeout(resizeTimer);
+            resizeTimer = window.setTimeout(() => {
+                lenis.resize();
+            }, 150);
+        };
+
         const resizeObserver = new ResizeObserver(() => {
-            lenis.resize();
+            debouncedResize();
         });
         resizeObserver.observe(document.body);
+        if (document.documentElement) {
+            resizeObserver.observe(document.documentElement);
+        }
 
         let rafId = 0;
         const raf = (time: number) => {
@@ -86,6 +104,7 @@ const SmoothScroll = () => {
         rafId = requestAnimationFrame(raf);
 
         return () => {
+            if (resizeTimer) window.clearTimeout(resizeTimer);
             observer.disconnect();
             resizeObserver.disconnect();
             cancelAnimationFrame(rafId);

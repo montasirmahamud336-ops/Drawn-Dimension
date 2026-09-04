@@ -53,5 +53,30 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("framer-motion")) {
+                return "vendor-motion";
+              }
+              if (id.includes("lucide-react")) {
+                return "vendor-icons";
+              }
+              if (id.includes("@radix-ui")) {
+                return "vendor-radix";
+              }
+              if (id.includes("@tiptap")) {
+                return "vendor-tiptap";
+              }
+              if (id.includes("@tanstack/react-query")) {
+                return "vendor-query";
+              }
+            }
+          },
+        },
+      },
+    },
   };
 });

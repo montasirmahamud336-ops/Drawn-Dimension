@@ -749,6 +749,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   DEFAULT_HOME_PAGE_SETTINGS,
   type HomeHeroSection,
@@ -1513,11 +1514,17 @@ interface HeroSectionProps {
 
 const HeroSection = ({ data, metricsData }: HeroSectionProps) => {
   const content = data ?? DEFAULT_HOME_PAGE_SETTINGS.sections.hero;
+  const easeCurve = [0.16, 1, 0.3, 1]; // Ultra-smooth luxury deceleration curve
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden py-20 md:py-24">
       {/* 🛠️ Clean Hero Background with Single Rotating Gear Accent */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.4, ease: easeCurve }}
+        className="absolute inset-0 pointer-events-none overflow-hidden select-none"
+      >
         {/* Ambient Red Glow Effects */}
         <div className="hero-glow top-24 -left-32 opacity-80" />
         <div className="absolute top-20 right-[-10rem] w-[28rem] h-[28rem] rounded-full bg-primary/8 blur-3xl" />
@@ -1530,93 +1537,154 @@ const HeroSection = ({ data, metricsData }: HeroSectionProps) => {
             <Settings className="w-[32rem] h-[32rem] text-primary stroke-[1]" />
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <div className="container-narrow relative z-10 w-full px-4 sm:px-6">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* LEFT SIDE */}
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/35 mb-6">
+            {/* 1. Badge (slides up from bottom gracefully) */}
+            <motion.div
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.85, delay: 0.2, ease: easeCurve }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/35 mb-6"
+            >
               <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
               <span className="text-sm font-medium text-primary">
                 {content.badge}
               </span>
-            </div>
+            </motion.div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight mb-6">
+            {/* 2. Main Headline (slides up from bottom with majestic presence) */}
+            <motion.h1
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.95, delay: 0.55, ease: easeCurve }}
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight mb-6"
+            >
               <span className="text-foreground">{content.title_line_1}</span>
               <br />
               <span className="text-gradient-primary">
                 {content.title_line_2}
               </span>
-            </h1>
+            </motion.h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground/95 mb-8 leading-relaxed max-w-xl">
+            {/* 3. Subtitle Paragraph (slides up from bottom) */}
+            <motion.p
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.85, delay: 0.90, ease: easeCurve }}
+              className="text-lg md:text-xl text-muted-foreground/95 mb-8 leading-relaxed max-w-xl"
+            >
               {content.description}
-            </p>
+            </motion.p>
 
+            {/* 4. CTA Buttons (Start Your Project -> View Our Work staggered) */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link
-                to={content.primary_href}
-                className="btn-primary inline-flex items-center justify-center gap-2 group min-w-[210px]"
+              <motion.div
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.80, delay: 1.25, ease: easeCurve }}
               >
-                {content.primary_label}
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
+                <Link
+                  to={content.primary_href}
+                  className="btn-primary inline-flex items-center justify-center gap-2 group min-w-[210px] w-full sm:w-auto"
+                >
+                  {content.primary_label}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </motion.div>
 
-              <Link
-                to={content.secondary_href}
-                className="btn-outline inline-flex items-center justify-center gap-2 min-w-[230px]"
+              <motion.div
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.80, delay: 1.50, ease: easeCurve }}
               >
-                <Play className="w-5 h-5" />
-                {content.secondary_label}
-              </Link>
+                <Link
+                  to={content.secondary_href}
+                  className="btn-outline inline-flex items-center justify-center gap-2 min-w-[230px] w-full sm:w-auto"
+                >
+                  <Play className="w-5 h-5" />
+                  {content.secondary_label}
+                </Link>
+              </motion.div>
             </div>
 
-            <HeroSoftwareStrip data={content.software_strip} />
+            {/* 5. Software Logos Strip (slides up from bottom) */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.90, delay: 1.85, ease: easeCurve }}
+            >
+              <HeroSoftwareStrip data={content.software_strip} />
+            </motion.div>
           </div>
 
           {/* RIGHT SIDE */}
           <div className="relative">
-            <div className="border border-neutral-400/40 dark:border-white/10 rounded-3xl p-6 md:p-8 bg-white/5 dark:bg-transparent backdrop-blur-sm">
+            {/* 6. Outline Glass Container (rises smoothly first) */}
+            <motion.div
+              initial={{ opacity: 0, y: 45, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 1.0, delay: 0.80, ease: easeCurve }}
+              className="border border-neutral-400/40 dark:border-white/10 rounded-3xl p-6 md:p-8 bg-white/5 dark:bg-transparent backdrop-blur-sm shadow-xl"
+            >
               <div className="flex flex-col divide-y divide-neutral-400/40 dark:divide-white/10">
-                {content.cards.map((service) => {
+                {content.cards.map((service, index) => {
                   const Icon =
                     iconMap[service.icon as keyof typeof iconMap] ??
                     FileText;
 
                   return (
-                    <Link
+                    <motion.div
                       key={service.id}
-                      to={service.link}
-                      className="flex items-start gap-4 py-4 hover:translate-x-1 transition-all duration-300 group"
+                      initial={{ opacity: 0, y: 24 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.75,
+                        delay: 1.15 + index * 0.20,
+                        ease: easeCurve,
+                      }}
                     >
-                      {/* Icon */}
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-neutral-400/40 dark:border-white/10 group-hover:border-primary/60 transition-all duration-300">
-                        <Icon className="w-5 h-5 text-primary" />
-                      </div>
+                      <Link
+                        to={service.link}
+                        className="flex items-start gap-4 py-4 hover:translate-x-1 transition-all duration-300 group"
+                      >
+                        {/* Icon */}
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-neutral-400/40 dark:border-white/10 group-hover:border-primary/60 transition-all duration-300">
+                          <Icon className="w-5 h-5 text-primary" />
+                        </div>
 
-                      {/* Text */}
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-200">
-                          {service.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {service.description}
-                        </p>
-                      </div>
-                    </Link>
+                        {/* Text */}
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-200">
+                            {service.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {service.description}
+                          </p>
+                        </div>
+                      </Link>
+                    </motion.div>
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
 
-        <HomeMetricsSection
-          data={metricsData}
-          className="mt-14 sm:mt-16 lg:mt-20"
-        />
+        {/* 7. Bottom Key Metrics Strip (slides up from bottom) */}
+        <motion.div
+          initial={{ opacity: 0, y: 38 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.0, delay: 2.25, ease: easeCurve }}
+        >
+          <HomeMetricsSection
+            data={metricsData}
+            className="mt-14 sm:mt-16 lg:mt-20"
+          />
+        </motion.div>
       </div>
     </section>
   );

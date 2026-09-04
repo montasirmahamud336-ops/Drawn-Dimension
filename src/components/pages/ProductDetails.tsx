@@ -67,9 +67,11 @@ const ProductDetails = () => {
         : null,
     [currentMedia?.type, currentMedia?.url]
   );
+  const [variantFailed, setVariantFailed] = useState(false);
   const [isImageReady, setIsImageReady] = useState(currentMedia?.type !== "image");
 
   useEffect(() => {
+    setVariantFailed(false);
     setIsImageReady(currentMedia?.type !== "image");
   }, [currentMedia?.type, currentMedia?.url]);
 
@@ -113,8 +115,8 @@ const ProductDetails = () => {
                           aria-hidden="true"
                         />
                         <img
-                          src={imageSources?.src ?? currentMedia?.url}
-                          srcSet={imageSources?.srcSet}
+                          src={variantFailed ? (imageSources?.fallbackSrc ?? currentMedia?.url) : (imageSources?.src ?? currentMedia?.url)}
+                          srcSet={variantFailed ? undefined : imageSources?.srcSet}
                           alt={product.name}
                           width={1200}
                           height={700}
@@ -123,7 +125,13 @@ const ProductDetails = () => {
                           fetchPriority="high"
                           decoding="async"
                           onLoad={() => setIsImageReady(true)}
-                          onError={() => setIsImageReady(true)}
+                          onError={() => {
+                            if (!variantFailed && imageSources?.srcSet) {
+                              setVariantFailed(true);
+                            } else {
+                              setIsImageReady(true);
+                            }
+                          }}
                           className={`w-full h-full object-cover transition-opacity duration-300 ${isImageReady ? "opacity-100" : "opacity-0"}`}
                         />
                       </>

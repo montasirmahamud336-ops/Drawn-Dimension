@@ -34,6 +34,10 @@ import advanceRequestsRoutes from "./routes/advanceRequests.js";
 import websiteUsersRoutes from "./routes/websiteUsers.js";
 import systemVersionsRoutes from "./routes/systemVersions.js";
 import databaseBackupRoutes from "./routes/databaseBackup.js";
+import paymentsRoutes from "./routes/payments.js";
+
+import { responseCompression } from "./middleware/compression.js";
+import { generateVariantOnDemand } from "./lib/mediaStorage.js";
 
 export const app = express();
 
@@ -60,9 +64,98 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(responseCompression);
+
 if (!isSecurityTestMode()) {
-  app.use("/uploads", express.static(uploadsPath));
-  app.use("/media", express.static(env.mediaRoot));
+  const staticCacheOptions = {
+    maxAge: "30d",
+    immutable: true,
+  };
+
+  const REMOTE_MEDIA_ORIGIN = "https://www.drawndimension.com";
+
+  // On-demand thumbnail/variant generation for WebP sizes if not already on disk
+  app.get(/^\/media\/(.+)-(360w|640w|960w)\.webp$/, async (req, res, next) => {
+    try {
+      const match = req.path.match(/^\/media\/([^/]+)\/(.+-(?:360w|640w|960w)\.webp)$/);
+      const bucket = match ? match[1] : env.storageBucket;
+      const objectPath = match ? match[2] : req.path.replace(/^\/media\//, "");
+
+      const diskPath = path.join(env.mediaRoot, bucket, ...objectPath.split("/"));
+      if (fs.existsSync(diskPath)) {
+        return next();
+      }
+
+      let generated = await generateVariantOnDemand(bucket, objectPath);
+
+      // In local development or if base image is not on local disk, fetch original from production and generate
+      if (!generated && (process.platform === "win32" || env.nodeEnv !== "production")) {
+        const variantMatch = objectPath.match(/^(.+)-(360w|640w|960w)\.webp$/i);
+        if (variantMatch) {
+          const basePathWithoutSuffix = variantMatch[1];
+          const possibleExts = [".webp", ".jpg", ".png", ".jpeg", ".JPG", ".PNG", ".JPEG", ".WEBP"];
+          for (const ext of possibleExts) {
+            try {
+              const remoteUrl = `${REMOTE_MEDIA_ORIGIN}/media/${bucket}/${basePathWithoutSuffix}${ext}`;
+              const remoteResp = await fetch(remoteUrl);
+              if (remoteResp.ok) {
+                const remoteBuf = Buffer.from(await remoteResp.arrayBuffer());
+                const localBaseFile = path.join(env.mediaRoot, bucket, ...`${basePathWithoutSuffix}${ext}`.split("/"));
+                await fs.promises.mkdir(path.dirname(localBaseFile), { recursive: true });
+                await fs.promises.writeFile(localBaseFile, remoteBuf);
+
+                generated = await generateVariantOnDemand(bucket, objectPath);
+                if (generated) break;
+              }
+            } catch {
+              // continue checking
+            }
+          }
+        }
+      }
+
+      if (generated) {
+        res.setHeader("Content-Type", generated.contentType);
+        res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+        return res.send(generated.buffer);
+      }
+    } catch (err) {
+      console.error("On-demand variant generation error:", err);
+    }
+    next();
+  });
+
+  // Local development fallback: if an original image is not in local mediaRoot, fetch & cache from production
+  if (process.platform === "win32" || env.nodeEnv !== "production") {
+    app.get(/^\/media\/(.+)$/, async (req, res, next) => {
+      try {
+        const subPath = req.path.replace(/^\/media\//, "");
+        const localPath = path.join(env.mediaRoot, ...subPath.split("/"));
+        if (fs.existsSync(localPath)) {
+          return next();
+        }
+
+        const remoteUrl = `${REMOTE_MEDIA_ORIGIN}/media/${subPath}`;
+        const remoteResp = await fetch(remoteUrl);
+        if (remoteResp.ok) {
+          const remoteBuf = Buffer.from(await remoteResp.arrayBuffer());
+          await fs.promises.mkdir(path.dirname(localPath), { recursive: true });
+          await fs.promises.writeFile(localPath, remoteBuf);
+
+          const contentType = remoteResp.headers.get("content-type") || "application/octet-stream";
+          res.setHeader("Content-Type", contentType);
+          res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+          return res.send(remoteBuf);
+        }
+      } catch (err) {
+        console.debug("Local media proxy fallback skipped:", err);
+      }
+      next();
+    });
+  }
+
+  app.use("/uploads", express.static(uploadsPath, staticCacheOptions));
+  app.use("/media", express.static(env.mediaRoot, staticCacheOptions));
 }
 
 // Some routes handle errors locally. Ensure a raw internal message can never
@@ -193,6 +286,7 @@ app.use(advanceRequestsRoutes);
 app.use(websiteUsersRoutes);
 app.use(systemVersionsRoutes);
 app.use(databaseBackupRoutes);
+app.use(paymentsRoutes);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

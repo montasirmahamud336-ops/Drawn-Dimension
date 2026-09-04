@@ -50,6 +50,28 @@ const sanitizeHeight = (value: number | undefined) => {
   return Math.max(160, Math.min(1920, Math.round(value)));
 };
 
+const isVpsMediaPath = (pathname: string) =>
+  pathname.startsWith("/media/") || pathname.startsWith("/cms-media/");
+
+const IMAGE_EXT_REGEX = /\.(jpe?g|png|webp|avif)$/i;
+
+const getVpsImageVariantPath = (pathname: string, targetWidth: number) => {
+  if (/-(360w|640w|960w)\.webp$/i.test(pathname) || !IMAGE_EXT_REGEX.test(pathname)) {
+    return pathname;
+  }
+
+  let suffix = "960w";
+  if (targetWidth <= 420) {
+    suffix = "360w";
+  } else if (targetWidth <= 750) {
+    suffix = "640w";
+  } else if (targetWidth > 1200) {
+    return pathname;
+  }
+
+  return pathname.replace(IMAGE_EXT_REGEX, `-${suffix}.webp`);
+};
+
 export const optimizeImageUrl = (
   rawUrl: string | null | undefined,
   width = 720,
@@ -57,8 +79,24 @@ export const optimizeImageUrl = (
   height?: number,
 ) => {
   if (!rawUrl || typeof rawUrl !== "string") return "";
-  const url = rawUrl.trim();
+  let url = rawUrl.trim();
   if (!url) return "";
+
+  // Normalize apex domain to www to avoid 301 redirect hops
+  if (url.startsWith("https://drawndimension.com/") || url.startsWith("http://drawndimension.com/")) {
+    url = url.replace(/^https?:\/\/drawndimension\.com\//, "https://www.drawndimension.com/");
+  }
+
+  const targetWidth = sanitizeSize(width);
+  const targetQuality = sanitizeQuality(quality);
+  const targetHeight = sanitizeHeight(height);
+
+  // Handle local/relative VPS media paths
+  if (isVpsMediaPath(url)) {
+    const [pathPart, searchPart] = url.split("?");
+    const variantPath = getVpsImageVariantPath(pathPart, targetWidth);
+    return searchPart ? `${variantPath}?${searchPart}` : variantPath;
+  }
 
   if (url.startsWith("/") || url.startsWith("data:") || url.startsWith("blob:")) {
     return url;
@@ -71,10 +109,19 @@ export const optimizeImageUrl = (
     return url;
   }
 
-  const targetWidth = sanitizeSize(width);
-  const targetQuality = sanitizeQuality(quality);
-  const targetHeight = sanitizeHeight(height);
   const host = parsed.hostname.toLowerCase();
+  if (host === "drawndimension.com") {
+    parsed.hostname = "www.drawndimension.com";
+  }
+
+  // Handle VPS Media URLs hosted on production domain
+  if (
+    (PROD_MEDIA_HOSTS.has(parsed.hostname.toLowerCase()) || isLoopbackHost(parsed.hostname.toLowerCase())) &&
+    isVpsMediaPath(parsed.pathname)
+  ) {
+    parsed.pathname = getVpsImageVariantPath(parsed.pathname, targetWidth);
+    return parsed.toString();
+  }
 
   if (host.includes(UNSPLASH_HOST)) {
     parsed.searchParams.set("w", String(targetWidth));
@@ -120,6 +167,11 @@ export const resolveCmsMediaUrl = (rawUrl: string | null | undefined) => {
   if (!rawUrl || typeof rawUrl !== "string") return "";
   let url = rawUrl.trim();
   if (!url) return "";
+
+  // Normalize apex domain to www to avoid 301 redirect
+  if (url.startsWith("https://drawndimension.com/") || url.startsWith("http://drawndimension.com/")) {
+    url = url.replace(/^https?:\/\/drawndimension\.com\//, "https://www.drawndimension.com/");
+  }
 
   if (url.startsWith("data:") || url.startsWith("blob:")) {
     return url;
@@ -175,8 +227,12 @@ export const resolveCmsMediaUrl = (rawUrl: string | null | undefined) => {
 
 export const normalizeCmsStoredMediaUrl = (rawUrl: string | null | undefined) => {
   if (!rawUrl || typeof rawUrl !== "string") return "";
-  const url = rawUrl.trim();
+  let url = rawUrl.trim();
   if (!url) return "";
+
+  if (url.startsWith("https://drawndimension.com/") || url.startsWith("http://drawndimension.com/")) {
+    url = url.replace(/^https?:\/\/drawndimension\.com\//, "https://www.drawndimension.com/");
+  }
 
   try {
     const parsed = new URL(url);
@@ -194,13 +250,15 @@ export const normalizeCmsStoredMediaUrl = (rawUrl: string | null | undefined) =>
 
 export const buildCardImageSources = (url: string) => {
   const resolvedUrl = resolveCmsMediaUrl(url);
+  const fallbackSrc = resolvedUrl || url;
   const base = optimizeImageUrl(resolvedUrl, 640, 68, 360);
   return {
-    src: base || resolvedUrl || url,
+    src: base || fallbackSrc,
+    fallbackSrc,
     srcSet: [
-      `${optimizeImageUrl(resolvedUrl, 360, 60, 203) || resolvedUrl || url} 360w`,
-      `${optimizeImageUrl(resolvedUrl, 640, 68, 360) || resolvedUrl || url} 640w`,
-      `${optimizeImageUrl(resolvedUrl, 960, 72, 540) || resolvedUrl || url} 960w`,
+      `${optimizeImageUrl(resolvedUrl, 360, 60, 203) || fallbackSrc} 360w`,
+      `${optimizeImageUrl(resolvedUrl, 640, 68, 360) || fallbackSrc} 640w`,
+      `${optimizeImageUrl(resolvedUrl, 960, 72, 540) || fallbackSrc} 960w`,
     ].join(", "),
   };
 };

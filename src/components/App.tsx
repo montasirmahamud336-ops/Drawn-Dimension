@@ -9,11 +9,15 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import CustomCursor from "@/components/CustomCursor";
 import ScrollToTop from "@/components/shared/ScrollToTop";
 import SmoothScroll from "@/components/shared/SmoothScroll";
+import ImagePreloader from "@/components/shared/ImagePreloader";
+import GlobalSitePreloader from "@/components/shared/GlobalSitePreloader";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-import Home from "./pages/services/Home";
-import Dashboard from "./pages/services/Dashboard";
-import AuthCallback from "./pages/services/AuthCallback";
 import CookieConsent from "@/components/shared/CookieConsent";
+
+// Core routes code-split to reduce initial bundle size
+const Home = lazy(() => import("./pages/services/Home"));
+const Dashboard = lazy(() => import("./pages/services/Dashboard"));
+const AuthCallback = lazy(() => import("./pages/services/AuthCallback"));
 
 // ⬇️ নতুন imports
 const StartProject = lazy(() => import("./pages/services/startproject"));
@@ -44,6 +48,7 @@ const AdvanceRequestsManager = lazy(() => import("@/components/cms/AdvanceReques
 const WebsiteUsersManager = lazy(() => import("@/components/cms/WebsiteUsersManager"));
 const VersionControlManager = lazy(() => import("@/components/cms/VersionControlManager"));
 const DatabaseBackupManager = lazy(() => import("@/components/cms/DatabaseBackupManager"));
+const PaymentIntegrationManager = lazy(() => import("@/components/cms/PaymentIntegrationManager"));
 const PDFToolsVaultManager = lazy(() => import("@/components/cms/PDFToolsVaultManager"));
 const PDFToolsEmbed = lazy(() => import("./pages/PDFToolsEmbed"));
 const VidGrabEmbed = lazy(() => import("./pages/VidGrabEmbed"));
@@ -72,12 +77,10 @@ const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const Payment = lazy(() => import("./pages/Payment"));
 const PortfolioDetails = lazy(() => import("./pages/services/PortfolioDetails"));
 
+import WaveLoading from "@/components/shared/WaveLoading";
+
 const queryClient = new QueryClient();
-const RouteFallback = () => (
-  <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
-    Loading...
-  </div>
-);
+const RouteFallback = () => <WaveLoading fullScreen text="Loading DrawnDimension..." />;
 
 // ✅ CMS রুট – inquiries যোগ করেছি (relative path)
 const renderCMSRoutes = () => (
@@ -104,6 +107,9 @@ const renderCMSRoutes = () => (
     <Route path="advance-requests" element={<AdvanceRequestsManager />} />
     <Route path="version-control" element={<VersionControlManager />} />
     <Route path="database-backup" element={<DatabaseBackupManager />} />
+    <Route path="payment-integration" element={<PaymentIntegrationManager />} />
+    <Route path="payment-settings" element={<PaymentIntegrationManager />} />
+    <Route path="stripe" element={<PaymentIntegrationManager />} />
     <Route path="tools/pdf-forge" element={<PDFToolsVaultManager />} />
     <Route path="tools" element={<PDFToolsVaultManager />} />
   </>
@@ -156,6 +162,8 @@ const AppShell = () => {
 
   return (
     <>
+      <GlobalSitePreloader />
+      <ImagePreloader />
       {!adminRouteActive ? <SmoothScroll /> : null}
       {!adminRouteActive ? <CustomCursor /> : null}
       <ScrollToTop />

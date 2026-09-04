@@ -3,13 +3,23 @@ import { ReactNode } from "react";
 
 interface PageTransitionProps {
   children: ReactNode;
+  className?: string;
 }
 
-const PageTransition = ({ children }: PageTransitionProps) => {
+const PageTransition = ({ children, className = "" }: PageTransitionProps) => {
   return (
-    <div className="w-full min-h-screen">
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{
+        duration: 0.42,
+        ease: [0.22, 1, 0.36, 1], // Smooth cubic ease-out
+      }}
+      className={`w-full min-h-screen ${className}`}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 };
 

@@ -60,7 +60,7 @@ router.post("/storage/upload", requireAuth, upload.single("file"), async (req, r
       ? buildLocalMediaUrl(requestHost, objectPath, bucket)
       : saved.publicUrl;
 
-    return res.status(201).json({ path: objectPath, publicUrl });
+    return res.status(201).json({ path: objectPath, publicUrl, variants: saved.variants });
   } catch (error: unknown) {
     return res.status(500).json({
       message: error instanceof Error ? error.message : "Failed to upload file"
