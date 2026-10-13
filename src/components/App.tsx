@@ -52,6 +52,11 @@ const PaymentIntegrationManager = lazy(() => import("@/components/cms/PaymentInt
 const PDFToolsVaultManager = lazy(() => import("@/components/cms/PDFToolsVaultManager"));
 const PDFToolsEmbed = lazy(() => import("./pages/PDFToolsEmbed"));
 const VidGrabEmbed = lazy(() => import("./pages/VidGrabEmbed"));
+const NemoChat = lazy(() =>
+  import("./pages/nemo/NemoChat").then((module) => ({
+    default: module.default || module.NemoChat,
+  }))
+);
 
 // Routes
 const About = lazy(() => import("./pages/services/About"));
@@ -121,13 +126,21 @@ const isAdminRoute = (pathname: string) =>
   pathname === "/database" ||
   pathname.startsWith("/database/");
 
+const isStandaloneAppRoute = (pathname: string) =>
+  isAdminRoute(pathname) ||
+  pathname === "/nemo" ||
+  pathname.startsWith("/nemo/") ||
+  pathname === "/roast" ||
+  pathname.startsWith("/roast/");
+
 const AppShell = () => {
   const location = useLocation();
   const adminRouteActive = isAdminRoute(location.pathname);
+  const standaloneRouteActive = isStandaloneAppRoute(location.pathname);
   const [shouldLoadChatWidget, setShouldLoadChatWidget] = useState(false);
 
   useEffect(() => {
-    if (adminRouteActive) {
+    if (standaloneRouteActive) {
       if (shouldLoadChatWidget) {
         setShouldLoadChatWidget(false);
       }
@@ -200,6 +213,8 @@ const AppShell = () => {
             <Route path="/vidgrab" element={<VidGrabEmbed />} />
             <Route path="/downloader" element={<VidGrabEmbed />} />
             <Route path="/video-downloader" element={<VidGrabEmbed />} />
+            <Route path="/nemo" element={<NemoChat />} />
+            <Route path="/roast" element={<NemoChat />} />
 
             <Route path="/database/login" element={<AdminLogin />} />
             <Route
@@ -230,12 +245,12 @@ const AppShell = () => {
           </Routes>
         </AnimatePresence>
       </Suspense>
-      {!adminRouteActive && shouldLoadChatWidget ? (
+      {!standaloneRouteActive && shouldLoadChatWidget ? (
         <Suspense fallback={null}>
           <ChatWidget />
         </Suspense>
       ) : null}
-      {!adminRouteActive ? <CookieConsent /> : null}
+      {!standaloneRouteActive ? <CookieConsent /> : null}
     </>
   );
 };

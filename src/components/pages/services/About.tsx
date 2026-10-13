@@ -1,884 +1,2144 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/shared/PageTransition";
-import PageHero from "@/components/shared/PageHero";
-import { motion, useInView } from "framer-motion";
-import { MouseEvent, useEffect, useMemo, useRef } from "react";
-import {
-  Target,
-  Lightbulb,
-  Users,
-  Award,
-  Building2,
-  Globe,
-  Wrench,
-  CheckCircle2,
-  ArrowRight,
-  MessageCircle,
-  ShieldCheck,
-  Workflow,
-  Clock3,
-  TrendingUp,
-  Sparkles,
-} from "lucide-react";
-import { Link } from "react-router-dom";
 import PremiumBackground from "@/components/shared/PremiumBackground";
+
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+} from "framer-motion";
+
+import {
+  useEffect,
+  useMemo,
+  type ReactNode,
+} from "react";
+
+import {
+  ArrowRight,
+  ArrowUpRight,
+  MessageCircle,
+  Quote,
+  Compass,
+  Box,
+  Code2,
+  ShieldCheck,
+  Globe,
+  PenTool,
+  Boxes,
+  Cpu,
+  FileSearch,
+  Workflow,
+  Layers,
+  CheckCircle2,
+  Target,
+  Sparkles,
+  FileText,
+  Sliders,
+  Users,
+} from "lucide-react";
+
+import { Link } from "react-router-dom";
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+/* ============================================================
+   CONFIGURATION
+============================================================ */
 
 const SITE_ORIGIN = "https://www.drawndimension.com";
 
-const ABOUT_FAQ_ITEMS = [
+const WHATSAPP_NUMBER = "8801775119416";
+
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`;
+
+const PROJECT_URL = "/start-project";
+
+const SERVICES_URL = "/services";
+
+/* ============================================================
+   SEO CONFIGURATION
+============================================================ */
+
+const SEO = {
+  title:
+    "About Drawn Dimension | Engineering & Digital Design Studio",
+
+  description:
+    "Drawn Dimension is a multidisciplinary engineering and digital design studio providing AutoCAD drafting, PFD and P&ID documentation, SolidWorks 3D modeling, web development, graphic design, and digital solutions.",
+
+  keywords:
+    "Drawn Dimension, engineering design, AutoCAD drafting, PFD, P&ID, SolidWorks, mechanical CAD, web development, graphic design, Bangladesh",
+
+  canonical: `${SITE_ORIGIN}/about`,
+};
+
+/* ============================================================
+   COMPANY INFORMATION
+============================================================ */
+
+const COMPANY = {
+  name: "Drawn Dimension",
+
+  founded: "2022",
+
+  description:
+    "A multidisciplinary engineering and digital design studio connecting technical accuracy with thoughtful design.",
+};
+
+/* ============================================================
+   SERVICE DATA
+============================================================ */
+
+const SERVICES = [
   {
-    question: "What services does Drawn Dimension provide?",
-    answer:
-      "We provide web design, graphic design, PFD/P&ID documentation, AutoCAD technical drawing, SolidWorks 3D modeling, and small tools development and sales.",
+    number: "01",
+
+    category: "PROCESS ENGINEERING",
+
+    title: "PFD & P&ID Documentation",
+
+    description:
+      "Clear Process Flow Diagrams and Piping & Instrumentation Diagrams for industrial systems, process equipment, and technical documentation.",
+
+    scope:
+      "Process Flow Diagrams · P&ID · Instrument Tagging · DWG / PDF",
+
+    href: "/services/pfd-pid",
   },
+
   {
-    question: "When did Drawn Dimension start?",
-    answer:
-      "Our team started in 2022 with web design and expanded into engineering and product-focused services from 2024 onward.",
+    number: "02",
+
+    category: "TECHNICAL DRAFTING",
+
+    title: "AutoCAD Technical Drafting",
+
+    description:
+      "Organized 2D technical drawings for mechanical, industrial, architectural, and general engineering applications.",
+
+    scope:
+      "2D Drawings · Mechanical Layouts · Equipment Plans · DWG / DXF",
+
+    href: "/services/pfd-pid",
   },
+
   {
-    question: "Do you deliver client-ready files and project handover?",
-    answer:
-      "Yes. We focus on clean execution, accurate detail, and practical handover files that teams can use immediately.",
+    number: "03",
+
+    category: "MECHANICAL DESIGN",
+
+    title: "SolidWorks 3D Modeling",
+
+    description:
+      "Mechanical part models, parametric assemblies, and technical 3D visualization developed using SolidWorks.",
+
+    scope:
+      "Part Modeling · Assemblies · Parametric Design · STEP Files",
+
+    href: "/services/solidworks",
   },
+
   {
-    question: "Can I request a project discussion before starting?",
-    answer:
-      "Yes. You can contact us through the contact page or WhatsApp to discuss requirements, scope, timeline, and delivery format.",
+    number: "04",
+
+    category: "DIGITAL DEVELOPMENT",
+
+    title: "Web Design & Development",
+
+    description:
+      "Responsive websites and web applications designed around usability, performance, and practical functionality.",
+
+    scope:
+      "Business Websites · Responsive Design · Web Applications",
+
+    href: "/services/web-design",
+  },
+
+  {
+    number: "05",
+
+    category: "VISUAL COMMUNICATION",
+
+    title: "Graphic Design & Branding",
+
+    description:
+      "Visual identities, marketing materials, and digital graphics that help businesses communicate clearly.",
+
+    scope:
+      "Brand Identity · Marketing Graphics · Digital Assets · Print",
+
+    href: "/services/graphic-design",
+  },
+
+  {
+    number: "06",
+
+    category: "DIGITAL PRODUCTS",
+
+    title: "Tools & Software Products",
+
+    description:
+      "Practical digital utilities and software tools developed to simplify workflows and everyday tasks.",
+
+    scope:
+      "Productivity Tools · Document Utilities · Web Software",
+
+    href: "/products",
   },
 ];
 
-const About = () => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const whatsappUrl = "https://wa.me/8801775119416";
-  const pageTitle =
-    "About Drawn Dimension | Web Design, AutoCAD, P&ID, SolidWorks Services";
-  const pageDescription =
-    "Drawn Dimension is a premium design and engineering services company offering web design, graphic design, PFD/P&ID, AutoCAD technical drawing, SolidWorks 3D modeling, and clean project delivery.";
-  const pageKeywords =
-    "web design company, graphic design services, PFD, P&ID, AutoCAD technical drawing, SolidWorks 3D modeling, engineering design services, Bangladesh design company";
-  const canonicalUrl = `${SITE_ORIGIN}/about`;
+/* ============================================================
+   COMPANY TIMELINE
+============================================================ */
 
-  const scrollToSection = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
-    event.preventDefault();
+const TIMELINE = [
+  {
+    year: "2022",
 
-    const sectionId = href.replace("#", "");
-    const target = document.getElementById(sectionId);
+    label: "THE BEGINNING",
 
-    if (!target) return;
+    title: "Starting with Digital Design",
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const top = target.getBoundingClientRect().top + window.scrollY - 96;
-    const lenis = (window as Window & {
-      __lenis?: {
-        scrollTo: (
-          targetTop: number,
-          options?: { duration?: number; easing?: (value: number) => number; immediate?: boolean },
-        ) => void;
-      };
-    }).__lenis;
+    description:
+      "Drawn Dimension began as a web design and development studio, focusing on responsive websites, thoughtful interfaces, and practical digital experiences.",
 
-    if (lenis && !prefersReducedMotion) {
-      lenis.scrollTo(top, {
-        duration: 1.05,
-        easing: (value) => 1 - Math.pow(1 - value, 3),
-      });
-    } else {
-      window.scrollTo({ top, behavior: prefersReducedMotion ? "auto" : "smooth" });
-    }
+    areas: [
+      "Web Design",
+      "Frontend Development",
+      "Responsive Interfaces",
+    ],
 
-    window.history.replaceState(null, "", `#${sectionId}`);
-  };
+    icon: Globe,
+  },
 
-  const structuredData = useMemo(
-    () => ({
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          name: "Drawn Dimension",
-          url: canonicalUrl,
-          sameAs: [whatsappUrl],
-          description: pageDescription,
-        },
-        {
-          "@type": "BreadcrumbList",
-          itemListElement: [
-            {
-              "@type": "ListItem",
-              position: 1,
-              name: "Home",
-              item: `${SITE_ORIGIN}/`,
-            },
-            {
-              "@type": "ListItem",
-              position: 2,
-              name: "Services",
-              item: `${SITE_ORIGIN}/services`,
-            },
-            {
-              "@type": "ListItem",
-              position: 3,
-              name: "About",
-              item: canonicalUrl,
-            },
-          ],
-        },
-        {
-          "@type": "Service",
-          serviceType: "Design and Engineering Services",
-          provider: {
-            "@type": "Organization",
-            name: "Drawn Dimension",
-          },
-          areaServed: "Global",
-          hasOfferCatalog: {
-            "@type": "OfferCatalog",
-            name: "Professional Services",
-            itemListElement: [
-              { "@type": "Offer", itemOffered: { "@type": "Service", name: "Web Design" } },
-              { "@type": "Offer", itemOffered: { "@type": "Service", name: "Graphic Design" } },
-              { "@type": "Offer", itemOffered: { "@type": "Service", name: "PFD and P&ID Drawing" } },
-              { "@type": "Offer", itemOffered: { "@type": "Service", name: "AutoCAD Technical Drawing" } },
-              { "@type": "Offer", itemOffered: { "@type": "Service", name: "SolidWorks 3D Modeling" } },
-            ],
-          },
-        },
-        {
-          "@type": "FAQPage",
-          mainEntity: ABOUT_FAQ_ITEMS.map((item) => ({
-            "@type": "Question",
-            name: item.question,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: item.answer,
-            },
-          })),
-        },
-      ],
-    }),
-    [canonicalUrl, pageDescription, whatsappUrl],
+  {
+    year: "2024",
+
+    label: "ENGINEERING EXPANSION",
+
+    title: "Expanding into Technical Drafting",
+
+    description:
+      "We expanded into engineering documentation, introducing AutoCAD technical drawings, Process Flow Diagrams, and Piping & Instrumentation Diagrams.",
+
+    areas: [
+      "AutoCAD",
+      "PFD",
+      "P&ID",
+    ],
+
+    icon: PenTool,
+  },
+
+  {
+    year: "2025",
+
+    label: "MECHANICAL DESIGN",
+
+    title: "Introducing SolidWorks 3D",
+
+    description:
+      "Our capabilities expanded into mechanical 3D modeling, including individual components, parametric models, and assembly development.",
+
+    areas: [
+      "SolidWorks",
+      "3D Modeling",
+      "Mechanical Assemblies",
+    ],
+
+    icon: Boxes,
+  },
+
+  {
+    year: "2025 — PRESENT",
+
+    label: "CONTINUED DEVELOPMENT",
+
+    title: "Building Tools & Digital Products",
+
+    description:
+      "Alongside client services, we began developing digital productivity tools while continuing to refine our engineering and digital capabilities.",
+
+    areas: [
+      "Digital Products",
+      "Productivity Tools",
+      "Software Development",
+    ],
+
+    icon: Cpu,
+  },
+];
+
+/* ============================================================
+   PROJECT PROCESS
+============================================================ */
+
+const PROCESS = [
+  {
+    number: "01",
+
+    label: "PROJECT DISCOVERY",
+
+    title: "Understand",
+
+    description:
+      "We review your requirements, reference materials, technical specifications, and expected outcomes before beginning work.",
+
+    icon: FileSearch,
+  },
+
+  {
+    number: "02",
+
+    label: "SCOPE & DIRECTION",
+
+    title: "Plan",
+
+    description:
+      "We establish the project scope, expected deliverables, workflow, and any details that need clarification.",
+
+    icon: Workflow,
+  },
+
+  {
+    number: "03",
+
+    label: "DESIGN & EXECUTION",
+
+    title: "Develop",
+
+    description:
+      "We prepare drawings, models, designs, or software while reviewing the work against the agreed requirements.",
+
+    icon: Layers,
+  },
+
+  {
+    number: "04",
+
+    label: "REVIEW & HANDOVER",
+
+    title: "Deliver",
+
+    description:
+      "We organize the completed work, address agreed revisions, and provide the final project files.",
+
+    icon: CheckCircle2,
+  },
+];
+
+/* ============================================================
+   WORKING PRINCIPLES
+============================================================ */
+
+const PRINCIPLES = [
+  {
+    number: "01",
+
+    title: "Clarity",
+
+    description:
+      "Technical information should be organized, readable, and easy to understand.",
+
+    icon: FileText,
+  },
+
+  {
+    number: "02",
+
+    title: "Precision",
+
+    description:
+      "Dimensions, specifications, visual details, and project requirements deserve careful attention.",
+
+    icon: Compass,
+  },
+
+  {
+    number: "03",
+
+    title: "Consistency",
+
+    description:
+      "A consistent approach helps maintain quality throughout development, review, and delivery.",
+
+    icon: Sliders,
+  },
+
+  {
+    number: "04",
+
+    title: "Collaboration",
+
+    description:
+      "Clear communication and an understanding of client needs guide our working process.",
+
+    icon: Users,
+  },
+];
+
+/* ============================================================
+   FREQUENTLY ASKED QUESTIONS
+============================================================ */
+
+const FAQ_ITEMS = [
+  {
+    question: "What services does Drawn Dimension provide?",
+
+    answer:
+      "We provide engineering drafting, PFD and P&ID documentation, AutoCAD technical drawings, SolidWorks 3D modeling, web design and development, graphic design, and digital software solutions.",
+  },
+
+  {
+    question: "When was Drawn Dimension established?",
+
+    answer:
+      "Drawn Dimension started in 2022 with web design and development. We expanded into engineering drafting in 2024 and SolidWorks 3D modeling in 2025.",
+  },
+
+  {
+    question: "Do you work with international clients?",
+
+    answer:
+      "Yes. Drawn Dimension is based in Bangladesh and works remotely with clients from different locations.",
+  },
+
+  {
+    question: "What file formats can you deliver?",
+
+    answer:
+      "Depending on the project, deliverables may include DWG, DXF, PDF, STEP, IGES, SolidWorks native files, graphic assets, or website source code. Available formats are discussed before the project begins.",
+  },
+
+  {
+    question: "Can I discuss a project before placing an order?",
+
+    answer:
+      "Yes. You can share your requirements, sketches, reference files, or project brief through our project form or WhatsApp. We can then discuss the project scope and next steps.",
+  },
+
+  {
+    question: "How does the revision process work?",
+
+    answer:
+      "Revision requirements depend on the agreed project scope. We review feedback, clarify requested changes, and complete revisions according to the project agreement.",
+  },
+
+  {
+    question: "Can you handle both engineering and digital projects?",
+
+    answer:
+      "Yes. Our studio works across engineering documentation, mechanical modeling, website development, graphic design, and digital tools.",
+  },
+];
+
+/* ============================================================
+   ANIMATION SETTINGS
+============================================================ */
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+const MOTION_DURATION = 0.72;
+
+const REVEAL_DISTANCE = 18;
+
+/* ============================================================
+   TYPES
+============================================================ */
+
+type ChildrenProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+type RevealProps = {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+};
+
+type ButtonProps = {
+  to: string;
+  children: ReactNode;
+  className?: string;
+};
+
+/* ============================================================
+   FULL WIDTH CONTAINER
+============================================================ */
+
+const Container = ({
+  children,
+  className = "",
+}: ChildrenProps) => {
+  return (
+    <div
+      className={`
+        mx-auto
+        w-full
+        max-w-none
+        px-5
+        sm:px-8
+        md:px-10
+        lg:px-14
+        xl:px-20
+        2xl:px-24
+        ${className}
+      `}
+    >
+      {children}
+    </div>
   );
+};
 
+/* ============================================================
+   SUBTLE REVEAL ANIMATION
+============================================================ */
+
+const Reveal = ({
+  children,
+  className = "",
+  delay = 0,
+}: RevealProps) => {
+  const reduceMotion = useReducedMotion();
+
+  if (reduceMotion) {
+    return (
+      <div className={className}>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: REVEAL_DISTANCE,
+      }}
+      whileInView={{
+        opacity: 1,
+        y: 0,
+      }}
+      viewport={{
+        once: true,
+        amount: 0.12,
+        margin: "0px 0px -32px 0px",
+      }}
+      transition={{
+        duration: MOTION_DURATION,
+        delay,
+        ease: EASE,
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+/* ============================================================
+   SECTION LABEL
+============================================================ */
+
+const SectionLabel = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  return (
+    <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary backdrop-blur-sm dark:bg-primary/15">
+      <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+      <span>{children}</span>
+    </div>
+  );
+};
+
+/* ============================================================
+   PRIMARY BUTTON
+============================================================ */
+
+const PrimaryButton = ({
+  to,
+  children,
+  className = "",
+}: ButtonProps) => {
+  return (
+    <Link
+      to={to}
+      className={`group btn-primary gap-2.5 ${className}`}
+    >
+      <span>{children}</span>
+
+      <ArrowUpRight
+        className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+        aria-hidden="true"
+      />
+    </Link>
+  );
+};
+
+/* ============================================================
+   SECONDARY BUTTON
+============================================================ */
+
+const SecondaryButton = ({
+  to,
+  children,
+  className = "",
+}: ButtonProps) => {
+  return (
+    <Link
+      to={to}
+      className={`group btn-outline gap-2.5 ${className}`}
+    >
+      <span>{children}</span>
+
+      <ArrowRight
+        className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+        aria-hidden="true"
+      />
+    </Link>
+  );
+};
+
+/* ============================================================
+   SCROLL PROGRESS
+============================================================ */
+
+const ScrollProgress = () => {
+  const reduceMotion = useReducedMotion();
+
+  const { scrollYProgress } = useScroll();
+
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 120,
+    damping: 28,
+    restDelta: 0.001,
+  });
+
+  if (reduceMotion) {
+    return null;
+  }
+
+  return (
+    <motion.div
+      style={{
+        scaleX,
+        transformOrigin: "0% 50%",
+      }}
+      className="
+        pointer-events-none
+        fixed
+        inset-x-0
+        top-0
+        z-[100]
+        h-[2px]
+        bg-primary
+      "
+      aria-hidden="true"
+    />
+  );
+};
+
+/* ============================================================
+   HERO SECTION
+============================================================ */
+
+const HeroSection = () => {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <section
+      className="
+        relative
+        overflow-hidden
+        pb-14
+        pt-32
+        sm:pb-16
+        sm:pt-36
+        lg:pb-20
+        lg:pt-40
+      "
+      aria-labelledby="about-hero-heading"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" aria-hidden="true" />
+      <div className="pointer-events-none absolute right-[-10rem] top-20 h-[28rem] w-[28rem] rounded-full bg-primary/10 blur-3xl pointer-events-none" aria-hidden="true" />
+
+      <Container>
+        <div className="w-full">
+          <motion.div
+            initial={
+              reduceMotion
+                ? false
+                : {
+                    opacity: 0,
+                    y: 12,
+                  }
+            }
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.6,
+              ease: EASE,
+            }}
+          >
+            <SectionLabel>
+              ABOUT DRAWN DIMENSION
+            </SectionLabel>
+          </motion.div>
+
+          <motion.h1
+            id="about-hero-heading"
+            initial={
+              reduceMotion
+                ? false
+                : {
+                    opacity: 0,
+                    y: 22,
+                  }
+            }
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.82,
+              delay: 0.08,
+              ease: EASE,
+            }}
+            className="
+              max-w-[1450px]
+              text-[clamp(3rem,7vw,6.25rem)]
+              font-semibold
+              leading-[1.04]
+              tracking-[-0.06em]
+              text-foreground
+            "
+          >
+            Engineering Precision.
+
+            <span className="block text-primary">
+              Digital Creativity.
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={
+              reduceMotion
+                ? false
+                : {
+                    opacity: 0,
+                    y: 18,
+                  }
+            }
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.75,
+              delay: 0.18,
+              ease: EASE,
+            }}
+            className="
+              mt-7
+              max-w-[760px]
+              text-base
+              leading-8
+              text-muted-foreground
+              sm:mt-8
+              sm:text-lg
+              sm:leading-9
+            "
+          >
+            We connect engineering drafting,
+            mechanical design, and digital development
+            to create practical solutions for businesses
+            and project teams.
+          </motion.p>
+
+          <motion.div
+            initial={
+              reduceMotion
+                ? false
+                : {
+                    opacity: 0,
+                    y: 16,
+                  }
+            }
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.75,
+              delay: 0.28,
+              ease: EASE,
+            }}
+            className="mt-8 flex flex-col gap-3 sm:flex-row"
+          >
+            <PrimaryButton to={PROJECT_URL}>
+              Start a Project
+            </PrimaryButton>
+
+            <SecondaryButton to={SERVICES_URL}>
+              Explore Services
+            </SecondaryButton>
+          </motion.div>
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   INTRODUCTION SECTION
+============================================================ */
+
+const IntroductionSection = () => {
+  return (
+    <section
+      className="border-t border-border/60 py-16 sm:py-20 lg:py-24 dark:border-white/[0.06]"
+      aria-labelledby="introduction-heading"
+    >
+      <Container>
+        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+          <Reveal>
+            <div>
+              <SectionLabel>
+                WHO WE ARE
+              </SectionLabel>
+
+              <h2
+                id="introduction-heading"
+                className="
+                  max-w-[580px]
+                  text-[32px]
+                  font-semibold
+                  leading-[1.14]
+                  tracking-[-0.04em]
+                  text-foreground
+                  sm:text-[40px]
+                  xl:text-[48px]
+                "
+              >
+                A multidisciplinary studio
+                built around practical solutions.
+              </h2>
+
+              <div className="mt-8 grid grid-cols-2 gap-3 max-w-[480px]">
+                <div className="flex items-center gap-2.5 rounded-xl border-2 border-border/70 bg-card px-3.5 py-2.5 shadow-sm dark:border-white/10 dark:bg-[#111113]">
+                  <Compass className="h-4 w-4 text-primary shrink-0 drop-shadow-[0_0_6px_rgba(239,68,68,0.4)]" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-foreground">CAD & Drafting</span>
+                </div>
+
+                <div className="flex items-center gap-2.5 rounded-xl border-2 border-border/70 bg-card px-3.5 py-2.5 shadow-sm dark:border-white/10 dark:bg-[#111113]">
+                  <Box className="h-4 w-4 text-primary shrink-0 drop-shadow-[0_0_6px_rgba(239,68,68,0.4)]" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-foreground">3D SolidWorks</span>
+                </div>
+
+                <div className="flex items-center gap-2.5 rounded-xl border-2 border-border/70 bg-card px-3.5 py-2.5 shadow-sm dark:border-white/10 dark:bg-[#111113]">
+                  <Code2 className="h-4 w-4 text-primary shrink-0 drop-shadow-[0_0_6px_rgba(239,68,68,0.4)]" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-foreground">Web Platforms</span>
+                </div>
+
+                <div className="flex items-center gap-2.5 rounded-xl border-2 border-border/70 bg-card px-3.5 py-2.5 shadow-sm dark:border-white/10 dark:bg-[#111113]">
+                  <ShieldCheck className="h-4 w-4 text-primary shrink-0 drop-shadow-[0_0_6px_rgba(239,68,68,0.4)]" aria-hidden="true" />
+                  <span className="text-xs font-semibold text-foreground">Exact Quality</span>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <div className="max-w-[900px]">
+              <p className="text-lg leading-8 text-foreground/90 sm:text-xl sm:leading-9">
+                Drawn Dimension brings together engineering
+                and digital design to support projects
+                that require technical understanding,
+                thoughtful planning, and careful execution.
+              </p>
+
+              <p className="mt-5 text-base leading-8 text-muted-foreground sm:text-lg">
+                Founded in 2022, our studio began with
+                web design and development. Over time,
+                we expanded into AutoCAD drafting,
+                PFD and P&ID documentation,
+                SolidWorks 3D modeling,
+                graphic design, and digital products.
+              </p>
+
+              <p className="mt-5 text-base leading-8 text-muted-foreground sm:text-lg">
+                Although our work spans different
+                disciplines, our approach remains
+                consistent. We focus on understanding
+                requirements, organizing information
+                clearly, and creating work that serves
+                its intended purpose.
+              </p>
+
+              <div className="mt-8 rounded-2xl border-2 border-border/70 bg-card p-6 shadow-sm dark:border-white/10 dark:bg-[#111113] sm:p-7">
+                <div className="mb-3 inline-flex text-primary">
+                  <Quote className="h-6 w-6 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]" aria-hidden="true" />
+                </div>
+
+                <blockquote className="text-base font-medium leading-8 text-foreground sm:text-lg">
+                  "Good design is not only about appearance.
+                  It is about clarity, accuracy, and making
+                  things work as intended."
+                </blockquote>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   PREMIUM SERVICE CARD
+============================================================ */
+
+type ServiceItemProps = {
+  service: (typeof SERVICES)[number];
+  index: number;
+};
+
+const ServiceItem = ({
+  service,
+  index,
+}: ServiceItemProps) => {
+  return (
+    <Reveal
+      delay={Math.min(index * 0.04, 0.16)}
+      className="h-full"
+    >
+      <article
+        className="
+          group
+          relative
+          flex
+          h-full
+          flex-col
+          overflow-hidden
+          rounded-2xl
+          border-2
+          border-border/70
+          bg-card
+          p-6
+          shadow-sm
+          transition-all
+          duration-300
+          ease-out
+          hover:-translate-y-1
+          hover:border-primary/50
+          dark:border-white/10
+          dark:bg-[#111113]
+          dark:hover:border-primary/50
+          sm:p-7
+          lg:p-8
+        "
+      >
+        <div className="flex items-start justify-between gap-4">
+          <span
+            className="
+              font-sans
+              text-[30px]
+              font-semibold
+              leading-none
+              tracking-[-0.055em]
+              text-primary
+              sm:text-[34px]
+            "
+          >
+            {service.number}
+          </span>
+
+          <span
+            className="
+              max-w-[70%]
+              rounded-md
+              border
+              border-border/70
+              bg-muted/50
+              px-2.5
+              py-1
+              text-right
+              text-[10px]
+              font-semibold
+              uppercase
+              leading-4
+              tracking-[0.1em]
+              text-muted-foreground
+              dark:border-white/10
+              dark:bg-white/[0.05]
+              sm:text-[11px]
+            "
+          >
+            {service.category}
+          </span>
+        </div>
+
+        <h3
+          className="
+            mt-6
+            text-[21px]
+            font-semibold
+            leading-[1.3]
+            tracking-[-0.025em]
+            text-foreground
+            transition-colors
+            duration-200
+            group-hover:text-primary
+            sm:text-[23px]
+          "
+        >
+          {service.title}
+        </h3>
+
+        <p
+          className="
+            mt-3
+            text-sm
+            leading-7
+            text-muted-foreground
+            sm:text-[15px]
+          "
+        >
+          {service.description}
+        </p>
+
+        <div className="mt-6 border-t border-border/70 pt-5 dark:border-white/[0.08]">
+          <p className="mb-2 text-xs font-semibold text-foreground">
+            Typical deliverables
+          </p>
+
+          <p className="text-xs leading-6 text-muted-foreground sm:text-[13px]">
+            {service.scope}
+          </p>
+        </div>
+
+        <div className="mt-auto pt-7">
+          <Link
+            to={service.href}
+            className="
+              inline-flex
+              items-center
+              gap-2
+              text-sm
+              font-semibold
+              text-primary
+              transition-all
+              duration-300
+              group-hover:gap-3
+              hover:underline
+              focus-visible:outline-none
+              focus-visible:ring-2
+              focus-visible:ring-primary
+            "
+          >
+            Learn More
+
+            <ArrowRight
+              className="h-4 w-4"
+              aria-hidden="true"
+            />
+          </Link>
+        </div>
+      </article>
+    </Reveal>
+  );
+};
+
+/* ============================================================
+   SERVICES SECTION
+============================================================ */
+
+const ServicesSection = () => {
+  return (
+    <section
+      id="expertise"
+      className="
+        scroll-mt-24
+        border-y
+        border-border/60
+        bg-muted/15
+        py-16
+        dark:border-white/[0.06]
+        dark:bg-white/[0.015]
+        sm:py-20
+        lg:py-24
+      "
+      aria-labelledby="services-heading"
+    >
+      <Container>
+        <Reveal>
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+            <div>
+              <SectionLabel>
+                OUR EXPERTISE
+              </SectionLabel>
+
+              <h2
+                id="services-heading"
+                className="
+                  text-[34px]
+                  font-semibold
+                  leading-tight
+                  tracking-[-0.04em]
+                  text-foreground
+                  sm:text-[42px]
+                  xl:text-[50px]
+                "
+              >
+                What we do.
+              </h2>
+
+              <p className="mt-4 max-w-[780px] text-base leading-8 text-muted-foreground sm:text-lg">
+                From engineering drawings and mechanical
+                modeling to websites and digital products,
+                our services address practical project needs.
+              </p>
+            </div>
+
+            <Link
+              to={SERVICES_URL}
+              className="
+                group
+                inline-flex
+                shrink-0
+                items-center
+                gap-2
+                text-sm
+                font-semibold
+                text-primary
+                transition-all
+                hover:gap-2.5
+              "
+            >
+              Explore All Services
+
+              <ArrowUpRight
+                className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </Link>
+          </div>
+        </Reveal>
+
+        <div
+          className="
+            mt-10
+            grid
+            grid-cols-1
+            gap-5
+            md:grid-cols-2
+            xl:grid-cols-3
+            xl:gap-6
+          "
+        >
+          {SERVICES.map((service, index) => (
+            <ServiceItem
+              key={service.number}
+              service={service}
+              index={index}
+            />
+          ))}
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   TIMELINE SECTION
+============================================================ */
+
+const TimelineSection = () => {
+  return (
+    <section
+      id="journey"
+      className="scroll-mt-24 py-16 sm:py-20 lg:py-24"
+      aria-labelledby="timeline-heading"
+    >
+      <Container>
+        <Reveal>
+          <SectionLabel>
+            OUR JOURNEY
+          </SectionLabel>
+
+          <h2
+            id="timeline-heading"
+            className="
+              text-[34px]
+              font-semibold
+              tracking-[-0.04em]
+              text-foreground
+              sm:text-[42px]
+              xl:text-[50px]
+            "
+          >
+            How we have evolved.
+          </h2>
+
+          <p className="mt-4 max-w-[800px] text-base leading-8 text-muted-foreground sm:text-lg">
+            What started as a digital design studio
+            has gradually grown into a practice covering
+            engineering, mechanical design, and software.
+          </p>
+        </Reveal>
+
+        <div className="mt-10 grid gap-5">
+          {TIMELINE.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <Reveal key={item.year} delay={index * 0.05}>
+                <article
+                  className="
+                    group
+                    relative
+                    grid
+                    gap-6
+                    py-6
+                    transition-all
+                    duration-300
+                    sm:grid-cols-[220px_1fr]
+                    sm:gap-8
+                    sm:py-8
+                    lg:grid-cols-[260px_1fr]
+                    lg:gap-10
+                  "
+                >
+                  <div className="flex flex-col justify-between">
+                    <div>
+                      <div className="mb-4 inline-flex items-center text-primary">
+                        {Icon && <Icon className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />}
+                      </div>
+
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                        {item.label}
+                      </p>
+
+                      <p className="mt-1 text-2xl font-bold leading-tight tracking-[-0.03em] text-foreground transition-colors group-hover:text-primary sm:text-3xl">
+                        {item.year}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                      {item.title}
+                    </h3>
+
+                    <p className="mt-3 max-w-[900px] text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
+                      {item.description}
+                    </p>
+
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {item.areas.map((area) => (
+                        <span
+                          key={area}
+                          className="
+                            rounded-md
+                            border
+                            border-border/40
+                            px-2.5
+                            py-1
+                            text-xs
+                            font-medium
+                            text-muted-foreground
+                          "
+                        >
+                          {area}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              </Reveal>
+            );
+          })}
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   WORK PROCESS SECTION
+============================================================ */
+
+const ProcessSection = () => {
+  return (
+    <section
+      id="approach"
+      className="
+        scroll-mt-24
+        py-16
+        sm:py-20
+        lg:py-24
+      "
+      aria-labelledby="process-heading"
+    >
+      <Container>
+        <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+          <Reveal>
+            <div>
+              <SectionLabel>
+                HOW WE WORK
+              </SectionLabel>
+
+              <h2
+                id="process-heading"
+                className="
+                  text-[34px]
+                  font-semibold
+                  leading-[1.12]
+                  tracking-[-0.04em]
+                  text-foreground
+                  sm:text-[42px]
+                  xl:text-[50px]
+                "
+              >
+                A clear process.
+                <br />
+                Better execution.
+              </h2>
+
+              <p className="mt-5 max-w-[600px] text-base leading-8 text-muted-foreground sm:text-lg">
+                Every project is different, but clear
+                requirements and an organized workflow
+                help us work more effectively.
+              </p>
+
+              <div className="mt-7">
+                <PrimaryButton to={PROJECT_URL}>
+                  Discuss Your Project
+                </PrimaryButton>
+              </div>
+            </div>
+          </Reveal>
+
+          <div className="space-y-4">
+            {PROCESS.map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <Reveal
+                  key={step.number}
+                  delay={index * 0.04}
+                >
+                  <article
+                    className="
+                      group
+                      grid
+                      gap-4
+                      py-5
+                      transition-all
+                      duration-300
+                      sm:grid-cols-[48px_1fr]
+                      sm:gap-6
+                      sm:py-6
+                    "
+                  >
+                    <div className="flex shrink-0 items-center justify-center text-primary pt-1">
+                      {Icon && <Icon className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
+                          STEP {step.number}
+                        </span>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          {step.label}
+                        </p>
+                      </div>
+
+                      <h3 className="mt-2 text-xl font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl">
+                        {step.title}
+                      </h3>
+
+                      <p className="mt-2 max-w-[800px] text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
+                        {step.description}
+                      </p>
+                    </div>
+                  </article>
+                </Reveal>
+              );
+            })}
+          </div>
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   MISSION & VISION SECTION
+============================================================ */
+
+const MissionVisionSection = () => {
+  return (
+    <section
+      className="py-16 sm:py-20 lg:py-24"
+      aria-labelledby="mission-vision-heading"
+    >
+      <Container>
+        <Reveal>
+          <SectionLabel>
+            WHAT DRIVES US
+          </SectionLabel>
+
+          <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+            <h2
+              id="mission-vision-heading"
+              className="
+                text-[34px]
+                font-semibold
+                leading-tight
+                tracking-[-0.04em]
+                text-foreground
+                sm:text-[42px]
+                xl:text-[50px]
+              "
+            >
+              Our mission & vision.
+            </h2>
+
+            <p className="max-w-[800px] text-base leading-8 text-muted-foreground sm:text-lg">
+              Our direction is shaped by practical goals:
+              clearer technical information, thoughtful
+              project development, and dependable communication.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="mt-9 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <Reveal className="h-full">
+            <article
+              className="
+                group
+                relative
+                flex
+                h-full
+                flex-col
+                py-6
+                transition-all
+                duration-300
+                sm:py-8
+              "
+            >
+              <div className="flex items-center gap-3">
+                <Target className="h-5 w-5 text-primary" aria-hidden="true" />
+
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+                  OUR MISSION
+                </p>
+              </div>
+
+              <h3 className="mt-7 max-w-[760px] text-[27px] font-semibold leading-tight tracking-[-0.035em] text-foreground sm:text-[34px] lg:text-[38px]">
+                Making technical and digital work
+                clearer and more practical.
+              </h3>
+
+              <p className="mt-6 max-w-[850px] text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
+                Our mission is to help clients transform
+                requirements into useful deliverables
+                through careful planning, clear communication,
+                and attention to detail.
+              </p>
+
+              <p className="mt-4 max-w-[850px] text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
+                Whether preparing a technical drawing,
+                building a 3D model, or developing a website,
+                we focus on work that serves its intended purpose.
+              </p>
+            </article>
+          </Reveal>
+
+          <Reveal
+            delay={0.08}
+            className="h-full"
+          >
+            <article
+              className="
+                group
+                relative
+                flex
+                h-full
+                flex-col
+                py-6
+                transition-all
+                duration-300
+                sm:py-8
+              "
+            >
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+                  OUR VISION
+                </p>
+              </div>
+
+              <h3 className="mt-7 text-[27px] font-semibold leading-tight tracking-[-0.035em] text-foreground sm:text-[34px] lg:text-[36px]">
+                Building a trusted studio
+                across multiple disciplines.
+              </h3>
+
+              <p className="mt-6 text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
+                We want Drawn Dimension to continue
+                growing as a dependable partner for
+                engineering documentation, mechanical
+                design, and digital development.
+              </p>
+
+              <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
+                Our focus is on developing our skills,
+                refining our processes, and building
+                lasting professional relationships.
+              </p>
+            </article>
+          </Reveal>
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   PRINCIPLES SECTION
+============================================================ */
+
+const PrinciplesSection = () => {
+  return (
+    <section
+      className="
+        py-16
+        sm:py-20
+        lg:py-24
+      "
+      aria-labelledby="principles-heading"
+    >
+      <Container>
+        <Reveal>
+          <SectionLabel>
+            OUR PRINCIPLES
+          </SectionLabel>
+
+          <h2
+            id="principles-heading"
+            className="
+              text-[34px]
+              font-semibold
+              tracking-[-0.04em]
+              text-foreground
+              sm:text-[42px]
+              xl:text-[50px]
+            "
+          >
+            What guides our work.
+          </h2>
+
+          <p className="mt-4 max-w-[780px] text-base leading-8 text-muted-foreground sm:text-lg">
+            These principles shape how we approach
+            projects, communicate with clients,
+            and prepare deliverables.
+          </p>
+        </Reveal>
+
+        <div className="mt-9 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {PRINCIPLES.map((principle, index) => {
+            const Icon = principle.icon;
+            return (
+              <Reveal
+                key={principle.number}
+                delay={index * 0.04}
+                className="h-full"
+              >
+                <article className="group flex h-full flex-col py-4 transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="text-primary">
+                      {Icon && <Icon className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />}
+                    </div>
+
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {principle.number}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-5 text-xl font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
+                    {principle.title}
+                  </h3>
+
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                    {principle.description}
+                  </p>
+                </article>
+              </Reveal>
+            );
+          })}
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+
+/* ============================================================
+   FAQ SECTION
+============================================================ */
+
+const FAQSection = () => {
+  return (
+    <section
+      id="faq"
+      className="
+        scroll-mt-24
+        border-t
+        border-border/60
+        bg-muted/15
+        pb-7
+        pt-16
+        dark:border-white/[0.06]
+        dark:bg-white/[0.015]
+        sm:pb-8
+        sm:pt-20
+        lg:pb-8
+        lg:pt-24
+      "
+      aria-labelledby="faq-heading"
+    >
+      <Container>
+        <div className="grid gap-9 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+          <Reveal>
+            <div>
+              <SectionLabel>
+                FREQUENTLY ASKED QUESTIONS
+              </SectionLabel>
+
+              <h2
+                id="faq-heading"
+                className="
+                  text-[34px]
+                  font-semibold
+                  leading-tight
+                  tracking-[-0.04em]
+                  text-foreground
+                  sm:text-[42px]
+                  xl:text-[48px]
+                "
+              >
+                Questions?
+                <br />
+                We have answers.
+              </h2>
+
+              <p className="mt-4 max-w-[540px] text-base leading-8 text-muted-foreground">
+                Find information about our services,
+                project workflow, and deliverables.
+              </p>
+
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  group
+                  mt-6
+                  inline-flex
+                  items-center
+                  gap-2
+                  text-sm
+                  font-semibold
+                  text-primary
+                  transition-all
+                  hover:gap-2.5
+                "
+              >
+                <span>Ask Us on WhatsApp</span>
+
+                <ArrowUpRight
+                  className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </a>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <Accordion
+              type="single"
+              collapsible
+              className="divide-y divide-border/60 border-y border-border/60 dark:divide-white/[0.08] dark:border-white/[0.08]"
+            >
+              {FAQ_ITEMS.map((item, index) => (
+                <AccordionItem
+                  key={item.question}
+                  value={`faq-${index}`}
+                  className="border-0"
+                >
+                  <AccordionTrigger
+                    className="
+                      py-5
+                      text-left
+                      text-sm
+                      font-semibold
+                      leading-6
+                      text-foreground
+                      transition-colors
+                      duration-200
+                      hover:text-primary
+                      hover:no-underline
+                      sm:text-base
+                    "
+                  >
+                    {item.question}
+                  </AccordionTrigger>
+
+                  <AccordionContent
+                    className="
+                      max-w-[900px]
+                      pb-5
+                      pr-6
+                      text-sm
+                      leading-7
+                      text-muted-foreground
+                    "
+                  >
+                    {item.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Reveal>
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   CONTACT SECTION
+============================================================ */
+
+const ContactSection = () => {
+  return (
+    <section
+      id="contact"
+      className="
+        scroll-mt-24
+        py-16
+        sm:py-20
+        lg:py-24
+      "
+      aria-labelledby="contact-heading"
+    >
+      <Container>
+        <Reveal>
+          <div
+            className="
+              relative
+              mx-auto
+              overflow-hidden
+              rounded-2xl
+              border-2
+              border-border/70
+              bg-card
+              p-8
+              text-center
+              shadow-sm
+              dark:border-white/10
+              dark:bg-[#111113]
+              sm:p-12
+              lg:p-16
+            "
+          >
+            <div
+              className="
+                pointer-events-none
+                absolute
+                inset-0
+                bg-[radial-gradient(circle_at_50%_0%,rgba(239,68,68,0.12),transparent_60%)]
+              "
+              aria-hidden="true"
+            />
+
+            <div className="relative z-10 mx-auto max-w-[800px]">
+              <p className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary backdrop-blur-sm dark:bg-primary/15">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden="true" />
+                LET'S WORK TOGETHER
+              </p>
+
+              <h2
+                id="contact-heading"
+                className="
+                  mt-5
+                  text-[36px]
+                  font-semibold
+                  leading-[1.1]
+                  tracking-[-0.045em]
+                  text-foreground
+                  sm:text-[48px]
+                  lg:text-[56px]
+                "
+              >
+                Have a project in mind?
+              </h2>
+
+              <p className="mx-auto mt-5 max-w-[620px] text-base leading-8 text-muted-foreground sm:text-lg">
+                Share your requirements with us.
+                We'll review your project and discuss
+                the next steps.
+              </p>
+
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <PrimaryButton
+                  to={PROJECT_URL}
+                  className="w-full sm:w-auto"
+                >
+                  Start a Project
+                </PrimaryButton>
+
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group btn-outline gap-2.5 w-full sm:w-auto"
+                >
+                  <MessageCircle
+                    className="h-4 w-4 text-primary transition-transform duration-300 group-hover:scale-110"
+                    aria-hidden="true"
+                  />
+
+                  <span>Contact on WhatsApp</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   SEO METADATA
+============================================================ */
+
+const useAboutSEO = () => {
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = pageTitle;
 
-    const upsertMeta = (attr: "name" | "property", key: string, content: string) => {
-      let tag = document.head.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null;
-      const created = !tag;
-      if (!tag) {
-        tag = document.createElement("meta");
-        tag.setAttribute(attr, key);
-        document.head.appendChild(tag);
+    document.title = SEO.title;
+
+    const cleanupFunctions: Array<() => void> = [];
+
+    const updateMeta = (
+      attribute: "name" | "property",
+      key: string,
+      content: string,
+    ) => {
+      let element = document.head.querySelector(
+        `meta[${attribute}="${key}"]`,
+      ) as HTMLMetaElement | null;
+
+      const created = !element;
+
+      if (!element) {
+        element = document.createElement("meta");
+
+        element.setAttribute(attribute, key);
+
+        document.head.appendChild(element);
       }
-      const previousContent = tag.getAttribute("content") ?? "";
-      tag.setAttribute("content", content);
-      return () => {
+
+      const previousContent =
+        element.getAttribute("content");
+
+      element.setAttribute("content", content);
+
+      cleanupFunctions.push(() => {
         if (created) {
-          tag?.remove();
+          element?.remove();
+        } else if (previousContent !== null) {
+          element?.setAttribute(
+            "content",
+            previousContent,
+          );
         } else {
-          tag?.setAttribute("content", previousContent);
+          element?.removeAttribute("content");
         }
-      };
+      });
     };
 
-    const resetDescription = upsertMeta("name", "description", pageDescription);
-    const resetKeywords = upsertMeta("name", "keywords", pageKeywords);
-    const resetOgTitle = upsertMeta("property", "og:title", pageTitle);
-    const resetOgDescription = upsertMeta("property", "og:description", pageDescription);
-    const resetOgType = upsertMeta("property", "og:type", "website");
-    const resetOgUrl = upsertMeta("property", "og:url", canonicalUrl);
-    const resetRobots = upsertMeta("name", "robots", "index, follow, max-image-preview:large");
-    const resetTwitterCard = upsertMeta("name", "twitter:card", "summary_large_image");
-    const resetTwitterTitle = upsertMeta("name", "twitter:title", pageTitle);
-    const resetTwitterDescription = upsertMeta("name", "twitter:description", pageDescription);
+    updateMeta(
+      "name",
+      "description",
+      SEO.description,
+    );
 
-    let canonical = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    updateMeta(
+      "name",
+      "keywords",
+      SEO.keywords,
+    );
+
+    updateMeta(
+      "name",
+      "robots",
+      "index, follow, max-image-preview:large",
+    );
+
+    updateMeta(
+      "property",
+      "og:title",
+      SEO.title,
+    );
+
+    updateMeta(
+      "property",
+      "og:description",
+      SEO.description,
+    );
+
+    updateMeta(
+      "property",
+      "og:type",
+      "website",
+    );
+
+    updateMeta(
+      "property",
+      "og:url",
+      SEO.canonical,
+    );
+
+    updateMeta(
+      "name",
+      "twitter:card",
+      "summary_large_image",
+    );
+
+    updateMeta(
+      "name",
+      "twitter:title",
+      SEO.title,
+    );
+
+    updateMeta(
+      "name",
+      "twitter:description",
+      SEO.description,
+    );
+
+    let canonical = document.head.querySelector(
+      'link[rel="canonical"]',
+    ) as HTMLLinkElement | null;
+
     const createdCanonical = !canonical;
+
     if (!canonical) {
       canonical = document.createElement("link");
-      canonical.setAttribute("rel", "canonical");
+
+      canonical.rel = "canonical";
+
       document.head.appendChild(canonical);
     }
-    const previousCanonicalHref = canonical.getAttribute("href") ?? "";
-    canonical.setAttribute("href", canonicalUrl);
+
+    const previousCanonical =
+      canonical.getAttribute("href");
+
+    canonical.href = SEO.canonical;
 
     return () => {
       document.title = previousTitle;
-      resetDescription();
-      resetKeywords();
-      resetOgTitle();
-      resetOgDescription();
-      resetOgType();
-      resetOgUrl();
-      resetRobots();
-      resetTwitterCard();
-      resetTwitterTitle();
-      resetTwitterDescription();
+
+      cleanupFunctions.forEach((cleanup) => cleanup());
+
       if (createdCanonical) {
         canonical?.remove();
+      } else if (previousCanonical !== null) {
+        canonical?.setAttribute(
+          "href",
+          previousCanonical,
+        );
       } else {
-        canonical?.setAttribute("href", previousCanonicalHref);
+        canonical?.removeAttribute("href");
       }
     };
-  }, [canonicalUrl, pageDescription, pageKeywords, pageTitle]);
+  }, []);
+};
 
-  const values = [
-    {
-      icon: Target,
-      title: "Precision",
-      description: "Every detail matters. We deliver accuracy that meets technical and creative standards.",
-    },
-    {
-      icon: Lightbulb,
-      title: "Innovation",
-      description: "We continuously improve workflows to provide practical and future-ready solutions.",
-    },
-    {
-      icon: Users,
-      title: "Collaboration",
-      description: "Your goals shape every decision. We work closely with you from brief to final delivery.",
-    },
-    {
-      icon: Award,
-      title: "Excellence",
-      description: "Quality is not optional. We review every output to keep delivery clean and dependable.",
-    },
-  ];
+/* ============================================================
+   STRUCTURED DATA
+============================================================ */
 
-  const stats = [
-    { value: "2022", label: "Web Design Started" },
-    { value: "2024", label: "Engineering Services Added" },
-    { value: "2025", label: "3D and Tools Expansion" },
-    { value: "Today", label: "Clean, Accurate Delivery Focus" },
-  ];
+const createStructuredData = () => {
+  return {
+    "@context": "https://schema.org",
 
-  const achievementStats = [
-    {
-      icon: Clock3,
-      value: "2022-Present",
-      label: "Continuous Professional Delivery",
-      description: "Consistent project execution across design and engineering workflows.",
-    },
-    {
-      icon: Workflow,
-      value: "5 Integrated Tracks",
-      label: "Web, Creative, and Technical Services",
-      description: "One coordinated team for digital design and engineering output.",
-    },
-    {
-      icon: ShieldCheck,
-      value: "Quality-First",
-      label: "Clean and Accurate Submissions",
-      description: "Review-driven delivery standard to reduce revision and confusion.",
-    },
-    {
-      icon: TrendingUp,
-      value: "2025 Expansion",
-      label: "3D and Product Capability",
-      description: "SolidWorks and small tools development added for practical results.",
-    },
-  ];
+    "@graph": [
+      {
+        "@type": "Organization",
 
-  const milestones = [
-    {
-      year: "2022",
-      title: "Started with Web Design",
-      description: "We began by delivering modern, user-focused web design for growing businesses.",
-    },
-    {
-      year: "2024",
-      title: "Expanded Engineering and Design Services",
-      description: "We added graphic design, PFD, P&ID, and AutoCAD technical drawing services.",
-    },
-    {
-      year: "2025",
-      title: "Launched 3D SolidWorks Workflows",
-      description: "We introduced 3D SolidWorks capability for precise design visualization and development.",
-    },
-    {
-      year: "2025",
-      title: "Started Building and Selling Small Tools",
-      description: "We expanded from design services into practical small-tool development and sales.",
-    },
-  ];
+        "@id": `${SITE_ORIGIN}/#organization`,
 
-  const serviceTracks = [
-    {
-      icon: Globe,
-      title: "Web Design",
-      since: "Since 2022",
-      description: "Clean, responsive websites built around clear communication and conversion goals.",
-      href: "/services/web-design",
-    },
-    {
-      icon: Lightbulb,
-      title: "Graphic Design",
-      since: "Since 2024",
-      description: "Brand-focused visuals and design assets that keep your project presentation consistent.",
-      href: "/services/graphic-design",
-    },
-    {
-      icon: Wrench,
-      title: "PFD, P&ID, AutoCAD Drawing",
-      since: "Since 2024",
-      description: "Accurate technical drawings and documentation prepared for practical project execution.",
-      href: "/services/pfd-pid",
-    },
-    {
-      icon: Building2,
-      title: "3D SolidWorks",
-      since: "Since 2025",
-      description: "Detailed 3D models for design validation, technical clarity, and production planning.",
-      href: "/services/solidworks",
-    },
-    {
-      icon: Award,
-      title: "Small Tools Development and Sales",
-      since: "Since 2025",
-      description: "Useful small tools designed, built, and supplied with a focus on reliability and value.",
-      href: "/products",
-    },
-  ];
+        name: COMPANY.name,
 
-  const deliveryPillars = [
-    {
-      title: "Clean Execution",
-      description: "Organized files, clear structure, and polished presentation in every project handover.",
-    },
-    {
-      title: "Accurate Detail",
-      description: "Technical precision and careful review so drawings, models, and designs are dependable.",
-    },
-    {
-      title: "Client-Ready Delivery",
-      description: "Outputs are submitted in a practical format that your team can use immediately.",
-    },
-  ];
+        url: SITE_ORIGIN,
+
+        description: COMPANY.description,
+
+        foundingDate: COMPANY.founded,
+
+        areaServed: "Worldwide",
+
+        contactPoint: {
+          "@type": "ContactPoint",
+
+          contactType: "customer service",
+
+          telephone: `+${WHATSAPP_NUMBER}`,
+
+          availableLanguage: [
+            "English",
+            "Bengali",
+          ],
+        },
+      },
+
+      {
+        "@type": "WebPage",
+
+        "@id": SEO.canonical,
+
+        url: SEO.canonical,
+
+        name: SEO.title,
+
+        description: SEO.description,
+
+        about: {
+          "@id": `${SITE_ORIGIN}/#organization`,
+        },
+      },
+
+      {
+        "@type": "BreadcrumbList",
+
+        itemListElement: [
+          {
+            "@type": "ListItem",
+
+            position: 1,
+
+            name: "Home",
+
+            item: `${SITE_ORIGIN}/`,
+          },
+
+          {
+            "@type": "ListItem",
+
+            position: 2,
+
+            name: "About Us",
+
+            item: SEO.canonical,
+          },
+        ],
+      },
+
+      {
+        "@type": "FAQPage",
+
+        mainEntity: FAQ_ITEMS.map((item) => ({
+          "@type": "Question",
+
+          name: item.question,
+
+          acceptedAnswer: {
+            "@type": "Answer",
+
+            text: item.answer,
+          },
+        })),
+      },
+    ],
+  };
+};
+
+/* ============================================================
+   ABOUT PAGE
+============================================================ */
+
+const About = () => {
+  useAboutSEO();
+
+  const structuredData = useMemo(
+    () => createStructuredData(),
+    [],
+  );
 
   return (
     <PageTransition>
       <PremiumBackground>
+        <ScrollProgress />
+
         <Navigation />
-        <main className="relative about-premium" aria-label="About Drawn Dimension - Premium Design and Engineering Services">
+
+        <main
+          className="
+            relative
+            min-h-screen
+            w-full
+            overflow-x-clip
+            text-foreground
+          "
+          aria-label="About Drawn Dimension"
+        >
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-          />
-          <PageHero
-            title="About Drawn Dimension"
-            subtitle="Our Story"
-            description="Started in 2022 with web design, we now deliver premium engineering and creative services including graphic design, PFD/P&ID, AutoCAD technical drawing, SolidWorks 3D modeling, and clean project submission."
-            actions={
-              <>
-                <Link
-                  to="/start-project"
-                  className="btn-primary inline-flex items-center justify-center gap-2 min-w-[200px]"
-                >
-                  Get Started
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 h-[48px] min-w-[200px] px-8 rounded-xl border border-emerald-600/55 dark:border-emerald-500/45 bg-emerald-500/12 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-500/20 dark:hover:bg-emerald-500/18 hover:border-emerald-700/70 dark:hover:border-emerald-400/60 transition-all duration-300"
-                >
-                  WhatsApp
-                  <MessageCircle className="w-4 h-4" />
-                </a>
-              </>
-            }
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(
+                structuredData,
+              ).replace(/</g, "\\u003c"),
+            }}
           />
 
-          <section className="relative overflow-hidden pb-8 md:pb-9" aria-label="About page navigation">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_24%,rgba(239,68,68,0.12),transparent_38%)] pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <nav className="glass-panel relative overflow-hidden border-primary/20 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(255,255,255,0.01)_45%,rgba(239,68,68,0.09)_100%)] p-4 md:p-5 flex flex-wrap items-center justify-center gap-2 md:gap-3 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.65)]">
-                <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
-                {[
-                  { label: "Who We Are", href: "#who-we-are" },
-                  { label: "Milestones", href: "#milestones" },
-                  { label: "Achievements", href: "#achievements" },
-                  { label: "What We Do", href: "#what-we-do" },
-                  { label: "Mission & Vision", href: "#mission-vision" },
-                  { label: "Why Choose Us", href: "#why-choose-us" },
-                  { label: "FAQ", href: "#about-faq" },
-                  { label: "Contact", href: "#contact-cta" },
-                ].map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    onClick={(event) => scrollToSection(event, item.href)}
-                    className="inline-flex items-center rounded-full border border-slate-300/85 dark:border-border/55 bg-background/45 px-4 py-1.5 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/45 hover:bg-primary/12 hover:shadow-[0_8px_24px_-16px_rgba(239,68,68,0.55)] transition-all duration-300"
-                  >
-                    {item.label}
-                  </a>
-                ))}
-                <Link
-                  to="/team"
-                  className="inline-flex items-center rounded-full border border-slate-300/85 dark:border-border/55 bg-background/45 px-4 py-1.5 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/45 hover:bg-primary/12 hover:shadow-[0_8px_24px_-16px_rgba(239,68,68,0.55)] transition-all duration-300"
-                >
-                  Meet the Team
-                </Link>
-              </nav>
-            </div>
-          </section>
+          <HeroSection />
 
-          {/* Journey Stats */}
-          <section
-            id="who-we-are"
-            className="relative pt-8 pb-10 md:pt-10 md:pb-12 lg:pt-12 lg:pb-14 scroll-mt-24"
-            aria-labelledby="who-we-are-heading"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_22%,rgba(239,68,68,0.11),transparent_36%)] pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7 }}
-                className="text-center mb-9 md:mb-10"
-              >
-                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary font-semibold text-xs uppercase tracking-[0.2em]">
-                  Who We Are
-                </span>
-                <h2 id="who-we-are-heading" className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mt-3 text-foreground">
-                  Professional Design and Engineering Team
-                </h2>
-                <p className="text-muted-foreground max-w-3xl mx-auto mt-4 leading-relaxed">
-                  Drawn Dimension delivers modern web design and engineering solutions with a premium quality standard.
-                  We focus on clean execution, accurate technical detail, and client-ready project handover.
-                </p>
-                <div className="mx-auto mt-4 h-px w-24 bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-              </motion.div>
+          <IntroductionSection />
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                {stats.map((stat, index) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.08 }}
-                    className="glass-card relative overflow-hidden border-slate-300/80 dark:border-border/55 p-6 text-center bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.1)_100%)] hover:border-primary/45 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_18px_42px_-30px_rgba(0,0,0,0.75)]"
-                  >
-                    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-                    <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
-                      {stat.value}
-                    </div>
-                    <div className="text-sm text-muted-foreground leading-relaxed">{stat.label}</div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-            <div className="mx-auto mt-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-border/70 to-transparent" />
-          </section>
+          <ServicesSection />
 
-          {/* Timeline */}
-          <section
-            id="milestones"
-            className="relative py-12 md:py-14 lg:py-16 scroll-mt-24"
-            aria-labelledby="company-milestones-heading"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(239,68,68,0.11),transparent_35%)] pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-                className="text-center mb-9 md:mb-10"
-              >
-                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary font-semibold text-xs uppercase tracking-[0.2em]">
-                  Our Journey
-                </span>
-                <h2 id="company-milestones-heading" className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.06] mt-3 text-foreground">
-                  Company Milestones
-                </h2>
-                <div className="mx-auto mt-4 h-px w-24 bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-              </motion.div>
+          <TimelineSection />
 
-              <div className="relative">
-                <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-px bg-gradient-to-b from-transparent via-primary/45 to-transparent hidden md:block" />
+          <ProcessSection />
 
-                {milestones.map((milestone, index) => (
-                  <motion.div
-                    key={`${milestone.year}-${milestone.title}`}
-                    initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: index * 0.1 }}
-                    className={`relative flex items-center mb-6 md:mb-8 ${index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
-                  >
-                    <div className={`w-full md:w-1/2 ${index % 2 === 0 ? "md:pr-12 md:text-right" : "md:pl-12"}`}>
-                      <div className="glass-card relative overflow-hidden p-6 border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_46%,rgba(239,68,68,0.1)_100%)] transition-all duration-500 hover:-translate-y-1 hover:border-primary/45 hover:shadow-[0_18px_42px_-28px_rgba(0,0,0,0.65)]">
-                        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-                        <span className="text-primary font-bold text-xl">{milestone.year}</span>
-                        <h3 className="text-lg font-semibold text-foreground mt-2">{milestone.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-2">{milestone.description}</p>
-                      </div>
-                    </div>
-                    <div className="absolute left-1/2 transform -translate-x-1/2 w-4 h-4 bg-primary rounded-full ring-4 ring-primary/20 shadow-[0_0_14px_rgba(239,68,68,0.65)] hidden md:block" />
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-            <div className="mx-auto mt-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-border/70 to-transparent" />
-          </section>
+          <MissionVisionSection />
 
-          {/* Achievements */}
-          <section
-            id="achievements"
-            className="relative py-12 md:py-14 lg:py-16 scroll-mt-24"
-            aria-labelledby="achievements-heading"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(239,68,68,0.12),transparent_34%)] pointer-events-none" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_84%,rgba(239,68,68,0.08),transparent_34%)] pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7 }}
-                className="text-center mb-9 md:mb-10"
-              >
-                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary font-semibold text-xs uppercase tracking-[0.2em]">
-                  Performance Snapshot
-                </span>
-                <h2 id="achievements-heading" className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.06] mt-3 text-foreground">
-                  Trusted Growth, Premium Standards
-                </h2>
-                <p className="text-muted-foreground max-w-3xl mx-auto mt-4 leading-relaxed">
-                  Our progress is built on consistent delivery quality, practical engineering execution, and strong design communication.
-                </p>
-                <div className="mx-auto mt-4 h-px w-24 bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-              </motion.div>
+          <PrinciplesSection />
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {achievementStats.map((item, index) => (
-                  <motion.div
-                    key={item.label}
-                    initial={{ opacity: 0, y: 24 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.45, delay: index * 0.08 }}
-                    className="glass-card relative overflow-hidden p-5 md:p-6 border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_44%,rgba(239,68,68,0.1)_100%)] hover:border-primary/50 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_18px_42px_-30px_rgba(0,0,0,0.7)]"
-                  >
-                    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-                    <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                      <item.icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <p className="text-primary font-semibold text-sm uppercase tracking-wide">{item.value}</p>
-                    <h3 className="text-base font-semibold text-foreground mt-2">{item.label}</h3>
-                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{item.description}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-            <div className="mx-auto mt-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-border/70 to-transparent" />
-          </section>
+          <FAQSection />
 
-          {/* Service Tracks */}
-          <section
-            id="what-we-do"
-            className="relative py-12 md:py-14 lg:py-16 section-no-blend overflow-hidden scroll-mt-24"
-            aria-labelledby="what-we-do-heading"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(239,68,68,0.12),transparent_35%)] pointer-events-none" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_82%,rgba(239,68,68,0.09),transparent_35%)] pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-                className="text-center mb-9 md:mb-10"
-              >
-                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary font-semibold text-xs uppercase tracking-[0.2em]">
-                  What We Do
-                </span>
-                <h2 id="what-we-do-heading" className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.06] mt-3 text-foreground">
-                  Web, Graphic, and Engineering Services
-                </h2>
-                <p className="text-muted-foreground max-w-3xl mx-auto mt-4 leading-relaxed">
-                  We provide end-to-end professional support across web design, graphic design, PFD/P&ID, AutoCAD technical drawing,
-                  SolidWorks 3D modeling, and practical product development.
-                </p>
-                <div className="mx-auto mt-4 h-px w-24 bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-              </motion.div>
-
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {serviceTracks.map((service, index) => (
-                  <motion.div
-                    key={service.title}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.08 }}
-                    className="glass-card relative overflow-hidden border-slate-300/80 dark:border-border/55 p-6 group bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.11)_100%)] hover:border-primary/50 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_46px_-28px_rgba(0,0,0,0.72)]"
-                  >
-                    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                      <service.icon className="w-6 h-6 text-primary" />
-                    </div>
-                    <span className="text-xs font-semibold uppercase tracking-wide text-primary/90">{service.since}</span>
-                    <h3 className="font-semibold text-foreground mt-2 mb-2">{service.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{service.description}</p>
-                    <Link
-                      to={service.href}
-                      className="inline-flex items-center gap-2 text-primary text-sm font-semibold mt-4 hover:text-primary/85 transition-colors"
-                    >
-                      Learn More
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-            <div className="mx-auto mt-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-border/70 to-transparent" />
-          </section>
-
-          {/* Mission & Vision */}
-          <section
-            id="mission-vision"
-            className="relative py-12 md:py-14 lg:py-16 scroll-mt-24"
-            ref={ref}
-            aria-labelledby="mission-vision-heading"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_16%,rgba(239,68,68,0.12),transparent_35%)] pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <div className="grid lg:grid-cols-2 gap-10 xl:gap-12 items-start">
-                <motion.div
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.8 }}
-                >
-                  <h2 id="mission-vision-heading" className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.08] mb-5 text-foreground">
-                    Focused On
-                    <span className="text-gradient-primary block leading-[1.12]">Clean, Accurate Delivery</span>
-                  </h2>
-                  <div className="mb-5 h-px w-24 bg-gradient-to-r from-primary/80 to-transparent" />
-                  <p className="text-muted-foreground/95 text-base md:text-lg leading-relaxed mb-6 max-w-[60ch]">
-                    We started with web design and expanded into technical and engineering services based on real client needs.
-                    Each year, we added capabilities so clients can get complete project support from one team.
-                  </p>
-                  <p className="text-muted-foreground leading-relaxed mb-8 max-w-[58ch]">
-                    From concept design to final technical output, our goal stays simple: submit work that is clear,
-                    accurate, and ready for practical use.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl">
-                    {[
-                      { icon: Building2, label: "Technical Clarity" },
-                      { icon: Globe, label: "Digital Design Strength" },
-                      { icon: Wrench, label: "Execution Discipline" },
-                      { icon: Award, label: "Quality Assurance" },
-                    ].map((item) => (
-                      <div key={item.label} className="relative overflow-hidden flex items-center gap-3 rounded-xl border border-slate-300/80 dark:border-border/55 bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_62%,rgba(239,68,68,0.08)_100%)] px-3 py-2 shadow-[0_8px_18px_-14px_rgba(0,0,0,0.6)]">
-                        <div className="w-9 h-9 bg-primary/10 border border-primary/30 rounded-lg flex items-center justify-center">
-                          <item.icon className="w-4 h-4 text-primary" />
-                        </div>
-                        <span className="text-sm font-medium text-foreground">{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.8, delay: 0.2 }}
-                  className="glass-card relative overflow-hidden p-7 lg:p-8 border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.07),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.1)_100%)] shadow-[0_22px_50px_-26px_rgba(0,0,0,0.66)]"
-                >
-                  <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-                  <h3 className="text-2xl font-bold mb-4 text-foreground">Our Mission</h3>
-                  <p className="text-muted-foreground/95 mb-7">
-                    To submit every client project with clean execution, accurate technical detail, and dependable quality
-                    from concept to final delivery.
-                  </p>
-                  <h3 className="text-2xl font-bold mb-4 text-foreground">Our Vision</h3>
-                  <p className="text-muted-foreground/95 mb-8">
-                    To be a trusted leader in integrated engineering and creative services, known for precision,
-                    reliability, and long-term client success.
-                  </p>
-
-                  <div className="space-y-4 pt-2 border-t border-slate-300/80 dark:border-border/55">
-                    {deliveryPillars.map((pillar) => (
-                      <div key={pillar.title} className="flex items-start gap-3">
-                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5" />
-                        <div>
-                          <p className="font-semibold text-foreground">{pillar.title}</p>
-                          <p className="text-sm text-muted-foreground/95 leading-relaxed">{pillar.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-            <div className="mx-auto mt-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-border/70 to-transparent" />
-          </section>
-
-          {/* Core Values */}
-          <section
-            id="why-choose-us"
-            className="relative py-12 md:py-14 lg:py-16 scroll-mt-24"
-            aria-labelledby="why-choose-us-heading"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_16%,rgba(239,68,68,0.15),transparent_35%)] pointer-events-none" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_82%,rgba(239,68,68,0.10),transparent_35%)] pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-                className="text-center mb-9 md:mb-10"
-              >
-                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary font-semibold text-xs uppercase tracking-[0.2em]">
-                  What Drives Us
-                </span>
-                <h2 id="why-choose-us-heading" className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.06] mt-3 text-foreground">
-                  Why Choose Drawn Dimension
-                </h2>
-                <p className="text-muted-foreground max-w-3xl mx-auto mt-4 leading-relaxed">
-                  We combine technical precision, modern design, and reliable communication to deliver work that meets premium business expectations.
-                </p>
-                <div className="mx-auto mt-4 h-px w-24 bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-              </motion.div>
-
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {values.map((value, index) => (
-                  <motion.div
-                    key={value.title}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="group relative overflow-hidden rounded-3xl border border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_42%,rgba(239,68,68,0.12)_110%)] p-6 md:p-7 transition-all duration-500 hover:-translate-y-1.5 hover:border-primary/55 hover:shadow-[0_24px_56px_-34px_rgba(0,0,0,0.75)]"
-                  >
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(239,68,68,0.16),transparent_48%)] opacity-85 transition-opacity duration-500 group-hover:opacity-100" />
-                    <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
-                    <div className="relative z-10">
-                      <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/85 mb-4">
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                        Core Value {index + 1}
-                      </span>
-                      <div className="w-12 h-12 rounded-xl border border-primary/35 bg-primary/10 flex items-center justify-center mb-4 shadow-[0_10px_22px_rgba(239,68,68,0.22)] transition-all duration-300 group-hover:bg-primary/20 group-hover:border-primary/50 group-hover:shadow-[0_14px_30px_rgba(239,68,68,0.32)]">
-                        <value.icon className="w-6 h-6 text-primary" />
-                      </div>
-                      <h3 className="font-semibold text-foreground mb-2 text-2xl tracking-tight">{value.title}</h3>
-                      <p className="text-sm text-muted-foreground/95 leading-relaxed">{value.description}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-            <div className="mx-auto mt-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-border/70 to-transparent" />
-          </section>
-
-          {/* FAQ */}
-          <section
-            id="about-faq"
-            className="relative py-12 md:py-14 lg:py-16 scroll-mt-24"
-            aria-labelledby="about-faq-heading"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_22%,rgba(239,68,68,0.12),transparent_36%)] pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7 }}
-                className="text-center mb-9 md:mb-10"
-              >
-                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary font-semibold text-xs uppercase tracking-[0.2em]">
-                  FAQ
-                </span>
-                <h2 id="about-faq-heading" className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mt-3 text-foreground">
-                  Frequently Asked Questions
-                </h2>
-                <p className="text-muted-foreground max-w-3xl mx-auto mt-4 leading-relaxed">
-                  Common client questions about our web design, graphic design, and engineering project delivery process.
-                </p>
-                <div className="mx-auto mt-4 h-px w-24 bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-              </motion.div>
-
-              <div className="grid md:grid-cols-2 gap-5">
-                {ABOUT_FAQ_ITEMS.map((item, index) => (
-                  <motion.article
-                    key={item.question}
-                    initial={{ opacity: 0, y: 24 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.45, delay: index * 0.06 }}
-                    className="glass-card relative overflow-hidden p-5 md:p-6 border-slate-300/80 dark:border-border/55 bg-[linear-gradient(155deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_48%,rgba(239,68,68,0.09)_100%)] hover:border-primary/45 transition-all duration-400 hover:-translate-y-1 hover:shadow-[0_16px_36px_-26px_rgba(0,0,0,0.72)]"
-                  >
-                    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-                    <h3 className="text-lg font-semibold text-foreground flex items-start gap-2">
-                      <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
-                      <span>{item.question}</span>
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{item.answer}</p>
-                  </motion.article>
-                ))}
-              </div>
-            </div>
-            <div className="mx-auto mt-10 h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-border/70 to-transparent" />
-          </section>
-
-          {/* Final CTA */}
-          <section
-            id="contact-cta"
-            className="py-12 md:py-14 lg:py-16 scroll-mt-24"
-            aria-labelledby="contact-cta-heading"
-          >
-            <div className="container-narrow">
-              <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7 }}
-                className="glass-card relative overflow-hidden p-8 md:p-10 border-primary/30 bg-[linear-gradient(155deg,rgba(255,255,255,0.07),rgba(255,255,255,0.01)_44%,rgba(239,68,68,0.13)_100%)] shadow-[0_24px_60px_-26px_rgba(0,0,0,0.72)]"
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_15%,rgba(239,68,68,0.15),transparent_35%)] pointer-events-none" />
-                <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
-                <div className="relative z-10 flex flex-col items-center text-center">
-                  <span className="text-primary font-semibold text-sm uppercase tracking-wider">
-                    Start Your Next Project
-                  </span>
-                  <h2 id="contact-cta-heading" className="text-3xl md:text-4xl font-bold mt-4 text-foreground max-w-3xl leading-tight">
-                    Need a clean and accurate project submission?
-                  </h2>
-                  <p className="text-muted-foreground/95 mt-4 max-w-2xl text-base leading-relaxed">
-                    Tell us your requirement. We will plan the workflow and deliver your project with clarity,
-                    technical accuracy, and a professional final handover.
-                  </p>
-
-                  <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-                    <Link to="/start-project" className="btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto sm:min-w-[220px]">
-                      Start Your Project
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                    <a
-                      href={whatsappUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-2 h-[48px] w-full sm:w-auto sm:min-w-[220px] px-8 rounded-xl border border-emerald-600/50 dark:border-emerald-500/40 bg-emerald-500/16 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-500/24 dark:hover:bg-emerald-500/20 hover:border-emerald-700/70 dark:hover:border-emerald-400/60 shadow-[0_8px_20px_rgba(16,185,129,0.14)] transition-all duration-300"
-                    >
-                      Message Us on WhatsApp
-                      <MessageCircle className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </section>
+          <ContactSection />
         </main>
+
         <Footer />
       </PremiumBackground>
     </PageTransition>

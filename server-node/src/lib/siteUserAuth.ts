@@ -359,12 +359,22 @@ export const getSiteUserFromToken = async (accessToken: string): Promise<SiteAut
     if (!userId) {
       return null;
     }
-    const user = await findSiteUserById(userId);
-    if (!user || !user.is_active) {
-      return null;
+    try {
+      const user = await findSiteUserById(userId);
+      if (user && user.is_active) {
+        return toSiteAuthUser(user);
+      }
+    } catch {
+      return {
+        id: userId,
+        email: payload.email || null,
+        user_metadata: {
+          full_name: payload.fullName || undefined,
+        },
+      };
     }
 
-    return toSiteAuthUser(user);
+    return null;
   } catch {
     return null;
   }

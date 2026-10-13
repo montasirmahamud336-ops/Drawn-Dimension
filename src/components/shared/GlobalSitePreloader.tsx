@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles } from "lucide-react";
 
 export const GlobalSitePreloader = () => {
   const [progress, setProgress] = useState(0);
@@ -84,8 +83,7 @@ export const GlobalSitePreloader = () => {
               <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
                 Drawn <span className="text-primary">Dimension</span>
               </h2>
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center justify-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-primary animate-pulse" />
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center justify-center">
                 Engineering & Digital Innovation
               </p>
             </motion.div>

@@ -295,8 +295,8 @@ async def list_models(api_key: str) -> list[str]:
 
 
 async def get_default_model(api_key: str) -> str | None:
-    # Prefer llama-3.3-70b-versatile for better performance and availability
-    return "llama-3.3-70b-versatile"
+    # Prefer openai/gpt-oss-20b for fast responses and high availability
+    return "openai/gpt-oss-20b"
 
 
 def _contains_bangla(text: str) -> bool:
@@ -886,7 +886,7 @@ async def chat(payload: ChatRequest) -> dict[str, str]:
     if not api_key:
         raise HTTPException(status_code=500, detail="Missing GROQ_API_KEY")
 
-    model = os.getenv("GROQ_MODEL") or "llama-3.3-70b-versatile"
+    configured_model = os.getenv("GROQ_MODEL") or "openai/gpt-oss-20b"
 
     fact_reply = get_company_fact_reply(payload.message)
     if fact_reply:
@@ -1015,51 +1015,56 @@ async def chat(payload: ChatRequest) -> dict[str, str]:
     # Add current user message
     messages.append({"role": "user", "content": payload.message})
 
-    body = {
-        "model": model,
-        "messages": messages,
-        "temperature": 0.2,
-        "max_tokens": 1024,
-    }
+    candidate_models: list[str] = []
+    for candidate in [configured_model, "openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]:
+        if candidate and candidate not in candidate_models:
+            candidate_models.append(candidate)
 
     async def call_model(model_name: str) -> httpx.Response:
         url = "https://api.groq.com/openai/v1/chat/completions"
+        req_body = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": 0.2,
+            "max_tokens": 1024,
+        }
         async with httpx.AsyncClient(timeout=30) as client:
             return await client.post(
                 url,
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-                json=body,
+                json=req_body,
             )
 
-    async def call_model_with_retry(model_name: str) -> httpx.Response:
-        last_response: httpx.Response | None = None
-        for attempt in range(3):
+    last_response: httpx.Response | None = None
+    for target_model in candidate_models:
+        for attempt in range(2):
             try:
-                response = await call_model(model_name)
-            except httpx.RequestError as exc:
-                if attempt < 2:
-                    await asyncio.sleep(0.5 * (attempt + 1))
+                response = await call_model(target_model)
+                last_response = response
+                if response.status_code == 200:
+                    break
+                if response.status_code in {429, 500, 502, 503, 504} and attempt == 0:
+                    await asyncio.sleep(0.5)
                     continue
-                raise HTTPException(status_code=503, detail=f"Network error: {exc}") from exc
+                break
+            except httpx.RequestError as exc:
+                if attempt == 0:
+                    await asyncio.sleep(0.5)
+                    continue
+                break
+        if last_response and last_response.status_code == 200:
+            break
 
-            last_response = response
-            if response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
-                await asyncio.sleep(0.5 * (attempt + 1))
-                continue
-            return response
+    if not last_response or last_response.status_code >= 400:
+        detail = last_response.text[:500] if last_response else "No response from AI service"
+        print(f"Groq API error: {detail}")
+        raise HTTPException(status_code=502, detail=f"AI API error: {detail}")
 
-        return last_response or await call_model(model_name)
-
-    response = await call_model_with_retry(model)
-
-    if response.status_code >= 400:
-        detail = response.text[:500]
-        print(f"Groq API error {response.status_code}: {detail}")
-        raise HTTPException(status_code=502, detail=f"AI API error {response.status_code}: {detail}")
-
-    data = response.json()
-    reply = data["choices"][0]["message"]["content"]
-
+    data = last_response.json()
+    choice_msg = data.get("choices", [{}])[0].get("message", {})
+    reply = choice_msg.get("content")
+    if not reply:
+        reply = choice_msg.get("reasoning")
     if not reply:
         reply = "I couldn't generate a response right now."
 

@@ -136,7 +136,7 @@ const servicePresets: ServicePreset[] = [
     metaTitle: "Web Design & Development Services | Global Delivery | Drawn Dimension",
     metaDescription:
       "Professional web design and development services including responsive websites, React/Next.js builds, CMS integration, and SEO-ready performance for global businesses.",
-    aliases: ["web design", "web development", "web design and development"],
+    aliases: ["web design", "web development", "web design and development", "web-design", "web-development"],
   },
   {
     icon: PenTool,
@@ -145,10 +145,20 @@ const servicePresets: ServicePreset[] = [
       "Precise 2D technical drawings and documentation for engineering, architecture, and manufacturing projects.",
     link: "/services/autocad",
     features: ["2D Drafting", "As-Built Drawings", "Shop Drawings", "Detail Plans"],
-    metaTitle: "AutoCAD Technical Drawing Services | 2D Drafting Experts | Drawn Dimension",
+    metaTitle: "AutoCAD Technical Drawing Services | 2D CAD Drafting Experts | Drawn Dimension",
     metaDescription:
       "AutoCAD technical drawing services for engineering and industrial projects, including 2D drafting, as-built drawings, shop drawings, and submission-ready documentation.",
-    aliases: ["autocad", "autocad technical drawings", "technical drawings"],
+    aliases: [
+      "autocad",
+      "autocad technical drawings",
+      "autocad technical drawing",
+      "technical drawings",
+      "technical drawing",
+      "2d cad",
+      "cad drafting",
+      "2d drafting",
+      "autocad-technical-drawings",
+    ],
   },
   {
     icon: Box,
@@ -160,7 +170,15 @@ const servicePresets: ServicePreset[] = [
     metaTitle: "3D SolidWorks Modeling Services | Product & Mechanical Design | Drawn Dimension",
     metaDescription:
       "SolidWorks 3D modeling services for product development, assembly design, simulation support, and technical visualization with clean, accurate engineering output.",
-    aliases: ["solidworks", "3d solidworks", "solidworks modeling"],
+    aliases: [
+      "solidworks",
+      "3d solidworks",
+      "solidworks modeling",
+      "3d product modeling",
+      "3d modeling",
+      "mechanical design",
+      "solidworks-modeling",
+    ],
   },
   {
     icon: GitBranch,
@@ -172,7 +190,19 @@ const servicePresets: ServicePreset[] = [
     metaTitle: "PFD & P&ID Diagram Services | Process Engineering Documentation | Drawn Dimension",
     metaDescription:
       "PFD and P&ID diagram services for industrial process systems, covering flow design, instrumentation mapping, control systems, and compliance-focused documentation.",
-    aliases: ["pfd", "pid", "p and id", "pfd and pid", "pfd pid"],
+    aliases: [
+      "pfd",
+      "pid",
+      "p and id",
+      "pfd and pid",
+      "pfd pid",
+      "pfd-pid",
+      "p-and-id",
+      "process-flow-diagram",
+      "piping-and-instrumentation-diagram",
+      "process-flow-diagrams",
+      "piping-instrumentation-diagrams",
+    ],
   },
   {
     icon: ShieldCheck,
@@ -184,7 +214,7 @@ const servicePresets: ServicePreset[] = [
     metaTitle: "HAZOP Study & Risk Analysis Services | Process Safety | Drawn Dimension",
     metaDescription:
       "HAZOP study and industrial risk analysis services with structured hazard identification, operability review, safety recommendations, and compliance reporting.",
-    aliases: ["hazop", "hazop study", "risk analysis"],
+    aliases: ["hazop", "hazop study", "risk analysis", "hazop-study", "risk-assessment", "process safety"],
   },
   {
     icon: Palette,
@@ -196,7 +226,26 @@ const servicePresets: ServicePreset[] = [
     metaTitle: "Graphic Design & Branding Services | Creative Studio | Drawn Dimension",
     metaDescription:
       "Graphic design and branding services including brand identity, marketing collateral, social media creatives, and print-ready visual communication assets.",
-    aliases: ["graphic design", "branding", "graphic design and branding"],
+    aliases: ["graphic design", "branding", "graphic design and branding", "graphic-design", "technical graphic design"],
+  },
+  {
+    icon: PenTool,
+    title: "Architectural Drafting",
+    description:
+      "Permit-ready architectural drafting, floor plans, elevations, and construction documentation for residential and commercial buildings.",
+    link: "/services/architechtural-drawing",
+    features: ["Floor Plans", "Building Elevations", "Cross Sections", "Permit Drawings"],
+    metaTitle: "Architectural Drafting Services | CAD Plans & Elevations | Drawn Dimension",
+    metaDescription:
+      "Professional architectural drafting services for floor plans, elevations, sections, and permit-ready documentation with fast turnaround.",
+    aliases: [
+      "architectural drawing",
+      "architectural drafting",
+      "architectural drawings",
+      "architechtural-drawing",
+      "architectural-drawing",
+      "architectural-drafting",
+    ],
   },
 ];
 
@@ -570,7 +619,58 @@ export const getFallbackServiceCards = () =>
     ...preset,
   }));
 
-export const findServiceBySlug = (services: ApiServiceRecord[], slug: string) => {
+export const buildFallbackServiceRecord = (preset: ServicePreset, id: number = 1): ApiServiceRecord => {
+  const slug = slugifyServiceName(preset.link.split("/").pop() ?? "");
+  const leftItems = buildDefaultServiceSectionLeftItems(preset.title, preset.features);
+  const panelItems = buildDefaultServicePanelItems(leftItems);
+  const processSteps = buildDefaultServiceProcessSteps(preset.title);
+  const pricingTiers = buildDefaultServicePricingTiers(preset.title);
+  const featureCards = ensureMinimumFeatureCards([], preset.title, preset.features);
+
+  return {
+    id,
+    name: preset.title,
+    slug,
+    hero_badge: "Engineering & Technical Design",
+    hero_title: preset.title,
+    hero_description: preset.description,
+    short_description: preset.description,
+    features: preset.features,
+    feature_cards: featureCards,
+    section_badge: "Scope & Deliverables",
+    section_title: `Complete ${preset.title} Solutions`,
+    section_description: `We deliver structured and professional ${preset.title.toLowerCase()} support from planning to final handover.`,
+    section_left_items: leftItems,
+    section_panel_title: "Professional Delivery Stack",
+    section_panel_subtitle: "Built for clarity, precision, and dependable output",
+    section_panel_items: panelItems,
+    process_badge: "Our Process",
+    process_title: "How We Deliver High-Precision Work",
+    process_steps: processSteps,
+    pricing_badge: "Pricing Plans",
+    pricing_title: "Choose Your Plan",
+    pricing_description: "All plans include quality assurance, revisions, and multi-format technical handovers.",
+    pricing_tiers: pricingTiers,
+    cta_title_prefix: "Ready to Transform Your",
+    cta_title_highlight: "Technical Vision Into Reality?",
+    cta_description:
+      "Let's discuss your project scope and discover how our engineering expertise can help you achieve extraordinary precision.",
+    cta_primary_label: "Get Free Consultation",
+    cta_primary_link: "/start-project",
+    cta_secondary_label: "View Our Portfolio",
+    cta_secondary_link: "/portfolio",
+    related_works_badge: "Featured Projects",
+    related_works_title: `Related ${preset.title} Projects`,
+    related_works_description: "Explore our recent client deliverables, technical drawings, and engineering work.",
+    related_works_button_label: "View All Portfolio Works",
+    related_works_button_link: "/portfolio",
+    related_works_empty_text: "Contact us to review specific project samples in this domain.",
+    meta_title: preset.metaTitle,
+    meta_description: preset.metaDescription,
+  };
+};
+
+export const findServiceBySlug = (services: ApiServiceRecord[], slug: string): ApiServiceRecord | null => {
   const target = slugifyServiceName(slug);
   if (!target) return null;
 
@@ -585,15 +685,20 @@ export const findServiceBySlug = (services: ApiServiceRecord[], slug: string) =>
 
   const presetMatch = servicePresets.find((preset) => {
     const linkSlug = slugifyServiceName(preset.link.split("/").pop() ?? "");
-    return linkSlug === target;
+    if (linkSlug === target) return true;
+    return preset.aliases.some((alias) => slugifyServiceName(alias) === target);
   });
 
   if (!presetMatch) return null;
 
-  return (
+  const dbMatch =
     services.find((service) => {
       const servicePreset = findPreset(service.name);
       return servicePreset?.link === presetMatch.link;
-    }) ?? null
-  );
+    }) ?? null;
+
+  if (dbMatch) return dbMatch;
+
+  const presetIndex = servicePresets.indexOf(presetMatch) + 1;
+  return buildFallbackServiceRecord(presetMatch, presetIndex);
 };

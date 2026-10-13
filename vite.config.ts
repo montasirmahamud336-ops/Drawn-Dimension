@@ -30,6 +30,10 @@ export default defineConfig(({ mode }) => {
         ],
       },
       proxy: {
+        "/api/nemo": {
+          target: cmsMediaTarget,
+          changeOrigin: true,
+        },
         "/api": {
           target: "http://127.0.0.1:8000",
           changeOrigin: true,

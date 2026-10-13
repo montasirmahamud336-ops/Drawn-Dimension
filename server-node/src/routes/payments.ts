@@ -271,7 +271,7 @@ router.post("/api/payment-settings/test-connection", requireAuth, async (req: Re
     // Test API call to verify key authenticity and permissions
     const [balance, account] = await Promise.all([
       testStripe.balance.retrieve().catch(() => null),
-      testStripe.accounts.retrieve().catch(() => null),
+      (testStripe.accounts as any).retrieve().catch(() => null),
     ]);
 
     const latencyMs = Date.now() - startTime;

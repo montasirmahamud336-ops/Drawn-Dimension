@@ -175,7 +175,7 @@ const PROSE_CSS = `
 
 /* ── Global text rendering for this block ── */
 .blog-prose {
-  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv05", "cv11", "ss01";
   font-variation-settings: "opsz" 32;
   font-size: 17px;
@@ -244,7 +244,7 @@ const PROSE_CSS = `
 
 /* ── Lead paragraph (excerpt) ── */
 .blog-prose-lead {
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv05", "cv11", "ss01";
   font-variation-settings: "opsz" 34;
   font-size: 20px;

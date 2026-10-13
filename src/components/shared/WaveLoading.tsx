@@ -1,4 +1,3 @@
-import { Sparkles } from "lucide-react";
 
 interface WaveLoadingProps {
   text?: string;
@@ -57,8 +56,7 @@ export const WaveLoading = ({
       </div>
 
       {/* Animated Text with Shimmer / Pulse */}
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
+      <div className="flex items-center justify-center">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-foreground/85 animate-pulse">
           {text}
         </p>

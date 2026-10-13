@@ -2,89 +2,801 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import CTASection from "@/components/CTASection";
 import PageTransition from "@/components/shared/PageTransition";
-import ServiceCard from "@/components/shared/ServiceCard";
-import { motion } from "framer-motion";
 import PremiumBackground from "@/components/shared/PremiumBackground";
-import { useEffect, useMemo, useState } from "react";
+
+import {
+  motion,
+  useReducedMotion,
+} from "framer-motion";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+
+import {
+  ArrowRight,
+  Search,
+  X,
+} from "lucide-react";
+
+import { Link } from "react-router-dom";
+
 import { getApiBaseUrl } from "@/components/admin/adminAuth";
+
 import {
   type ApiServiceRecord,
   buildServiceCardFromApi,
   getFallbackServiceCards,
 } from "@/components/shared/serviceCatalog";
-import { 
-  Sparkles, 
-  Search, 
-  LayoutGrid, 
-  List, 
-  X, 
-  ArrowRight, 
-  Layers 
-} from "lucide-react";
-import { Link } from "react-router-dom";
 
-const siteOrigin = "https://www.drawndimension.com";
+/* ============================================================
+   CONFIGURATION
+============================================================ */
 
-const toAbsoluteUrl = (path: string) => {
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${siteOrigin}${path.startsWith("/") ? path : `/${path}`}`;
+const SITE_ORIGIN = "https://www.drawndimension.com";
+
+const SEO = {
+  title:
+    "Engineering & Digital Services | Drawn Dimension",
+
+  description:
+    "Explore Drawn Dimension's engineering and digital services, including PFD and P&ID documentation, AutoCAD drafting, SolidWorks 3D modeling, web development, graphic design, and digital solutions.",
+
+  canonical: `${SITE_ORIGIN}/services`,
+
+  image: `${SITE_ORIGIN}/images/logo.png`,
 };
 
-const ServicesSkeleton = () => (
-  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-    {[1, 2, 3, 4, 5, 6].map((i) => (
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+/* ============================================================
+   TYPES
+============================================================ */
+
+type ChildrenProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+type ServiceCardData = ReturnType<
+  typeof buildServiceCardFromApi
+>;
+
+/* ============================================================
+   CONTAINER
+============================================================ */
+
+const Container = ({
+  children,
+  className = "",
+}: ChildrenProps) => {
+  return (
+    <div
+      className={`
+        mx-auto
+        w-full
+        max-w-[1500px]
+        px-5
+        sm:px-8
+        lg:px-12
+        xl:px-16
+        ${className}
+      `}
+    >
+      {children}
+    </div>
+  );
+};
+
+/* ============================================================
+   HERO
+============================================================ */
+
+const ServicesHero = () => {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <section
+      className="
+        relative
+        pb-10
+        pt-32
+        text-center
+        sm:pb-12
+        sm:pt-36
+        lg:pt-40
+      "
+      aria-labelledby="services-heading"
+    >
+      <Container>
+        <motion.div
+          initial={
+            reduceMotion
+              ? false
+              : {
+                  opacity: 0,
+                  y: 16,
+                }
+          }
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.7,
+            ease: EASE,
+          }}
+          className="mx-auto max-w-[1050px]"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            OUR SERVICES
+          </p>
+
+          <h1
+            id="services-heading"
+            className="
+              mt-5
+              text-[clamp(2.8rem,5.8vw,5.3rem)]
+              font-semibold
+              leading-[1.08]
+              tracking-[-0.05em]
+              text-foreground
+            "
+          >
+            Engineering & Digital
+            <span className="block text-primary">
+              Services.
+            </span>
+          </h1>
+
+          <p
+            className="
+              mx-auto
+              mt-6
+              max-w-[720px]
+              text-base
+              leading-8
+              text-muted-foreground
+              sm:text-lg
+            "
+          >
+            From engineering documentation and mechanical
+            design to websites and digital solutions.
+            Explore our services and find the right
+            support for your project.
+          </p>
+        </motion.div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   SEARCH
+============================================================ */
+
+const ServicesSearch = ({
+  value,
+  onChange,
+  resultCount,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  resultCount: number;
+}) => {
+  return (
+    <section
+      className="pb-10"
+      aria-label="Search services"
+    >
+      <Container>
+        <div className="mx-auto max-w-[650px]">
+          <div className="relative">
+            <Search
+              className="
+                pointer-events-none
+                absolute
+                left-4
+                top-1/2
+                h-4
+                w-4
+                -translate-y-1/2
+                text-muted-foreground
+              "
+              aria-hidden="true"
+            />
+
+            <input
+              type="search"
+              value={value}
+              onChange={(event) =>
+                onChange(event.target.value)
+              }
+              placeholder="Search services..."
+              aria-label="Search services"
+              className="
+                h-[52px]
+                w-full
+                rounded-xl
+                border
+                border-border
+                bg-card
+                pl-11
+                pr-12
+                text-sm
+                text-foreground
+                outline-none
+                transition-[border-color,background-color]
+                duration-200
+                placeholder:text-muted-foreground
+                focus:border-primary/40
+                focus:bg-card
+                dark:border-white/10
+                dark:bg-white/[0.045]
+                dark:focus:border-white/16
+              "
+            />
+
+            {value && (
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                aria-label="Clear search"
+                className="
+                  absolute
+                  right-3
+                  top-1/2
+                  flex
+                  h-8
+                  w-8
+                  -translate-y-1/2
+                  items-center
+                  justify-center
+                  rounded-lg
+                  text-muted-foreground
+                  hover:bg-muted
+                  hover:text-foreground
+                "
+              >
+                <X
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
+              </button>
+            )}
+          </div>
+
+          <p
+            className="mt-3 text-center text-xs text-muted-foreground"
+            aria-live="polite"
+          >
+            {resultCount}{" "}
+            {resultCount === 1 ? "service" : "services"} available
+          </p>
+        </div>
+      </Container>
+    </section>
+  );
+};
+
+/* ============================================================
+   COMPACT SERVICE CARD
+============================================================ */
+
+const CompactServiceCard = ({
+  service,
+  index,
+}: {
+  service: ServiceCardData;
+  index: number;
+}) => {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <motion.article
+      initial={
+        reduceMotion
+          ? false
+          : {
+              opacity: 0,
+              y: 16,
+            }
+      }
+      whileInView={{
+        opacity: 1,
+        y: 0,
+      }}
+      viewport={{
+        once: true,
+        amount: 0.12,
+      }}
+      transition={{
+        duration: 0.6,
+        delay: Math.min(index * 0.04, 0.16),
+        ease: EASE,
+      }}
+      className="
+        group
+        relative
+        flex
+        h-full
+        flex-col
+        overflow-hidden
+        rounded-xl
+        border
+        border-border/70
+        bg-card
+        p-6
+        shadow-[0_8px_24px_-18px_rgba(15,23,42,0.18)]
+        transition-[background-color,box-shadow,transform]
+        duration-300
+        ease-out
+        hover:-translate-y-0.5
+        hover:shadow-[0_18px_40px_-24px_rgba(15,23,42,0.28)]
+        dark:border-white/[0.08]
+        dark:bg-white/[0.045]
+        dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_28px_-20px_rgba(0,0,0,0.7)]
+        dark:hover:bg-white/[0.07]
+        dark:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_40px_-22px_rgba(0,0,0,0.85)]
+        sm:p-7
+      "
+    >
       <div
-        key={i}
-        className="rounded-3xl border border-border/50 bg-card/60 overflow-hidden shadow-lg animate-pulse p-7 flex flex-col justify-between"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="w-14 h-14 rounded-2xl bg-muted/60" />
-            <div className="w-6 h-4 bg-muted/40 rounded" />
-          </div>
-          <div className="h-6 w-3/4 bg-muted/80 rounded-xl" />
-          <div className="space-y-2">
-            <div className="h-3.5 w-full bg-muted/50 rounded-lg" />
-            <div className="h-3.5 w-5/6 bg-muted/50 rounded-lg" />
-          </div>
-        </div>
-        <div className="mt-8 pt-4 border-t border-border/40">
-          <div className="h-10 w-full bg-primary/20 rounded-2xl" />
-        </div>
+        className="
+          pointer-events-none
+          absolute
+          inset-x-0
+          top-0
+          h-px
+          bg-gradient-to-r
+          from-transparent
+          via-black/10
+          to-transparent
+          dark:via-white/20
+        "
+        aria-hidden="true"
+      />
+
+      <div className="flex items-center justify-between gap-4">
+        <span
+          className="
+            text-2xl
+            font-semibold
+            tracking-[-0.05em]
+            text-primary
+          "
+        >
+          {String(index + 1).padStart(2, "0")}
+        </span>
+
+        <span className="text-[11px] font-medium text-muted-foreground">
+          Drawn Dimension
+        </span>
       </div>
-    ))}
-  </div>
-);
+
+      <h2
+        className="
+          mt-6
+          text-[21px]
+          font-semibold
+          leading-tight
+          tracking-[-0.025em]
+          text-foreground
+        "
+      >
+        {service.title}
+      </h2>
+
+      <p
+        className="
+          mt-3
+          line-clamp-3
+          text-sm
+          leading-7
+          text-muted-foreground
+        "
+      >
+        {service.description}
+      </p>
+
+      {service.features?.length > 0 && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {service.features.slice(0, 3).map((feature) => (
+            <span
+              key={feature}
+              className="
+                rounded-md
+                border
+                border-border/70
+                bg-muted/50
+                px-2.5
+                py-1
+                text-[11px]
+                text-muted-foreground
+                dark:border-white/10
+                dark:bg-white/[0.05]
+              "
+            >
+              {feature}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-auto pt-6">
+        <Link
+          to={service.link}
+          className="
+            inline-flex
+            items-center
+            gap-2
+            text-sm
+            font-semibold
+            text-primary
+            transition-all
+            duration-300
+            group-hover:gap-3
+            hover:underline
+          "
+        >
+          View Service
+
+          <ArrowRight
+            className="h-4 w-4"
+            aria-hidden="true"
+          />
+        </Link>
+      </div>
+    </motion.article>
+  );
+};
+
+/* ============================================================
+   SKELETON
+============================================================ */
+
+const ServicesSkeleton = () => {
+  return (
+    <div
+      className="grid gap-5 md:grid-cols-2 xl:grid-cols-3"
+      role="status"
+      aria-label="Loading services"
+    >
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          key={index}
+          className="
+            min-h-[260px]
+            rounded-xl
+            border
+            border-border/70
+            bg-card
+            p-7
+            dark:border-white/[0.08]
+            dark:bg-white/[0.045]
+          "
+        >
+          <div className="h-6 w-10 animate-pulse rounded bg-muted dark:bg-white/10" />
+
+          <div className="mt-7 h-5 w-3/4 animate-pulse rounded bg-muted dark:bg-white/10" />
+
+          <div className="mt-5 space-y-3">
+            <div className="h-3 w-full animate-pulse rounded bg-muted dark:bg-white/10" />
+
+            <div className="h-3 w-5/6 animate-pulse rounded bg-muted dark:bg-white/10" />
+
+            <div className="h-3 w-2/3 animate-pulse rounded bg-muted dark:bg-white/10" />
+          </div>
+
+          <div className="mt-6 flex gap-2">
+            <div className="h-6 w-20 animate-pulse rounded bg-muted dark:bg-white/10" />
+
+            <div className="h-6 w-24 animate-pulse rounded bg-muted dark:bg-white/10" />
+          </div>
+
+          <div className="mt-7 h-4 w-24 animate-pulse rounded bg-muted dark:bg-white/10" />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/* ============================================================
+   EMPTY STATE
+============================================================ */
+
+const EmptyState = ({
+  searchQuery,
+  onClear,
+}: {
+  searchQuery: string;
+  onClear: () => void;
+}) => {
+  return (
+    <div className="mx-auto max-w-xl py-16 text-center">
+      <h2 className="text-xl font-semibold text-foreground">
+        No matching services found
+      </h2>
+
+      <p className="mt-3 text-sm leading-7 text-muted-foreground">
+        We couldn't find a service matching
+        {searchQuery ? ` "${searchQuery}"` : " your search"}.
+        Try another keyword.
+      </p>
+
+      <button
+        type="button"
+        onClick={onClear}
+        className="
+          mt-6
+          rounded-lg
+          bg-primary
+          px-5
+          py-2.5
+          text-sm
+          font-semibold
+          text-primary-foreground
+          hover:bg-primary/90
+        "
+      >
+        Clear Search
+      </button>
+    </div>
+  );
+};
+
+/* ============================================================
+   SEO HOOK
+============================================================ */
+
+const useServicesSEO = (
+  keywords: string,
+  structuredData: object,
+) => {
+  useEffect(() => {
+    const previousTitle = document.title;
+
+    document.title = SEO.title;
+
+    const cleanupFunctions: Array<() => void> = [];
+
+    const updateMeta = (
+      attribute: "name" | "property",
+      key: string,
+      content: string,
+    ) => {
+      let element = document.head.querySelector(
+        `meta[${attribute}="${key}"]`,
+      ) as HTMLMetaElement | null;
+
+      const created = !element;
+
+      if (!element) {
+        element = document.createElement("meta");
+
+        element.setAttribute(attribute, key);
+
+        document.head.appendChild(element);
+      }
+
+      const previousContent =
+        element.getAttribute("content");
+
+      element.setAttribute("content", content);
+
+      cleanupFunctions.push(() => {
+        if (created) {
+          element?.remove();
+        } else if (previousContent !== null) {
+          element?.setAttribute(
+            "content",
+            previousContent,
+          );
+        } else {
+          element?.removeAttribute("content");
+        }
+      });
+    };
+
+    updateMeta(
+      "name",
+      "description",
+      SEO.description,
+    );
+
+    updateMeta(
+      "name",
+      "keywords",
+      keywords,
+    );
+
+    updateMeta(
+      "name",
+      "robots",
+      "index, follow, max-image-preview:large",
+    );
+
+    updateMeta(
+      "property",
+      "og:title",
+      SEO.title,
+    );
+
+    updateMeta(
+      "property",
+      "og:description",
+      SEO.description,
+    );
+
+    updateMeta(
+      "property",
+      "og:type",
+      "website",
+    );
+
+    updateMeta(
+      "property",
+      "og:url",
+      SEO.canonical,
+    );
+
+    updateMeta(
+      "property",
+      "og:image",
+      SEO.image,
+    );
+
+    updateMeta(
+      "name",
+      "twitter:card",
+      "summary_large_image",
+    );
+
+    updateMeta(
+      "name",
+      "twitter:title",
+      SEO.title,
+    );
+
+    updateMeta(
+      "name",
+      "twitter:description",
+      SEO.description,
+    );
+
+    let canonical = document.head.querySelector(
+      'link[rel="canonical"]',
+    ) as HTMLLinkElement | null;
+
+    const createdCanonical = !canonical;
+
+    if (!canonical) {
+      canonical = document.createElement("link");
+
+      canonical.rel = "canonical";
+
+      document.head.appendChild(canonical);
+    }
+
+    const previousCanonical =
+      canonical.getAttribute("href");
+
+    canonical.href = SEO.canonical;
+
+    let schemaScript = document.head.querySelector(
+      'script[data-dd-services-schema="true"]',
+    ) as HTMLScriptElement | null;
+
+    const createdSchema = !schemaScript;
+
+    if (!schemaScript) {
+      schemaScript = document.createElement("script");
+
+      schemaScript.type = "application/ld+json";
+
+      schemaScript.setAttribute(
+        "data-dd-services-schema",
+        "true",
+      );
+
+      document.head.appendChild(schemaScript);
+    }
+
+    const previousSchema =
+      schemaScript.textContent;
+
+    schemaScript.textContent = JSON.stringify(
+      structuredData,
+    ).replace(/</g, "\\u003c");
+
+    return () => {
+      document.title = previousTitle;
+
+      cleanupFunctions.forEach((cleanup) => cleanup());
+
+      if (createdCanonical) {
+        canonical?.remove();
+      } else if (previousCanonical !== null) {
+        canonical?.setAttribute(
+          "href",
+          previousCanonical,
+        );
+      }
+
+      if (createdSchema) {
+        schemaScript?.remove();
+      } else if (schemaScript) {
+        schemaScript.textContent = previousSchema;
+      }
+    };
+  }, [keywords, structuredData]);
+};
+
+/* ============================================================
+   MAIN SERVICES PAGE
+============================================================ */
 
 const Services = () => {
-  const [apiServices, setApiServices] = useState<ApiServiceRecord[]>([]);
+  const [apiServices, setApiServices] = useState<
+    ApiServiceRecord[]
+  >([]);
+
   const [isLoaded, setIsLoaded] = useState(false);
+
   const [loadFailed, setLoadFailed] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
 
   useEffect(() => {
     let mounted = true;
-    const apiBase = getApiBaseUrl();
+
     const controller = new AbortController();
 
     const fetchServices = async () => {
       try {
-        const res = await fetch(`${apiBase}/services?status=live`, { signal: controller.signal });
-        if (!res.ok) {
-          throw new Error("Failed to fetch services");
+        const apiBase = getApiBaseUrl();
+
+        const response = await fetch(
+          `${apiBase}/services?status=live`,
+          {
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch services: ${response.status}`,
+          );
         }
 
-        const data = await res.json();
+        const data = await response.json();
+
         if (!mounted) return;
-        setApiServices(Array.isArray(data) ? data : []);
+
+        setApiServices(
+          Array.isArray(data) ? data : [],
+        );
+
         setLoadFailed(false);
       } catch (error) {
-        if (controller.signal.aborted || !mounted) return;
-        console.error("Failed to fetch services", error);
+        if (
+          controller.signal.aborted ||
+          !mounted
+        ) {
+          return;
+        }
+
+        console.error(
+          "Failed to fetch services",
+          error,
+        );
+
         setLoadFailed(true);
       } finally {
-        if (mounted) {
+        if (mounted && !controller.signal.aborted) {
           setIsLoaded(true);
         }
       }
@@ -94,358 +806,156 @@ const Services = () => {
 
     return () => {
       mounted = false;
+
       controller.abort();
     };
   }, []);
 
   const rawServices = useMemo(() => {
     if (apiServices.length > 0) {
-      return apiServices.map(buildServiceCardFromApi);
+      return apiServices.map(
+        buildServiceCardFromApi,
+      );
     }
 
-    if (loadFailed) {
-      return getFallbackServiceCards();
-    }
-
-    return [];
-  }, [apiServices, loadFailed]);
+    return getFallbackServiceCards();
+  }, [apiServices]);
 
   const filteredServices = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return rawServices;
+    const query = searchQuery
+      .trim()
+      .toLowerCase();
 
-    return rawServices.filter(
-      (s) =>
-        s.title?.toLowerCase().includes(query) ||
-        s.description?.toLowerCase().includes(query) ||
-        s.features?.some((f) => f.toLowerCase().includes(query))
-    );
+    if (!query) {
+      return rawServices;
+    }
+
+    return rawServices.filter((service) => {
+      const titleMatch = service.title
+        ?.toLowerCase()
+        .includes(query);
+
+      const descriptionMatch = service.description
+        ?.toLowerCase()
+        .includes(query);
+
+      const featureMatch = service.features
+        ?.some((feature) =>
+          feature.toLowerCase().includes(query),
+        );
+
+      return (
+        titleMatch ||
+        descriptionMatch ||
+        featureMatch
+      );
+    });
   }, [rawServices, searchQuery]);
 
-  const seoServices = useMemo(
-    () => (rawServices.length > 0 ? rawServices : getFallbackServiceCards()),
-    [rawServices]
-  );
-  const pageTitle = "Engineering & Digital Service Solutions | DrawnDimension";
-  const pageDescription =
-    "Explore DrawnDimension's engineering & digital service solutions, including CRO, P&ID, PFD, architectural drafting, HAZOP, web development, graphic design, and SolidWorks 3D modeling.";
-  const canonicalUrl = toAbsoluteUrl("/services");
-  const ogImageUrl = toAbsoluteUrl("/images/logo.png");
-  const pageKeywords = useMemo(() => {
-    const baseKeywords = [
+  const seoServices = useMemo(() => {
+    return rawServices.length > 0
+      ? rawServices
+      : getFallbackServiceCards();
+  }, [rawServices]);
+
+  const keywords = useMemo(() => {
+    return [
       "engineering services",
-      "technical service solutions",
-      "industrial engineering services",
-      "B2B engineering outsourcing",
-      "web development services for engineering firms",
-      "architectural drafting services",
-      "P&ID drawing services",
-      "process flow diagram services",
-      "SolidWorks modeling services",
-      "HAZOP study services",
-      "conversion rate optimization services",
-      "technical graphics design services",
-    ];
-
-    const serviceKeywords = seoServices.flatMap((service) => [
-      service.title,
-      `${service.title} services`,
-      ...service.features.map((feature) => `${feature} service`),
-    ]);
-
-    return [...new Set([...baseKeywords, ...serviceKeywords])]
-      .map((keyword) => keyword.trim())
-      .filter(Boolean)
-      .join(", ");
+      "AutoCAD drafting",
+      "PFD P&ID drawings",
+      "SolidWorks 3D modeling",
+      "web development",
+      "graphic design",
+      "digital solutions",
+      ...seoServices.map((service) => service.title),
+    ].join(", ");
   }, [seoServices]);
 
-  const structuredData = useMemo(
-    () => ({
+  const structuredData = useMemo(() => {
+    return {
       "@context": "https://schema.org",
+
       "@type": "ItemList",
-      name: "DrawnDimension Services",
-      description: pageDescription,
-      itemListElement: seoServices.map((service, index) => ({
-        "@type": "ListItem",
-        position: index + 1,
-        name: service.title,
-        url: toAbsoluteUrl(service.link),
-      })),
-    }),
-    [pageDescription, seoServices]
+
+      name: "Drawn Dimension Services",
+
+      itemListElement: seoServices.map(
+        (service, index) => ({
+          "@type": "ListItem",
+
+          position: index + 1,
+
+          name: service.title,
+
+          url: service.link.startsWith("http")
+            ? service.link
+            : `${SITE_ORIGIN}${service.link}`,
+        }),
+      ),
+    };
+  }, [seoServices]);
+
+  useServicesSEO(
+    keywords,
+    structuredData,
   );
-
-  useEffect(() => {
-    let schemaScript = document.head.querySelector('script[data-dd-services-schema="true"]') as HTMLScriptElement | null;
-    const createdScript = !schemaScript;
-    if (!schemaScript) {
-      schemaScript = document.createElement("script");
-      schemaScript.type = "application/ld+json";
-      schemaScript.setAttribute("data-dd-services-schema", "true");
-      document.head.appendChild(schemaScript);
-    }
-
-    const previousContent = schemaScript.textContent ?? "";
-    schemaScript.textContent = JSON.stringify(structuredData);
-
-    return () => {
-      if (createdScript) {
-        schemaScript?.remove();
-      } else if (schemaScript) {
-        schemaScript.textContent = previousContent;
-      }
-    };
-  }, [structuredData]);
-
-  useEffect(() => {
-    const previousTitle = document.title;
-    document.title = pageTitle;
-
-    const upsertMeta = (attr: "name" | "property", key: string, content: string) => {
-      let tag = document.head.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null;
-      const created = !tag;
-      if (!tag) {
-        tag = document.createElement("meta");
-        tag.setAttribute(attr, key);
-        document.head.appendChild(tag);
-      }
-      const previousContent = tag.getAttribute("content") ?? "";
-      tag.setAttribute("content", content);
-      return () => {
-        if (created) {
-          tag?.remove();
-        } else {
-          tag?.setAttribute("content", previousContent);
-        }
-      };
-    };
-
-    const resetDescription = upsertMeta("name", "description", pageDescription);
-    const resetKeywords = upsertMeta("name", "keywords", pageKeywords);
-    const resetRobots = upsertMeta("name", "robots", "index, follow, max-image-preview:large");
-    const resetOgTitle = upsertMeta("property", "og:title", pageTitle);
-    const resetOgDescription = upsertMeta("property", "og:description", pageDescription);
-    const resetOgType = upsertMeta("property", "og:type", "website");
-    const resetOgUrl = upsertMeta("property", "og:url", canonicalUrl);
-    const resetOgImage = upsertMeta("property", "og:image", ogImageUrl);
-    const resetOgSiteName = upsertMeta("property", "og:site_name", "DrawnDimension");
-    const resetTwitterCard = upsertMeta("name", "twitter:card", "summary_large_image");
-    const resetTwitterTitle = upsertMeta("name", "twitter:title", pageTitle);
-    const resetTwitterDescription = upsertMeta("name", "twitter:description", pageDescription);
-    const resetTwitterImage = upsertMeta("name", "twitter:image", ogImageUrl);
-
-    let canonical = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    const createdCanonical = !canonical;
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.setAttribute("rel", "canonical");
-      document.head.appendChild(canonical);
-    }
-    const previousCanonicalHref = canonical.getAttribute("href") ?? "";
-    canonical.setAttribute("href", canonicalUrl);
-
-    return () => {
-      document.title = previousTitle;
-      resetDescription();
-      resetKeywords();
-      resetRobots();
-      resetOgTitle();
-      resetOgDescription();
-      resetOgType();
-      resetOgUrl();
-      resetOgImage();
-      resetOgSiteName();
-      resetTwitterCard();
-      resetTwitterTitle();
-      resetTwitterDescription();
-      resetTwitterImage();
-      if (createdCanonical) {
-        canonical?.remove();
-      } else {
-        canonical?.setAttribute("href", previousCanonicalHref);
-      }
-    };
-  }, [canonicalUrl, ogImageUrl, pageDescription, pageKeywords, pageTitle]);
 
   return (
     <PageTransition>
       <PremiumBackground>
         <Navigation />
-        <main className="min-h-screen">
-          
-          <section className="relative pt-32 pb-16 md:pt-40 md:pb-24 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute top-20 right-[-10rem] w-[28rem] h-[28rem] rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-            <div className="container-narrow relative z-10">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7 }}
-                className="max-w-3xl"
-              >
-                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide bg-primary/10 text-primary dark:bg-primary/20 mb-5 border border-primary/20">
-                  <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                  Engineering & Creative Services
-                </span>
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08] text-balance">
-                  Engineering & Digital <span className="text-gradient-primary">Service Solutions</span>.
-                </h1>
-                <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed">
-                  Professional B2B services covering CRO, P&ID, PFD, architectural drafting, HAZOP, web development, technical graphic design, and 3D SolidWorks modeling.
-                </p>
 
-                <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 border-t border-border/50">
-                  <div>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-foreground">100%</p>
-                    <p className="text-xs font-medium text-muted-foreground mt-0.5">ISO Process Quality</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-primary">500+</p>
-                    <p className="text-xs font-medium text-muted-foreground mt-0.5">Delivered Projects</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-foreground">99.5%</p>
-                    <p className="text-xs font-medium text-muted-foreground mt-0.5">Satisfaction Rating</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-primary">24/7</p>
-                    <p className="text-xs font-medium text-muted-foreground mt-0.5">Technical Support</p>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </section>
+        <main
+          className="
+            relative
+            min-h-screen
+            w-full
+            overflow-x-clip
+            text-foreground
+          "
+          aria-label="Drawn Dimension Services"
+        >
+          <ServicesHero />
 
-          <section className="pb-12">
-            <div className="container-narrow">
-              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-3xl border border-border/60 bg-card/80 backdrop-blur-xl shadow-xl">
-                
-                <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search services by title, discipline, or feature..."
-                    className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-muted/30 border border-border/50 focus:border-primary/60 focus:bg-background text-sm placeholder:text-muted-foreground/70 transition-all outline-none"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
+          <ServicesSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            resultCount={filteredServices.length}
+          />
 
-                <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
-                  <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
-                    Showing <span className="text-foreground font-bold">{filteredServices.length}</span> services
-                  </span>
-                  <div className="flex items-center p-1 rounded-2xl bg-muted/40 border border-border/50">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("grid")}
-                      title="Grid View"
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                        viewMode === "grid"
-                          ? "bg-primary text-primary-foreground shadow-md"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Grid</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("compact")}
-                      title="Compact View"
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                        viewMode === "compact"
-                          ? "bg-primary text-primary-foreground shadow-md"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <List className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Compact</span>
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </section>
-
-          <section className="pb-24">
-            <div className="container-narrow">
-              
+          <section
+            className="pb-16 sm:pb-20 lg:pb-24"
+            aria-label="Available services"
+          >
+            <Container>
               {!isLoaded ? (
                 <ServicesSkeleton />
               ) : filteredServices.length === 0 ? (
-                <div className="text-center py-20 rounded-3xl border border-border/50 bg-card/40 p-8">
-                  <Layers className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
-                  <h3 className="text-xl font-bold">No services matched your search</h3>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Try searching another keyword or clear the search query.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="mt-6 px-6 py-2 bg-primary/10 border border-primary/30 text-primary hover:bg-primary hover:text-white rounded-full text-xs font-bold transition-all"
-                  >
-                    Clear Search
-                  </button>
-                </div>
-              ) : viewMode === "grid" ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredServices.map((service, index) => (
-                    <ServiceCard key={`${service.link}-${service.title}`} {...service} index={index} />
-                  ))}
-                </div>
+                <EmptyState
+                  searchQuery={searchQuery}
+                  onClear={() =>
+                    setSearchQuery("")
+                  }
+                />
               ) : (
-                <div className="space-y-4">
-                  {filteredServices.map((service, index) => {
-                    const Icon = service.icon;
-                    return (
-                      <article
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {filteredServices.map(
+                    (service, index) => (
+                      <CompactServiceCard
                         key={`${service.link}-${service.title}`}
-                        className="group rounded-2xl border border-border/60 bg-card/90 hover:border-primary/50 hover:bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300 shadow-md hover:shadow-xl"
-                      >
-                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/25 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
-                            <Icon className="w-6 h-6" />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                              {service.title}
-                            </h3>
-                            <p className="text-xs text-muted-foreground truncate max-w-2xl mt-0.5">
-                              {service.description}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                          <Link
-                            to={service.link}
-                            className="px-4 py-2 rounded-xl bg-primary/10 border border-primary/30 text-primary group-hover:bg-primary group-hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all duration-300"
-                          >
-                            Explore Solution <ArrowRight className="w-3.5 h-3.5" />
-                          </Link>
-                        </div>
-                      </article>
-                    );
-                  })}
+                        service={service}
+                        index={index}
+                      />
+                    ),
+                  )}
                 </div>
               )}
-
-            </div>
+            </Container>
           </section>
 
           <CTASection />
         </main>
+
         <Footer />
       </PremiumBackground>
     </PageTransition>

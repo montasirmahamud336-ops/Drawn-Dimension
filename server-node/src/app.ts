@@ -35,6 +35,7 @@ import websiteUsersRoutes from "./routes/websiteUsers.js";
 import systemVersionsRoutes from "./routes/systemVersions.js";
 import databaseBackupRoutes from "./routes/databaseBackup.js";
 import paymentsRoutes from "./routes/payments.js";
+import nemoRoutes from "./routes/nemo.js";
 
 import { responseCompression } from "./middleware/compression.js";
 import { generateVariantOnDemand } from "./lib/mediaStorage.js";
@@ -287,6 +288,7 @@ app.use(websiteUsersRoutes);
 app.use(systemVersionsRoutes);
 app.use(databaseBackupRoutes);
 app.use(paymentsRoutes);
+app.use(nemoRoutes);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
